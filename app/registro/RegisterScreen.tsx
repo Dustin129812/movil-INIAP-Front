@@ -11,15 +11,18 @@ import {
   Alert,
   Keyboard,
 } from 'react-native';
-import { useAuth } from '../hooks';
-import { DynamicIslandNotification } from '../components/ui';
-import { servicioNotificaciones } from '../services/notificaciones';
+import { Feather } from '@expo/vector-icons';
+import { useAuth } from '../../hooks';
+import { DynamicIslandNotification } from '../../components/ui';
+import { servicioNotificaciones } from '../../services/notificaciones';
 
 export function RegisterScreen() {
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false);
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
   const [notificacion, setNotificacion] = useState<{ tipo: 'bienvenida' | 'error' | 'success' | 'despedida'; mensaje: string }>({ tipo: 'success', mensaje: '' });
   const { registrar, cargando } = useAuth();
@@ -62,7 +65,17 @@ export function RegisterScreen() {
       setMostrarNotificacion(true);
       setTimeout(() => setMostrarNotificacion(false), 3000);
     } else {
-      const mensajeError = resultado.message || 'Error al registrar';
+      const mensajeOriginal = resultado.message || '';
+      let mensajeError = 'Error al registrar';
+
+      if (mensajeOriginal.toLowerCase().includes('already') ||
+          mensajeOriginal.toLowerCase().includes('existe') ||
+          mensajeOriginal.toLowerCase().includes('ya')) {
+        mensajeError = 'Este correo ya está registrado';
+      } else {
+        mensajeError = mensajeOriginal;
+      }
+
       setNotificacion({ tipo: 'error', mensaje: mensajeError });
       setMostrarNotificacion(true);
       setTimeout(() => setMostrarNotificacion(false), 3000);
@@ -125,28 +138,54 @@ export function RegisterScreen() {
 
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Contraseña</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Mínimo 6 caracteres"
-                    placeholderTextColor="#AEAEB2"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry
-                    editable={!cargando}
-                  />
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="Mínimo 6 caracteres"
+                      placeholderTextColor="#AEAEB2"
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry={!mostrarPassword}
+                      editable={!cargando}
+                    />
+                    <TouchableOpacity
+                      style={styles.togglePassword}
+                      onPress={() => setMostrarPassword(!mostrarPassword)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather
+                        name={mostrarPassword ? 'eye-off' : 'eye'}
+                        size={20}
+                        color="#8E8E93"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <View style={styles.inputContainer}>
                   <Text style={styles.label}>Confirmar contraseña</Text>
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Repite la contraseña"
-                    placeholderTextColor="#AEAEB2"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    secureTextEntry
-                    editable={!cargando}
-                  />
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      placeholder="Repite la contraseña"
+                      placeholderTextColor="#AEAEB2"
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry={!mostrarConfirmPassword}
+                      editable={!cargando}
+                    />
+                    <TouchableOpacity
+                      style={styles.togglePassword}
+                      onPress={() => setMostrarConfirmPassword(!mostrarConfirmPassword)}
+                      activeOpacity={0.7}
+                    >
+                      <Feather
+                        name={mostrarConfirmPassword ? 'eye-off' : 'eye'}
+                        size={20}
+                        color="#8E8E93"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 <TouchableOpacity
@@ -239,6 +278,28 @@ const styles = StyleSheet.create({
     color: '#000',
     borderWidth: 1,
     borderColor: '#E5E5EA',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 17,
+    color: '#000',
+  },
+  togglePassword: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  togglePasswordText: {
+    fontSize: 20,
   },
   button: {
     backgroundColor: '#34C759',

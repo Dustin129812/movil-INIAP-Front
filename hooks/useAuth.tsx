@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
-import { Usuario } from '../types';
+import { Usuario } from '../types/index';
 import { useApi } from './useApi';
 import { useDevice } from './useDevice';
 
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Inicializar auth
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
     async function inicializarAuth() {
       try {

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, Platform } from 'react-native';
-import { useAuth } from '../../src/hooks';
-import { useDeviceInfo } from '../../src/hooks/useDeviceInfo';
-import { DynamicIslandNotification } from '../../src/components/ui';
+import { useAuth } from '../../hooks';
+import { useDeviceInfo } from '../../hooks/useDeviceInfo';
+import { DynamicIslandNotification } from '../../components/ui';
 
 export default function HomeScreen() {
   const { usuario, dispositivoId, cerrarSesion } = useAuth();

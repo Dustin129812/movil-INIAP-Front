@@ -10,13 +10,15 @@ import {
   Alert,
   Keyboard,
 } from 'react-native';
-import { useAuth } from '../hooks';
-import { DynamicIslandNotification } from '../components/ui';
-import { servicioNotificaciones } from '../services/notificaciones';
+import { Feather } from '@expo/vector-icons';
+import { useAuth } from '../../hooks';
+import { DynamicIslandNotification } from '../../components/ui';
+import { servicioNotificaciones } from '../../services/notificaciones';
 
 export function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
   const [notificacion, setNotificacion] = useState<{ tipo: 'bienvenida' | 'error' | 'success' | 'despedida'; mensaje: string }>({ tipo: 'bienvenida', mensaje: '' });
   const { login, cargando } = useAuth();
@@ -82,15 +84,28 @@ export function LoginScreen() {
 
               <View style={styles.inputContainer}>
                 <Text style={styles.label}>Contraseña</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••••••"
-                  placeholderTextColor="#AEAEB2"
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  editable={!cargando}
-                />
+                <View style={styles.passwordContainer}>
+                  <TextInput
+                    style={styles.passwordInput}
+                    placeholder="••••••••"
+                    placeholderTextColor="#AEAEB2"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry={!mostrarPassword}
+                    editable={!cargando}
+                  />
+                  <TouchableOpacity
+                    style={styles.togglePassword}
+                    onPress={() => setMostrarPassword(!mostrarPassword)}
+                    activeOpacity={0.7}
+                  >
+                    <Feather
+                      name={mostrarPassword ? 'eye-off' : 'eye'}
+                      size={20}
+                      color="#8E8E93"
+                    />
+                  </TouchableOpacity>
+                </View>
               </View>
 
               <TouchableOpacity
@@ -182,6 +197,28 @@ const styles = StyleSheet.create({
     color: '#000',
     borderWidth: 1,
     borderColor: '#E5E5EA',
+  },
+  passwordContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    fontSize: 17,
+    color: '#000',
+  },
+  togglePassword: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  togglePasswordText: {
+    fontSize: 20,
   },
   button: {
     backgroundColor: '#34C759',

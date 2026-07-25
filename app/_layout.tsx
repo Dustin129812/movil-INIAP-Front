@@ -4,10 +4,11 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Text } from 'react-native';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AuthProvider, useAuth } from '../src/hooks';
-import { LoginScreen, RegisterScreen } from '../src/screens';
-import { ToastProvider } from '../src/components/ui';
+import { useColorScheme } from '../hooks/use-color-scheme';
+import { AuthProvider, useAuth } from '../hooks';
+import { LoginScreen } from './login/LoginScreen';
+import { RegisterScreen } from './registro/RegisterScreen';
+import { ToastProvider } from '../components/ui';
 
 function AuthNavigator() {
   const [isLogin, setIsLogin] = useState(true);

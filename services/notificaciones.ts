@@ -1,6 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform, Alert } from 'react-native';
+import { PermissionStatus } from 'expo-modules-core';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -24,17 +25,15 @@ class ServicioNotificaciones {
 
   async configurar(): Promise<void> {
     if (Device.isDevice) {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
+      const permisos = await Notifications.getPermissionsAsync() as any;
 
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
+      if (permisos.status !== PermissionStatus.GRANTED) {
+        const nuevosPermisos = await Notifications.requestPermissionsAsync() as any;
 
-      if (finalStatus !== 'granted') {
-        console.log('Permisos de notificaciones no otorgados');
-        return;
+        if (nuevosPermisos.status !== PermissionStatus.GRANTED) {
+          console.log('Permisos de notificaciones no otorgados');
+          return;
+        }
       }
 
       if (this.esAndroid) {
