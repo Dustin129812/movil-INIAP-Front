@@ -1,20 +1,22 @@
-import React, { useState, useEffect } from 'react';
+import { Feather } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-  TextInput,
-  ScrollView,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useAuth } from '../../hooks';
 import { DynamicIslandNotification } from '../../components/ui';
+import { useAuth } from '../../hooks';
 import { servicioNotificaciones } from '../../services/notificaciones';
+
+const Wrapper = Platform.OS === 'web' ? View : TouchableOpacity;
 
 export function RegisterScreen() {
   const [nombre, setNombre] = useState('');
@@ -93,10 +95,9 @@ export function RegisterScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <TouchableOpacity
+          <Wrapper
             style={styles.touchable}
-            activeOpacity={1}
-            onPress={Keyboard.dismiss}
+            {...(Platform.OS !== 'web' && { activeOpacity: 1, onPress: Keyboard.dismiss })}
           >
             <View style={styles.content}>
               <View style={styles.header}>
@@ -200,7 +201,7 @@ export function RegisterScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-          </TouchableOpacity>
+          </Wrapper>
         </ScrollView>
       </KeyboardAvoidingView>
 

@@ -1,19 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { Feather } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-  TextInput,
   Alert,
   Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useAuth } from '../../hooks';
 import { DynamicIslandNotification } from '../../components/ui';
+import { useAuth } from '../../hooks';
 import { servicioNotificaciones } from '../../services/notificaciones';
+
+const Wrapper = Platform.OS === 'web' ? View : TouchableOpacity;
 
 export function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -53,10 +55,9 @@ export function LoginScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
       >
-        <TouchableOpacity
+        <Wrapper
           style={styles.touchable}
-          activeOpacity={1}
-          onPress={Keyboard.dismiss}
+          {...(Platform.OS !== 'web' && { activeOpacity: 1, onPress: Keyboard.dismiss })}
         >
           <View style={styles.content}>
             <View style={styles.header}>
@@ -124,7 +125,7 @@ export function LoginScreen() {
               <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </Wrapper>
       </KeyboardAvoidingView>
 
       <DynamicIslandNotification

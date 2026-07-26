@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ScrollView, Platform } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { DynamicIslandNotification } from '../../components/ui';
 import { useAuth } from '../../hooks';
 import { useDeviceInfo } from '../../hooks/useDeviceInfo';
-import { DynamicIslandNotification } from '../../components/ui';
 
 export default function HomeScreen() {
   const { usuario, dispositivoId, cerrarSesion } = useAuth();
@@ -10,26 +10,35 @@ export default function HomeScreen() {
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
   const [notificacion, setNotificacion] = useState<{ tipo: 'bienvenida' | 'error' | 'success' | 'despedida'; mensaje: string }>({ tipo: 'despedida', mensaje: '' });
 
+  const ejecutarCierreSesion = () => {
+    setNotificacion({ tipo: 'despedida', mensaje: '' });
+    setMostrarNotificacion(true);
+    setTimeout(() => {
+      setMostrarNotificacion(false);
+      cerrarSesion();
+    }, 2500);
+  };
+
   const handleCerrarSesion = () => {
-    Alert.alert(
-      'Cerrar Sesión',
-      '¿Estás seguro de que quieres cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Cerrar Sesión',
-          style: 'destructive',
-          onPress: () => {
-            setNotificacion({ tipo: 'despedida', mensaje: '' });
-            setMostrarNotificacion(true);
-            setTimeout(() => {
-              setMostrarNotificacion(false);
-              cerrarSesion();
-            }, 2500);
+    if (Platform.OS === 'web') {
+      const confirmado = window.confirm('¿Estás seguro de que quieres cerrar sesión?');
+      if (confirmado) {
+        ejecutarCierreSesion();
+      }
+    } else {
+      Alert.alert(
+        'Cerrar Sesión',
+        '¿Estás seguro de que quieres cerrar sesión?',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Cerrar Sesión',
+            style: 'destructive',
+            onPress: ejecutarCierreSesion,
           },
-        },
-      ]
-    );
+        ]
+      );
+    }
   };
 
   return (

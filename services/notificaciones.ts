@@ -1,17 +1,8 @@
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
-import { Platform, Alert } from 'react-native';
-import { PermissionStatus } from 'expo-modules-core';
+import { Platform } from 'react-native';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+const esExpoGo = Constants.appOwnership === 'expo';
 
 export interface Notificacion {
   titulo: string;
@@ -22,32 +13,67 @@ export interface Notificacion {
 class ServicioNotificaciones {
   private esIOS = Platform.OS === 'ios';
   private esAndroid = Platform.OS === 'android';
+  private Notifications: any = null;
+
+  private async obtenerModulo() {
+    if (esExpoGo) return null;
+    if (!this.Notifications) {
+      const mod = await import('expo-notifications');
+      mod.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: true,
+          shouldShowBanner: true,
+          shouldShowList: true,
+        }),
+      });
+      this.Notifications = mod;
+    }
+    return this.Notifications;
+  }
 
   async configurar(): Promise<void> {
-    if (Device.isDevice) {
-      const permisos = await Notifications.getPermissionsAsync() as any;
+    try {
+      if (esExpoGo) {
+        console.log('Notificaciones no disponibles en Expo Go (SDK 53+)');
+        return;
+      }
 
-      if (permisos.status !== PermissionStatus.GRANTED) {
-        const nuevosPermisos = await Notifications.requestPermissionsAsync() as any;
+      const Notifications = await this.obtenerModulo();
+      if (!Notifications) return;
 
-        if (nuevosPermisos.status !== PermissionStatus.GRANTED) {
-          console.log('Permisos de notificaciones no otorgados');
-          return;
+      if (Device.isDevice) {
+        const permisos = await Notifications.getPermissionsAsync() as any;
+
+        if (permisos.status !== 'granted') {
+          const nuevosPermisos = await Notifications.requestPermissionsAsync() as any;
+
+          if (nuevosPermisos.status !== 'granted') {
+            console.log('Permisos de notificaciones no otorgados');
+            return;
+          }
+        }
+
+        if (this.esAndroid) {
+          await Notifications.setNotificationChannelAsync('default', {
+            name: 'General',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#2E7D32',
+          });
         }
       }
-
-      if (this.esAndroid) {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'General',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#2E7D32',
-        });
-      }
+    } catch (error) {
+      console.log('Notificaciones no disponibles en Expo Go:', error);
     }
   }
 
   async mostrarNotificacion(notification: Notificacion): Promise<void> {
+    if (esExpoGo) return;
+    const Notifications = await this.obtenerModulo();
+    if (!Notifications) return;
+
     await Notifications.scheduleNotificationAsync({
       content: {
         title: notification.titulo,
@@ -91,15 +117,17 @@ class ServicioNotificaciones {
     });
   }
 
-  agregarListenerNotificacion(
-    callback: (notification: Notifications.Notification) => void
-  ): Notifications.EventSubscription {
+  async agregarListenerNotificacion(callback: (notification: any) => void): Promise<any> {
+    if (esExpoGo) return { remove: () => {} };
+    const Notifications = await this.obtenerModulo();
+    if (!Notifications) return { remove: () => {} };
     return Notifications.addNotificationReceivedListener(callback);
   }
 
-  agregarListenerRespuesta(
-    callback: (response: Notifications.NotificationResponse) => void
-  ): Notifications.EventSubscription {
+  async agregarListenerRespuesta(callback: (response: any) => void): Promise<any> {
+    if (esExpoGo) return { remove: () => {} };
+    const Notifications = await this.obtenerModulo();
+    if (!Notifications) return { remove: () => {} };
     return Notifications.addNotificationResponseReceivedListener(callback);
   }
 }
