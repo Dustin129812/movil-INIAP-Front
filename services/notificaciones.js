@@ -4,18 +4,12 @@ import { Platform } from 'react-native';
 
 const esExpoGo = Constants.appOwnership === 'expo';
 
-export interface Notificacion {
-  titulo: string;
-  cuerpo: string;
-  datos?: Record<string, unknown>;
-}
-
 class ServicioNotificaciones {
-  private esIOS = Platform.OS === 'ios';
-  private esAndroid = Platform.OS === 'android';
-  private Notifications: any = null;
+  esIOS = Platform.OS === 'ios';
+  esAndroid = Platform.OS === 'android';
+  Notifications = null;
 
-  private async obtenerModulo() {
+  async obtenerModulo() {
     if (esExpoGo) return null;
     if (!this.Notifications) {
       const mod = await import('expo-notifications');
@@ -33,7 +27,7 @@ class ServicioNotificaciones {
     return this.Notifications;
   }
 
-  async configurar(): Promise<void> {
+  async configurar() {
     try {
       if (esExpoGo) {
         console.log('Notificaciones no disponibles en Expo Go (SDK 53+)');
@@ -44,10 +38,10 @@ class ServicioNotificaciones {
       if (!Notifications) return;
 
       if (Device.isDevice) {
-        const permisos = await Notifications.getPermissionsAsync() as any;
+        const permisos = await Notifications.getPermissionsAsync();
 
         if (permisos.status !== 'granted') {
-          const nuevosPermisos = await Notifications.requestPermissionsAsync() as any;
+          const nuevosPermisos = await Notifications.requestPermissionsAsync();
 
           if (nuevosPermisos.status !== 'granted') {
             console.log('Permisos de notificaciones no otorgados');
@@ -69,7 +63,7 @@ class ServicioNotificaciones {
     }
   }
 
-  async mostrarNotificacion(notification: Notificacion): Promise<void> {
+  async mostrarNotificacion(notification) {
     if (esExpoGo) return;
     const Notifications = await this.obtenerModulo();
     if (!Notifications) return;
@@ -85,7 +79,7 @@ class ServicioNotificaciones {
     });
   }
 
-  async mostrarBienvenida(nombreUsuario: string): Promise<void> {
+  async mostrarBienvenida(nombreUsuario) {
     const esIOS = Platform.OS === 'ios';
 
     await this.mostrarNotificacion({
@@ -96,35 +90,35 @@ class ServicioNotificaciones {
     });
   }
 
-  async mostrarErrorLogin(): Promise<void> {
+  async mostrarErrorLogin() {
     await this.mostrarNotificacion({
       titulo: '❌ Error',
       cuerpo: 'Credenciales incorrectas. Intenta de nuevo.',
     });
   }
 
-  async mostrarRegistroExitoso(): Promise<void> {
+  async mostrarRegistroExitoso() {
     await this.mostrarNotificacion({
       titulo: '✅ Registro exitoso',
       cuerpo: 'Tu cuenta ha sido creada correctamente.',
     });
   }
 
-  async mostrarCerrarSesion(): Promise<void> {
+  async mostrarCerrarSesion() {
     await this.mostrarNotificacion({
       titulo: '👋 Sesión cerrada',
       cuerpo: 'Hasta pronto. Tu sesión ha sido cerrada.',
     });
   }
 
-  async agregarListenerNotificacion(callback: (notification: any) => void): Promise<any> {
+  async agregarListenerNotificacion(callback) {
     if (esExpoGo) return { remove: () => {} };
     const Notifications = await this.obtenerModulo();
     if (!Notifications) return { remove: () => {} };
     return Notifications.addNotificationReceivedListener(callback);
   }
 
-  async agregarListenerRespuesta(callback: (response: any) => void): Promise<any> {
+  async agregarListenerRespuesta(callback) {
     if (esExpoGo) return { remove: () => {} };
     const Notifications = await this.obtenerModulo();
     if (!Notifications) return { remove: () => {} };

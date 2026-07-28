@@ -1,39 +1,28 @@
-import React, { useEffect, useState, createContext, useContext, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 
-interface ToastOptions {
-  title: string;
-  message?: string;
-  type?: 'success' | 'error' | 'info' | 'warning';
-  duration?: number;
-}
+const ToastContext = createContext(undefined);
 
-interface ToastContextType {
-  showToast: (options: ToastOptions) => void;
-}
-
-const ToastContext = createContext<ToastContextType | undefined>(undefined);
-
-const ICONOS: Record<string, string> = {
+const ICONOS = {
   success: '✓',
   error: '!',
   warning: '!',
   info: 'i',
 };
 
-const COLORES: Record<string, string> = {
+const COLORES = {
   success: '#34C759',
   error: '#FF453A',
   warning: '#FF9F0A',
   info: '#0A84FF',
 };
 
-export function ToastProvider({ children }: { children: React.ReactNode }) {
-  const [toast, setToast] = useState<ToastOptions | null>(null);
+export function ToastProvider({ children }) {
+  const [toast, setToast] = useState(null);
   const translateY = useRef(new Animated.Value(-100)).current;
   const progress = useRef(new Animated.Value(1)).current;
 
-  const showToast = useCallback((options: ToastOptions) => {
+  const showToast = useCallback((options) => {
     setToast({ ...options, type: options.type || 'info' });
     translateY.setValue(-100);
     progress.setValue(0);
@@ -105,7 +94,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           </View>
 
           <View style={styles.progressContainer}>
-            <Animated.View style={[styles.progress, { backgroundColor: color }]} />
+            <Animated.View style={[styles.progress, { backgroundColor: color, width: progressWidth }]} />
           </View>
         </View>
       </Animated.View>

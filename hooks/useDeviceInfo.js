@@ -1,23 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Platform } from 'react-native';
 import * as Device from 'expo-device';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
-interface InfoDispositivo {
-  esIOS: boolean;
-  esAndroid: boolean;
-  nombreDispositivo: string;
-  modelo: string | null;
-  sistemaOperativo: string | null;
-  versionSistema: string | null;
-  soportaDynamicIsland: boolean;
-  cargando: boolean;
-}
-
-export function useDeviceInfo(): InfoDispositivo {
+export function useDeviceInfo() {
   const esIOS = Platform.OS === 'ios';
   const esAndroid = Platform.OS === 'android';
 
-  const [info, setInfo] = useState<InfoDispositivo>({
+  const [info, setInfo] = useState({
     esIOS,
     esAndroid,
     nombreDispositivo: 'Cargando...',

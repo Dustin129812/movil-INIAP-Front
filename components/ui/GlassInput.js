@@ -1,13 +1,7 @@
 import React from 'react';
-import { TextInput, View, Text, StyleSheet, TextInputProps, ViewStyle } from 'react-native';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 
-interface GlassInputProps extends TextInputProps {
-  label?: string;
-  error?: string;
-  containerStyle?: ViewStyle;
-}
-
-export function GlassInput({ label, error, containerStyle, style, ...props }: GlassInputProps) {
+export function GlassInput({ label, error, containerStyle, style, ...props }) {
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}

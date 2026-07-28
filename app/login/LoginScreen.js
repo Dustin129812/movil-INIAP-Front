@@ -22,7 +22,7 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
-  const [notificacion, setNotificacion] = useState<{ tipo: 'bienvenida' | 'error' | 'success' | 'despedida'; mensaje: string }>({ tipo: 'bienvenida', mensaje: '' });
+  const [notificacion, setNotificacion] = useState({ tipo: 'bienvenida', mensaje: '' });
   const { login, cargando } = useAuth();
 
   useEffect(() => {

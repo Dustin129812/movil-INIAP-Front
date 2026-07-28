@@ -1,20 +1,13 @@
-import { useState, useEffect } from 'react';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import * as Device from 'expo-device';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 
 const CLAVE_DISPOSITIVO = 'dispositivo_id';
 
-interface InfoDispositivo {
-  dispositivoId: string | null;
-  modelo: string | null;
-  sistemaOperativo: string | null;
-  cargando: boolean;
-}
-
-export function useDevice(): InfoDispositivo {
-  const [info, setInfo] = useState<InfoDispositivo>({
+export function useDevice() {
+  const [info, setInfo] = useState({
     dispositivoId: null,
     modelo: null,
     sistemaOperativo: null,
@@ -33,7 +26,7 @@ export function useDevice(): InfoDispositivo {
           await AsyncStorage.setItem(CLAVE_DISPOSITIVO, uuid);
         }
 
-        // 2. Obtener info del dispositivo (igual que AuthMobile original)
+        // 2. Obtener info del dispositivo
         const modelo = Device.modelName || Device.deviceName || null;
         const sistemaOperativo = Device.osVersion
           ? `${Device.osName} ${Device.osVersion}`

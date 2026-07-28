@@ -1,31 +1,18 @@
-import { useState, useEffect, useCallback, createContext, useContext, ReactNode } from 'react';
-import { Usuario } from '../types/index';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useApi } from './useApi';
 import { useDevice } from './useDevice';
 
-interface ContextoAuthType {
-  usuario: Usuario | null;
-  cargando: boolean;
-  autenticado: boolean;
-  dispositivoId: string | null;
-  modelo: string | null;
-  sistemaOperativo: string | null;
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  registrar: (nombre: string, email: string, password: string) => Promise<{ success: boolean; message?: string }>;
-  cerrarSesion: () => Promise<void>;
-}
+const AuthContext = createContext(undefined);
 
-const AuthContext = createContext<ContextoAuthType | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
+export function AuthProvider({ children }) {
+  const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
   const api = useApi();
   const deviceInfo = useDevice();
 
   // Inicializar auth
   useEffect(() => {
-    let timeoutId: ReturnType<typeof setTimeout>;
+    let timeoutId;
 
     async function inicializarAuth() {
       try {
@@ -53,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(timeoutId);
   }, []);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email, password) => {
     // Obtener info actual del dispositivo justo antes del login
     const uuid = deviceInfo.dispositivoId || '';
     const modeloDispositivo = deviceInfo.modelo || undefined;
@@ -67,13 +54,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     if (respuesta.success && respuesta.ID) {
-      setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE!, CORREO: respuesta.CORREO! });
+      setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
       return { success: true };
     }
     return { success: false, message: respuesta.message };
-  }, [deviceInfo]);
+  }, [deviceInfo, api]);
 
-  const registrar = useCallback(async (nombre: string, email: string, password: string) => {
+  const registrar = useCallback(async (nombre, email, password) => {
     // Obtener info actual del dispositivo justo antes del registro
     const uuid = deviceInfo.dispositivoId || '';
     const modeloDispositivo = deviceInfo.modelo || undefined;
@@ -89,16 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (respuesta.success && respuesta.ID) {
-      setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE!, CORREO: respuesta.CORREO! });
+      setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
       return { success: true };
     }
     return { success: false, message: respuesta.message };
-  }, [deviceInfo]);
+  }, [deviceInfo, api]);
 
   const cerrarSesion = useCallback(async () => {
     await api.cerrarSesion();
     setUsuario(null);
-  }, []);
+  }, [api]);
 
   return (
     <AuthContext.Provider
@@ -119,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth(): ContextoAuthType {
+export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth debe usarse dentro de un AuthProvider');

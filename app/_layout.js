@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import { useColorScheme } from '../hooks/use-color-scheme';
+import { ToastProvider } from '../components/ui';
 import { AuthProvider, useAuth } from '../hooks';
+import { useColorScheme } from '../hooks/use-color-scheme';
 import { LoginScreen } from './login/LoginScreen';
 import { RegisterScreen } from './registro/RegisterScreen';
-import { ToastProvider } from '../components/ui';
 
 function AuthNavigator() {
   const [isLogin, setIsLogin] = useState(true);

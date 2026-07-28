@@ -1,15 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, TextStyle, ActivityIndicator } from 'react-native';
-
-interface GlassButtonProps {
-  title: string;
-  onPress: () => void;
-  variant?: 'primary' | 'secondary' | 'danger';
-  disabled?: boolean;
-  loading?: boolean;
-  style?: ViewStyle;
-  textStyle?: TextStyle;
-}
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 export function GlassButton({
   title,
@@ -19,7 +9,7 @@ export function GlassButton({
   loading = false,
   style,
   textStyle,
-}: GlassButtonProps) {
+}) {
   const getBackgroundColor = () => {
     if (disabled || loading) return '#C7C7CC';
     switch (variant) {

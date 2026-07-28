@@ -1,6 +1,5 @@
-import { useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { RespuestaAuth, CredencialesLogin, DatosRegistro, Usuario } from '../types';
+import { useCallback, useState } from 'react';
 
 const URL_API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
 
@@ -11,9 +10,9 @@ const CLAVES = {
 
 export function useApi() {
   const [cargando, setCargando] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
 
-  const guardarSesion = useCallback(async (token: string, usuario: Usuario) => {
+  const guardarSesion = useCallback(async (token, usuario) => {
     try {
       await AsyncStorage.setItem(CLAVES.TOKEN, token);
       await AsyncStorage.setItem(CLAVES.USUARIO, JSON.stringify(usuario));
@@ -31,12 +30,7 @@ export function useApi() {
     }
   }, []);
 
-  const login = useCallback(async (
-    credenciales: CredencialesLogin,
-    uuid: string,
-    modelo?: string,
-    sistemaOperativo?: string
-  ): Promise<RespuestaAuth> => {
+  const login = useCallback(async (credenciales, uuid, modelo, sistemaOperativo) => {
     setCargando(true);
     setError(null);
 
@@ -73,7 +67,7 @@ export function useApi() {
     }
   }, [guardarSesion]);
 
-  const registrar = useCallback(async (datosRegistro: DatosRegistro): Promise<RespuestaAuth> => {
+  const registrar = useCallback(async (datosRegistro) => {
     setCargando(true);
     setError(null);
 
@@ -104,7 +98,7 @@ export function useApi() {
     }
   }, [guardarSesion]);
 
-  const cerrarSesion = useCallback(async (): Promise<void> => {
+  const cerrarSesion = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem(CLAVES.TOKEN);
       if (token) {
@@ -123,7 +117,7 @@ export function useApi() {
     }
   }, [limpiarSesion]);
 
-  const estaAutenticado = useCallback(async (): Promise<boolean> => {
+  const estaAutenticado = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem(CLAVES.TOKEN);
       return !!token;
@@ -132,11 +126,11 @@ export function useApi() {
     }
   }, []);
 
-  const obtenerUsuarioGuardado = useCallback(async (): Promise<Usuario | null> => {
+  const obtenerUsuarioGuardado = useCallback(async () => {
     try {
       const datos = await AsyncStorage.getItem(CLAVES.USUARIO);
       if (datos) {
-        return JSON.parse(datos) as Usuario;
+        return JSON.parse(datos);
       }
       return null;
     } catch {

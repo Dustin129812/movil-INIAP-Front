@@ -1,32 +1,22 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, Platform, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
 import { useDeviceInfo } from '../../hooks/useDeviceInfo';
 
-interface DynamicIslandNotificationProps {
-  tipo: 'bienvenida' | 'error' | 'success' | 'despedida';
-  mensaje: string;
-  visible: boolean;
-}
-
-const ICONOS: Record<string, string> = {
+const ICONOS = {
   bienvenida: '+',
   success: '✓',
   error: '!',
   despedida: '-',
 };
 
-const COLORES: Record<string, string> = {
+const COLORES = {
   bienvenida: '#34C759',
   success: '#34C759',
   error: '#FF453A',
   despedida: '#8E8E93',
 };
 
-export function DynamicIslandNotification({
-  tipo,
-  mensaje,
-  visible,
-}: DynamicIslandNotificationProps) {
+export function DynamicIslandNotification({ tipo, mensaje, visible }) {
   const { esIOS } = useDeviceInfo();
   const [show, setShow] = useState(false);
   const translateY = useRef(new Animated.Value(-100)).current;
@@ -63,7 +53,7 @@ export function DynamicIslandNotification({
 
   const titulo = {
     bienvenida: 'Bienvenido',
-    success: mensaje.includes('creada') ? 'Cuenta creada' : 'Listo',
+    success: mensaje?.includes('creada') ? 'Cuenta creada' : 'Listo',
     error: 'Algo salio mal',
     despedida: 'Hasta pronto',
   }[tipo] || 'Notificacion';
