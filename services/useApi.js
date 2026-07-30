@@ -35,7 +35,7 @@ export function useApi() {
     setError(null);
 
     try {
-      const respuesta = await fetch(`${URL_API}/login`, {
+      const respuesta = await fetch(`${URL_API}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -72,7 +72,7 @@ export function useApi() {
     setError(null);
 
     try {
-      const respuesta = await fetch(`${URL_API}/register`, {
+      const respuesta = await fetch(`${URL_API}/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datosRegistro),
@@ -102,7 +102,7 @@ export function useApi() {
     try {
       const token = await AsyncStorage.getItem(CLAVES.TOKEN);
       if (token) {
-        await fetch(`${URL_API}/logout`, {
+        await fetch(`${URL_API}/auth/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

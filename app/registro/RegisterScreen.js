@@ -13,12 +13,12 @@ import {
   View,
 } from 'react-native';
 import { DynamicIslandNotification } from '../../components/ui';
-import { useAuth } from '../../hooks';
+import { useAuth } from '../../services';
 import { servicioNotificaciones } from '../../services/notificaciones';
 
 const Wrapper = Platform.OS === 'web' ? View : TouchableOpacity;
 
-export function RegisterScreen() {
+export default function RegisterScreen({ onRegisterSuccess }) {
   const [nombre, setNombre] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,14 +26,14 @@ export function RegisterScreen() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [mostrarConfirmPassword, setMostrarConfirmPassword] = useState(false);
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
-  const [notificacion, setNotificacion] = useState<{ tipo: 'bienvenida' | 'error' | 'success' | 'despedida'; mensaje: string }>({ tipo: 'success', mensaje: '' });
+  const [notificacion, setNotificacion] = useState({ tipo: 'success', mensaje: '' });
   const { registrar, cargando } = useAuth();
 
   useEffect(() => {
     servicioNotificaciones.configurar();
   }, []);
 
-  const validar = (): boolean => {
+  const validar = () => {
     if (!nombre.trim()) {
       Alert.alert('Error', 'El nombre es requerido');
       return false;
@@ -65,7 +65,10 @@ export function RegisterScreen() {
     if (resultado.success) {
       setNotificacion({ tipo: 'success', mensaje: 'Cuenta creada con éxito' });
       setMostrarNotificacion(true);
-      setTimeout(() => setMostrarNotificacion(false), 3000);
+      setTimeout(() => {
+        setMostrarNotificacion(false);
+        if (onRegisterSuccess) onRegisterSuccess();
+      }, 1500);
     } else {
       const mensajeOriginal = resultado.message || '';
       let mensajeError = 'Error al registrar';

@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { Alert, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { DynamicIslandNotification } from '../../components/ui';
-import { useAuth } from '../../hooks';
-import { useDeviceInfo } from '../../hooks/useDeviceInfo';
+import { useAuth } from '../../services';
+import { useDeviceInfo } from '../../services/useDeviceInfo';
 
 export default function HomeScreen() {
   const { usuario, dispositivoId, cerrarSesion } = useAuth();
   const { nombreDispositivo, modelo, sistemaOperativo, versionSistema } = useDeviceInfo();
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
-  const [notificacion, setNotificacion] = useState<{ tipo: 'bienvenida' | 'error' | 'success' | 'despedida'; mensaje: string }>({ tipo: 'despedida', mensaje: '' });
+  const [notificacion, setNotificacion] = useState({ tipo: 'despedida', mensaje: '' });
 
   const ejecutarCierreSesion = () => {
     setNotificacion({ tipo: 'despedida', mensaje: '' });

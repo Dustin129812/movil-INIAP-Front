@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
-import { useDeviceInfo } from '../../hooks/useDeviceInfo';
+import { useDeviceInfo } from '../../services/useDeviceInfo';
 
 const ICONOS = {
   bienvenida: '+',

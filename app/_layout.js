@@ -5,10 +5,10 @@ import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ToastProvider } from '../components/ui';
-import { AuthProvider, useAuth } from '../hooks';
-import { useColorScheme } from '../hooks/use-color-scheme';
-import { LoginScreen } from './login/LoginScreen';
-import { RegisterScreen } from './registro/RegisterScreen';
+import { AuthProvider, useAuth } from '../services';
+import { useColorScheme } from '../services/use-color-scheme';
+import LoginForm from '../components/auth/ui/LoginForm';
+import RegisterScreen from './registro/RegisterScreen';
 
 function AuthNavigator() {
   const [isLogin, setIsLogin] = useState(true);
@@ -34,7 +34,7 @@ function AuthNavigator() {
 
   return (
     <View style={styles.authContainer}>
-      {isLogin ? <LoginScreen /> : <RegisterScreen />}
+      {isLogin ? <LoginForm /> : <RegisterScreen onRegisterSuccess={() => setIsLogin(true)} />}
       <View style={styles.toggleContainer}>
         <Text style={styles.toggleText}>
           {isLogin ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}

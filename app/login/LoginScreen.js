@@ -1,23 +1,23 @@
 import { Feather } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-  Alert,
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Keyboard,
+    KeyboardAvoidingView,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { DynamicIslandNotification } from '../../components/ui';
-import { useAuth } from '../../hooks';
+import { useAuth } from '../../services';
 import { servicioNotificaciones } from '../../services/notificaciones';
 
 const Wrapper = Platform.OS === 'web' ? View : TouchableOpacity;
 
-export function LoginScreen() {
+export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [mostrarPassword, setMostrarPassword] = useState(false);
