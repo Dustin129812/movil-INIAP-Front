@@ -1,189 +1,165 @@
 import React, { useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Platform, Text, useColorScheme } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Dimensions, Text } from 'react-native';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring, 
-  interpolate, 
-  Extrapolation,
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
   FadeIn,
-  FadeOut,
-  Layout
+  FadeOut
 } from 'react-native-reanimated';
+import { useTheme } from '@/services/ThemeContext';
 
-const ACTIVE_COLOR = '#9333EA';
-const TAB_WIDTH = 72;
-const CONTAINER_PADDING = 6;
+const { width } = Dimensions.get('window');
+const ACTIVE_COLOR = '#10B981'; // Color verde de referencia
+const TABS_COUNT = 3;
+const TAB_WIDTH = 76;
+const CONTAINER_PADDING = 5;
+const PILL_WIDTH = (TAB_WIDTH * TABS_COUNT) + (CONTAINER_PADDING * 2);
+const PILL_HALF = PILL_WIDTH / 2;
+const FAB_GAP = 12; 
+const FAB_SIZE = 56; 
 
-function LiquidGlassTabBar({ state, descriptors, navigation }) {
+function CleanLiquidGlassTabBar({ state, navigation }) {
   const router = useRouter();
   const pathname = usePathname();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
-  
   const isLotesActive = pathname.includes('Lotes') || pathname.includes('lotes');
-
-  const currentTint = isDark ? 'dark' : 'light';
-  const containerBg = isDark ? 'rgba(20, 20, 22, 0.75)' : 'rgba(255, 255, 255, 0.85)';
-  const borderColor = isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)';
-  const inactiveColor = isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.45)';
-  const pillBg = isDark ? 'rgba(147, 51, 234, 0.2)' : 'rgba(147, 51, 234, 0.12)';
-  const pillBorder = isDark ? 'rgba(147, 51, 234, 0.4)' : 'rgba(147, 51, 234, 0.25)';
-  const fabIconColor = isDark ? '#FFFFFF' : '#1E1E24';
+  const { isDark } = useTheme();
 
   const activeIndex = useSharedValue(state.index);
+  const prevIndex = useSharedValue(state.index);
+
+  const scaleX = useSharedValue(1);
+  const scaleY = useSharedValue(1);
+
+  const blurTint = isDark ? 'dark' : 'light';
+  const iconActiveColor = ACTIVE_COLOR;
+  const iconInactiveColor = isDark ? '#8E8E93' : '#687076';
+  
+  // Estilo Apple Liquid Glass: Altísima transparencia base, reflejo de luz sutil en la burbuja
+  const activeBubbleBg = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.25)';
+  const glassBgColor = isDark ? 'rgba(20, 20, 22, 0.15)' : 'rgba(255, 255, 255, 0.12)';
+  const glassBorderColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.35)';
 
   useEffect(() => {
+    const direction = state.index - prevIndex.value;
+    prevIndex.value = state.index;
+
+    scaleX.value = withTiming(1.18 + (Math.abs(direction) * 0.06), { duration: 90 }, () => {
+      scaleX.value = withSpring(1, { damping: 14, stiffness: 220 });
+    });
+    
+    scaleY.value = withTiming(0.85, { duration: 90 }, () => {
+      scaleY.value = withSpring(1, { damping: 14, stiffness: 220 });
+    });
+
     activeIndex.value = withSpring(state.index, {
-      damping: 22,
-      stiffness: 160,
+      damping: 14,
+      stiffness: 180,
       mass: 0.5,
     });
   }, [state.index]);
 
   const animatedIndicatorStyle = useAnimatedStyle(() => {
-    const translateX = interpolate(
-      activeIndex.value,
-      [0, 1, 2],
-      [0, TAB_WIDTH, TAB_WIDTH * 2],
-      Extrapolation.CLAMP
-    );
-
     return {
-      transform: [{ translateX }],
+      transform: [
+        { translateX: activeIndex.value * TAB_WIDTH },
+        { scaleX: scaleX.value },
+        { scaleY: scaleY.value },
+      ],
     };
   });
 
   return (
     <View style={styles.floatingWrapper} pointerEvents="box-none">
-      {/* Contenedor central absoluto con compensación dinámica para equilibrar el FAB */}
-      <View style={[styles.contentRow, isLotesActive && styles.contentRowOffset]} pointerEvents="box-none">
-        
-        {/* Barra de Navegación Principal */}
-        <Animated.View layout={Layout.springify()} style={[styles.outerGlowContainer, isDark ? styles.shadowDark : styles.shadowLight]}>
-          <BlurView 
-            intensity={Platform.OS === 'ios' ? 50 : 80} 
-            tint={currentTint} 
-            style={[styles.glassContainer, { backgroundColor: containerBg, borderColor }]}
-          >
-            <View style={[styles.specularHighlight, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.8)' }]} />
+      
+      {/* BARRA PRINCIPAL */}
+      <View style={styles.mainPillContainer}>
+        <BlurView intensity={60} tint={blurTint} style={[styles.glassContainer, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
 
-            <Animated.View 
-              style={[
-                styles.activePillGlow, 
-                { backgroundColor: pillBg, borderColor: pillBorder }, 
-                animatedIndicatorStyle
-              ]} 
-            />
-
-            {state.routes.map((route, index) => {
-              const isFocused = state.index === index;
-
-              const onPress = () => {
-                const event = navigation.emit({
-                  type: 'tabPress',
-                  target: route.key,
-                  canPreventDefault: true,
-                });
-
-                if (!isFocused && !event.defaultPrevented) {
-                  navigation.navigate(route.name, route.params);
-                }
-              };
-
-              let iconElement = null;
-              let labelText = '';
-              const routeNameLower = route.name.toLowerCase();
-
-              if (routeNameLower === 'index' || routeNameLower === 'home') {
-                labelText = 'Home';
-                iconElement = (
-                  <Ionicons 
-                    name={isFocused ? 'home' : 'home-outline'} 
-                    size={20} 
-                    color={isFocused ? ACTIVE_COLOR : inactiveColor} 
-                  />
-                );
-              } else if (routeNameLower.includes('lote')) {
-                labelText = 'Lotes';
-                iconElement = (
-                  <MaterialCommunityIcons 
-                    name={isFocused ? 'map-marker-radius' : 'map-marker-radius-outline'} 
-                    size={21} 
-                    color={isFocused ? ACTIVE_COLOR : inactiveColor} 
-                  />
-                );
-              } else if (routeNameLower.includes('explore') || routeNameLower.includes('explorar')) {
-                labelText = 'Explore';
-                iconElement = (
-                  <Ionicons 
-                    name={isFocused ? 'compass' : 'compass-outline'} 
-                    size={20} 
-                    color={isFocused ? ACTIVE_COLOR : inactiveColor} 
-                  />
-                );
-              }
-
-              return (
-                <TouchableOpacity
-                  key={index}
-                  onPress={onPress}
-                  activeOpacity={0.7}
-                  style={styles.tabItem}
-                >
-                  <Animated.View style={[styles.iconContainer, isFocused && styles.iconContainerFocused]}>
-                    {iconElement}
-                  </Animated.View>
-                  <Text style={[
-                    styles.tabLabel,
-                    { color: inactiveColor },
-                    isFocused && styles.tabLabelActive
-                  ]}>
-                    {labelText}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </BlurView>
-        </Animated.View>
-
-        {/* Botón flotante "+" animado */}
-        {isLotesActive && (
-          <Animated.View 
-            entering={FadeIn.duration(350).springify()} 
-            exiting={FadeOut.duration(200)}
-            layout={Layout.springify()}
-            style={styles.fabWrapper}
-          >
-            <TouchableOpacity 
-              style={[styles.floatingActionButton, isDark ? styles.shadowDark : styles.shadowLight]} 
-              activeOpacity={0.8}
-              onPress={() => router.push('/lotes/nuevo')}
-            >
-              <BlurView intensity={50} tint={currentTint} style={[styles.fabBlur, { backgroundColor: containerBg, borderColor }]}>
-                <View style={[styles.specularHighlightFab, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.35)' : 'rgba(255, 255, 255, 0.8)' }]} />
-                <Ionicons name="add" size={24} color={fabIconColor} />
-              </BlurView>
-            </TouchableOpacity>
+          {/* BURBUJA ACTIVA */}
+          <Animated.View style={[styles.activeBlobBubble, animatedIndicatorStyle, { backgroundColor: activeBubbleBg }]}>
+            <View style={[styles.blobInnerGlow, { borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.5)' }]} />
           </Animated.View>
-        )}
 
+          {/* ICONOS Y TEXTOS */}
+          {state.routes.map((route, index) => {
+            const isFocused = state.index === index;
+            const onPress = () => {
+              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+              if (!isFocused && !event.defaultPrevented) {
+                navigation.navigate(route.name, route.params);
+              }
+            };
+
+            let iconName = 'home';
+            let labelText = route.name;
+            const routeNameLower = route.name.toLowerCase();
+
+            if (routeNameLower === 'index' || routeNameLower === 'home') {
+              labelText = 'Home';
+              iconName = isFocused ? 'home' : 'home-outline';
+            } else if (routeNameLower.includes('lote') || routeNameLower === 'new') {
+              labelText = 'Lotes';
+              iconName = isFocused ? 'grid' : 'grid-outline';
+            } else {
+              labelText = 'Ajustes';
+              iconName = isFocused ? 'settings' : 'settings-outline';
+            }
+
+            const iconColor = isFocused ? iconActiveColor : iconInactiveColor;
+            const textColor = isFocused ? iconActiveColor : iconInactiveColor;
+
+            return (
+              <TouchableOpacity
+                key={index}
+                onPress={onPress}
+                activeOpacity={0.7}
+                style={styles.tabItem}
+              >
+                {routeNameLower.includes('lote') ? (
+                  <MaterialCommunityIcons name={isFocused ? 'view-grid' : 'view-grid-outline'} size={21} color={iconColor} />
+                ) : (
+                  <Ionicons name={iconName} size={21} color={iconColor} />
+                )}
+                <Text style={[styles.tabLabel, { color: textColor }]}>
+                  {labelText}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </BlurView>
       </View>
+
+      {/* BOTÓN FLOTANTE (+) */}
+      {isLotesActive && (
+        <Animated.View 
+          entering={FadeIn.springify().damping(16).stiffness(150)} 
+          exiting={FadeOut.duration(120)}
+          style={styles.fabWrapper}
+        >
+          <TouchableOpacity 
+            activeOpacity={0.85} 
+            onPress={() => router.push('/lotes/nuevo')}
+            style={styles.fabTouchable}
+          >
+            <BlurView intensity={60} tint={blurTint} style={[styles.fabGlass, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
+              <Ionicons name="add" size={24} color={isDark ? '#FFFFFF' : '#1C1C1E'} />
+            </BlurView>
+          </TouchableOpacity>
+        </Animated.View>
+      )}
+
     </View>
   );
 }
 
 export default function TabLayout() {
   return (
-    <Tabs
-      tabBar={(props) => <LiquidGlassTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <Tabs tabBar={(props) => <CleanLiquidGlassTabBar {...props} />} screenOptions={{ headerShown: false }}>
       <Tabs.Screen name="index" />
       <Tabs.Screen name="Lotes" />
       <Tabs.Screen name="Explore" />
@@ -195,117 +171,88 @@ const styles = StyleSheet.create({
   floatingWrapper: {
     position: 'absolute',
     bottom: 24,
-    left: 0,
-    right: 0,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
+    height: 70,
     zIndex: 999,
   },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    alignSelf: 'center',
-  },
-  contentRowOffset: {
-    // Desplaza ligeramente a la izquierda la barra para que el conjunto (Barra + Botón FAB) quede verdaderamente centrado en pantalla
-    transform: [{ translateX: -32 }],
-  },
-  shadowDark: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.55,
-    shadowRadius: 20,
-    elevation: 12,
-  },
-  shadowLight: {
-    shadowColor: '#888888',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  outerGlowContainer: {
-    borderRadius: 36,
+  mainPillContainer: {
+    width: PILL_WIDTH,
+    height: 60,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+    position: 'absolute',
+    left: (width / 2) - PILL_HALF,
   },
   glassContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 36,
-    paddingHorizontal: CONTAINER_PADDING,
-    paddingVertical: CONTAINER_PADDING,
-    borderWidth: 1.2,
+    borderRadius: 30,
+    padding: CONTAINER_PADDING,
+    borderWidth: 1,
     overflow: 'hidden',
-    position: 'relative',
   },
-  specularHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 15,
-    right: 15,
-    height: 1,
-  },
-  tabItem: {
-    width: TAB_WIDTH,
-    height: 52,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-    gap: 2,
-  },
-  iconContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  iconContainerFocused: {
-    transform: [{ scale: 1.1 }],
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  tabLabelActive: {
-    color: ACTIVE_COLOR,
-    fontWeight: '700',
-  },
-  activePillGlow: {
+  activeBlobBubble: {
     position: 'absolute',
     top: CONTAINER_PADDING,
     bottom: CONTAINER_PADDING,
     left: CONTAINER_PADDING,
     width: TAB_WIDTH,
-    borderRadius: 22,
-    borderWidth: 1,
-    shadowColor: ACTIVE_COLOR,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
     zIndex: 1,
   },
-  fabWrapper: {
-    marginLeft: 12,
+  blobInnerGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 24,
+    borderWidth: 1,
   },
-  floatingActionButton: {
-    borderRadius: 26,
-    overflow: 'hidden',
-  },
-  fabBlur: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+  tabItem: {
+    width: TAB_WIDTH,
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.2,
+    zIndex: 2,
+    gap: 2,
   },
-  specularHighlightFab: {
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: -0.2,
+  },
+  fabWrapper: {
     position: 'absolute',
-    top: 0,
-    left: 8,
-    right: 8,
-    height: 1,
+    left: (width / 2) + PILL_HALF + FAB_GAP,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
+    borderRadius: FAB_SIZE / 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  fabTouchable: {
+    width: '100%',
+    height: '100%',
+    borderRadius: FAB_SIZE / 2,
+  },
+  fabGlass: {
+    flex: 1,
+    borderRadius: FAB_SIZE / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    overflow: 'hidden',
   },
 });

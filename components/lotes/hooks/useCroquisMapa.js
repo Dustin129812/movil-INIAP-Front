@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
+import * as Crypto from 'expo-crypto';
 import { lotesService } from '../../../services/lotesService';
 
-export const useCroquisMapa = () => {
+export const useCroquisMapa = (editLoteId = null) => {
     const mapRef = useRef(null);
 
     const [location, setLocation] = useState(null);
@@ -16,6 +17,8 @@ export const useCroquisMapa = () => {
     const [mapType, setMapType] = useState('hybrid');
     const [showForm, setShowForm] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editLoteData, setEditLoteData] = useState(null);
 
     const [mostrarCondiciones, setMostrarCondiciones] = useState(false);
 
@@ -24,6 +27,7 @@ export const useCroquisMapa = () => {
         cultivoAnterior: '',
         tipoRiego: 'secano',
         topografia: 'Plana',
+        estadoVerificacion: 'pendiente',
     });
 
     const updateForm = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
@@ -38,6 +42,55 @@ export const useCroquisMapa = () => {
         canton: null,
         estacion: null,
     });
+
+    // Imagen capturada del mapa para el lote
+    const [imagenUrlLote, setImagenUrlLote] = useState(null);
+
+    // Cargar lote existente para edición
+    useEffect(() => {
+        if (editLoteId) {
+            cargarLoteParaEdicion(editLoteId);
+        }
+    }, [editLoteId]);
+
+    const cargarLoteParaEdicion = async (id) => {
+        try {
+            const lote = await lotesService.obtenerLote(id);
+            if (lote) {
+                setIsEditMode(true);
+                setEditLoteData(lote);
+
+                // Pre-llenar formulario
+                updateForm('nombreLote', lote.nombre_lote || '');
+                updateForm('cultivoAnterior', lote.ubicacion_manual || '');
+                updateForm('estadoVerificacion', lote.estado_verificacion || 'pendiente');
+
+                // Cargar vértices si existen
+                if (lote.vertices && lote.vertices.length > 0) {
+                    const pts = lote.vertices.map(v => ({
+                        latitude: v[1],
+                        longitude: v[0],
+                    }));
+                    setPoints(pts);
+
+                    // Centrar mapa en el polígono
+                    if (pts.length > 0) {
+                        const avgLat = pts.reduce((sum, p) => sum + p.latitude, 0) / pts.length;
+                        const avgLng = pts.reduce((sum, p) => sum + p.longitude, 0) / pts.length;
+                        setLocation({
+                            latitude: avgLat,
+                            longitude: avgLng,
+                            latitudeDelta: 0.01,
+                            longitudeDelta: 0.01,
+                        });
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error cargando lote para edición:', error);
+            Alert.alert('Error', 'No se pudo cargar el lote para edición');
+        }
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -83,7 +136,15 @@ export const useCroquisMapa = () => {
 
     useEffect(() => {
         if (showForm) {
-            lotesService.obtenerProvincias().then(setDbProvincias).catch(e => console.log(e));
+            console.log('Cargando provincias...');
+            lotesService.obtenerProvincias()
+                .then(provs => {
+                    console.log('Provincias cargadas:', provs.length, provs);
+                    setDbProvincias(provs);
+                })
+                .catch(e => {
+                    console.error('Error cargando provincias:', e);
+                });
         }
     }, [showForm]);
 
@@ -167,7 +228,8 @@ export const useCroquisMapa = () => {
             Alert.alert('Rastreo Activo', 'Detenga el modo caminata antes de guardar.');
             return;
         }
-        if (points.length < 3) {
+        // En modo edición no requiere mínimo de puntos
+        if (!isEditMode && points.length < 3) {
             Alert.alert('Geometría Inválida', 'Un polígono requiere al menos 3 vértices.');
             return;
         }
@@ -185,8 +247,13 @@ export const useCroquisMapa = () => {
                 Alert.alert('Atención', 'Seleccione una provincia primero.');
                 return;
             }
-            console.log('Obteniendo cantones para provincia:', ubicacionSeleccionada.provincia.id);
-            const cantones = await lotesService.obtenerCantones(ubicacionSeleccionada.provincia.id);
+            const provinciaId = ubicacionSeleccionada.provincia.id || ubicacionSeleccionada.provincia.uuid_movil;
+            console.log('Obteniendo cantones para provincia:', provinciaId);
+            if (!provinciaId) {
+                Alert.alert('Error', 'La provincia seleccionada no tiene un identificador válido.');
+                return;
+            }
+            const cantones = await lotesService.obtenerCantones(provinciaId);
             console.log('Cantones recibidos:', cantones);
             setSelectorOptions(cantones);
         } else if (tipo === 'estacion') {
@@ -200,6 +267,11 @@ export const useCroquisMapa = () => {
                 { id: 'aspersión', name: 'Por Aspersión' },
                 { id: 'microaspersión', name: 'Microaspersión' },
             ]);
+        } else if (tipo === 'estado_verificacion') {
+            setSelectorOptions([
+                { id: 'pendiente', name: 'Pendiente' },
+                { id: 'verificado', name: 'Activo' },
+            ]);
         }
         setIsSelectorVisible(true);
     };
@@ -207,13 +279,18 @@ export const useCroquisMapa = () => {
     const handleSelectOption = (item) => {
         console.log('Seleccionando item:', selectorType, item);
         if (selectorType === 'provincia') {
-            setUbicacionSeleccionada({ provincia: item, canton: null, estacion: null });
+            // province_id es bigint, usar solo el id numérico
+            setUbicacionSeleccionada({ provincia: { id: item.id, name: item.name }, canton: null, estacion: null });
         } else if (selectorType === 'canton') {
-            setUbicacionSeleccionada(prev => ({ ...prev, canton: item, estacion: null }));
+            // canton_id es bigint, usar solo el id numérico
+            setUbicacionSeleccionada(prev => ({ ...prev, canton: { id: item.id, name: item.name }, estacion: null }));
         } else if (selectorType === 'estacion') {
-            setUbicacionSeleccionada(prev => ({ ...prev, estacion: item }));
+            // location_id es bigint, usar solo el id numérico
+            setUbicacionSeleccionada(prev => ({ ...prev, estacion: { id: item.id, name: item.name } }));
         } else if (selectorType === 'tipo_riego') {
             updateForm('tipoRiego', item.id);
+        } else if (selectorType === 'estado_verificacion') {
+            updateForm('estadoVerificacion', item.id);
         }
         setIsSelectorVisible(false);
     };
@@ -230,30 +307,68 @@ export const useCroquisMapa = () => {
 
         setIsSaving(true);
         try {
-            const datosLote = {
-                nombre_lote: form.nombreLote,
-                coordenadas: points,
-                ubicacion: ubicacionSeleccionada,
-                condiciones_terreno: {
-                    cultivo_anterior: form.cultivoAnterior.trim() || 'Ninguno/Desconocido',
-                    tipo_riego: form.tipoRiego,
-                    topografia: form.topografia,
-                },
-            };
+            if (isEditMode && editLoteId) {
+                // MODO EDICION - Actualizar lote existente
+                const datosActualizacion = {
+                    nombre_lote: form.nombreLote.trim(),
+                    estado_verificacion: form.estadoVerificacion,
+                };
 
-            const resultado = await lotesService.crearLote(datosLote);
+                const resultado = await lotesService.actualizarLote(editLoteId, datosActualizacion);
+                console.log('Respuesta actualizar:', JSON.stringify(resultado));
 
-            if (resultado.success) {
-                Alert.alert('Éxito', 'Lote guardado correctamente.');
-                setShowForm(false);
-                setPoints([]);
-                setForm({ nombreLote: '', cultivoAnterior: '', tipoRiego: 'secano', topografia: 'Plana' });
-                setUbicacionSeleccionada({ provincia: null, canton: null, estacion: null });
+                if (resultado && resultado.data) {
+                    Alert.alert('Éxito', 'Lote actualizado correctamente.');
+                    setShowForm(false);
+                } else {
+                    Alert.alert('Error', resultado?.message || resultado?.error || 'No se pudo actualizar el lote.');
+                }
             } else {
-                Alert.alert('Error', resultado.message || 'No se pudo guardar el lote.');
+                // MODO CREACION - Crear nuevo lote
+                const uuidLote = Crypto.randomUUID();
+                const uuidProyecto = Crypto.randomUUID();
+
+                const datosLote = {
+                    uuid_movil: uuidLote,
+                    nombre_lote: form.nombreLote.trim(),
+                    coordenadas: points,
+                    ubicacion_manual: form.cultivoAnterior.trim() || null,
+                    province_id: ubicacionSeleccionada.provincia.id,
+                    canton_id: ubicacionSeleccionada.canton.id,
+                    location_id: ubicacionSeleccionada.estacion?.id || null,
+                    altitud: null,
+                    imagen_url: imagenUrlLote, // Imagen capturada del mapa
+                    vertices_count: points.length, // Cantidad de vértices
+                    proyectos: [
+                        {
+                            uuid_movil: uuidProyecto,
+                            titulo: `Proyecto - ${form.nombreLote.trim()}`,
+                            descripcion: form.cultivoAnterior.trim() || 'Sin descripción',
+                            variedad: 'Por definir',
+                            tipo_riego: form.tipoRiego,
+                            topografia: form.topografia,
+                        }
+                    ],
+                };
+
+                const resultado = await lotesService.crearLote(datosLote);
+                console.log('Respuesta crear:', resultado);
+
+                if (resultado.success !== false && resultado.data) {
+                    Alert.alert('Éxito', 'Lote guardado correctamente.');
+                    setShowForm(false);
+                    setPoints([]);
+                    setForm({ nombreLote: '', cultivoAnterior: '', tipoRiego: 'secano', topografia: 'Plana' });
+                    setUbicacionSeleccionada({ provincia: null, canton: null, estacion: null });
+                    setImagenUrlLote(null); // Limpiar imagen capturada
+                } else {
+                    Alert.alert('Error', resultado.message || resultado.error || 'No se pudo guardar el lote.');
+                }
             }
+
         } catch (error) {
-            Alert.alert('Error Crítico', 'No se pudo guardar la geometría.');
+            console.error('Error completo:', error);
+            Alert.alert('Error Crítico', 'No se pudo guardar la geometría. Revise la consola para detalles.');
         } finally {
             setIsSaving(false);
         }
@@ -288,5 +403,9 @@ export const useCroquisMapa = () => {
         setMostrarCondiciones,
         mapType,
         rotarTipoMapa,
+        isEditMode,
+        editLoteData,
+        imagenUrlLote,
+        setImagenUrlLote,
     };
 };

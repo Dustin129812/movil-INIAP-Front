@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { useAuth as useAuthService } from '../../../services';
 
 export const useAuth = () => {
-  const { login, registrar, usuario, cargando, cerrarSesion, dispositivoId } = useAuthService();
+  const { login, loginInvitado, usuario, cargando, cerrarSesion, dispositivoId } = useAuthService();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,6 +30,22 @@ export const useAuth = () => {
     }
   }, [email, password, login]);
 
+  const handleLoginInvitado = useCallback(async (uuid, modelo, sistemaOperativo, hardware) => {
+    setIsLoading(true);
+    try {
+      const resultado = await loginInvitado(uuid, modelo, sistemaOperativo, hardware);
+      if (resultado.success) {
+        // Sesión iniciada correctamente
+      } else {
+        Alert.alert('Error', resultado.message || 'No se pudo iniciar como invitado');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Ocurrió un error inesperado');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [loginInvitado]);
+
   const handleLogout = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -52,6 +68,7 @@ export const useAuth = () => {
     usuario,
     dispositivoId,
     handleLogin,
+    handleLoginInvitado,
     handleLogout,
   };
 };

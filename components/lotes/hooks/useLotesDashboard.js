@@ -7,24 +7,25 @@ export const useLotesDashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const recargar = useCallback(async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const data = await lotesService.obtenerLotes();
+            setListaLotes(data);
+        } catch (err) {
+            console.error('Error al recargar lotes:', err);
+            setError('Error al recargar los lotes');
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
-            const cargarLotes = async () => {
-                setIsLoading(true);
-                setError(null);
-                try {
-                    const data = await lotesService.obtenerLotes();
-                    setListaLotes(data);
-                } catch (err) {
-                    console.error('Error al cargar lotes:', err);
-                    setError('Error al cargar los lotes');
-                } finally {
-                    setIsLoading(false);
-                }
-            };
-            cargarLotes();
-        }, [])
+            recargar();
+        }, [recargar])
     );
 
-    return { listaLotes, isLoading, error };
+    return { listaLotes, isLoading, error, recargar };
 };

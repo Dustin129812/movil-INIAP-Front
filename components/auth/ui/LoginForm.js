@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,11 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  ScrollView,
+  Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
+import { useDeviceInfo } from '../../../services/useDeviceInfo';
 
 export default function LoginForm() {
   const {
@@ -21,19 +22,42 @@ export default function LoginForm() {
     setPassword,
     isLoading,
     handleLogin,
+    handleLoginInvitado,
   } = useAuth();
 
+  const { deviceInfo, isLoading: isLoadingDevice } = useDeviceInfo();
   const [mostrarPassword, setMostrarPassword] = useState(false);
+  const [cargandoInvitado, setCargandoInvitado] = useState(false);
+
+  const handleInvitado = async () => {
+    if (!deviceInfo.uuid) {
+      Alert.alert('Error', 'No se pudo obtener información del dispositivo');
+      return;
+    }
+
+    setCargandoInvitado(true);
+    try {
+      await handleLoginInvitado(
+        deviceInfo.uuid,
+        deviceInfo.modelo,
+        deviceInfo.sistemaOperativo,
+        deviceInfo.hardware
+      );
+    } catch (error) {
+      Alert.alert('Error', 'Ocurrió un error al iniciar como invitado');
+    } finally {
+      setCargandoInvitado(false);
+    }
+  };
+
+  const isAnyLoading = isLoading || isLoadingDevice || cargandoInvitado;
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.logo}>INIAP</Text>
           <Text style={styles.subtitle}>Gestión Agrícola</Text>
@@ -55,7 +79,7 @@ export default function LoginForm() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!isLoading}
+                editable={!isAnyLoading}
               />
             </View>
           </View>
@@ -71,7 +95,7 @@ export default function LoginForm() {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!mostrarPassword}
-                editable={!isLoading}
+                editable={!isAnyLoading}
               />
               <TouchableOpacity
                 onPress={() => setMostrarPassword(!mostrarPassword)}
@@ -88,9 +112,9 @@ export default function LoginForm() {
           </View>
 
           <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
+            style={[styles.button, isAnyLoading && styles.buttonDisabled]}
             onPress={handleLogin}
-            disabled={isLoading}
+            disabled={isAnyLoading}
             activeOpacity={0.8}
           >
             {isLoading ? (
@@ -103,11 +127,31 @@ export default function LoginForm() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.linkButton}>
-            <Text style={styles.linkText}>¿Olvidaste tu contraseña?</Text>
+          {/* Separador */}
+          <View style={styles.dividerContainer}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>o</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* Botón Invitado - entra automáticamente */}
+          <TouchableOpacity
+            style={[styles.invitadoButton, isAnyLoading && styles.buttonDisabled]}
+            onPress={handleInvitado}
+            disabled={isAnyLoading}
+            activeOpacity={0.8}
+          >
+            {cargandoInvitado || isLoadingDevice ? (
+              <ActivityIndicator color="#34C759" />
+            ) : (
+              <>
+                <Feather name="user" size={20} color="#34C759" style={styles.invitadoIcon} />
+                <Text style={styles.invitadoButtonText}>Ingresar como Invitado</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -117,10 +161,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  scrollContent: {
-    flexGrow: 1,
+  content: {
+    flex: 1,
     justifyContent: 'center',
-    padding: 32,
+    paddingHorizontal: 32,
   },
   header: {
     alignItems: 'center',
@@ -192,20 +236,45 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     backgroundColor: '#AEAEB2',
+    borderColor: '#AEAEB2',
   },
   buttonText: {
     color: '#fff',
     fontSize: 17,
     fontWeight: '600',
   },
-  linkButton: {
+  dividerContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    paddingVertical: 12,
+    marginTop: 32,
+    marginBottom: 24,
   },
-  linkText: {
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E5EA',
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+  invitadoButton: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#34C759',
+  },
+  invitadoIcon: {
+    marginRight: 8,
+  },
+  invitadoButtonText: {
     color: '#34C759',
-    fontSize: 15,
-    fontWeight: '500',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

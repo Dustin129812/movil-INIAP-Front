@@ -1,18 +1,25 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { useApi } from './useApi';
-import { useDevice } from './useDevice';
+import { useApi, verificarTokenAlIniciar } from './useApi';
+import { useDeviceInfo } from './useDeviceInfo';
 
 const AuthContext = createContext(undefined);
 
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [esInvitado, setEsInvitado] = useState(false);
   const api = useApi();
-  const deviceInfo = useDevice();
+  const { deviceInfo } = useDeviceInfo();
+
+  // Verificar token UNA SOLA VEZ al montar el provider
+  useEffect(() => {
+    verificarTokenAlIniciar();
+  }, []);
 
   // Inicializar auth
   useEffect(() => {
     let timeoutId;
+    let mounted = true;
 
     async function inicializarAuth() {
       try {
@@ -21,28 +28,39 @@ export function AuthProvider({ children }) {
           api.estaAutenticado(),
         ]);
 
-        setUsuario(usuarioGuardado);
+        if (mounted) {
+          setUsuario(usuarioGuardado);
+        }
       } catch (error) {
         console.warn('Error inicializando auth:', error);
-        setUsuario(null);
+        if (mounted) {
+          setUsuario(null);
+        }
       } finally {
-        setCargando(false);
+        if (mounted) {
+          setCargando(false);
+        }
       }
     }
 
-    // Timeout de seguridad
+    // Timeout de seguridad - 8 segundos máximo esperando carga
     timeoutId = setTimeout(() => {
-      setCargando(false);
-    }, 5000);
+      if (mounted) {
+        setCargando(false);
+      }
+    }, 8000);
 
     inicializarAuth();
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      mounted = false;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   const login = useCallback(async (email, password) => {
     // Obtener info actual del dispositivo justo antes del login
-    const uuid = deviceInfo.dispositivoId || '';
+    const uuid = deviceInfo.uuid || '';
     const modeloDispositivo = deviceInfo.modelo || undefined;
     const sisOp = deviceInfo.sistemaOperativo || undefined;
 
@@ -55,14 +73,37 @@ export function AuthProvider({ children }) {
 
     if (respuesta.success && respuesta.ID) {
       setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
+      setEsInvitado(false);
       return { success: true };
     }
     return { success: false, message: respuesta.message };
   }, [deviceInfo, api]);
 
+  const loginInvitado = useCallback(async (uuid, modelo, sistemaOperativo, hardware) => {
+    try {
+      const respuesta = await api.loginInvitado(uuid, modelo, sistemaOperativo, hardware);
+
+      if (respuesta.success && respuesta.TOKEN) {
+        setUsuario({
+          ID: uuid,
+          NOMBRE: 'Invitado',
+          CORREO: '',
+          esInvitado: true,
+        });
+        setEsInvitado(true);
+        return { success: true };
+      }
+
+      return { success: false, message: respuesta.message || 'No se pudo iniciar sesión como invitado' };
+    } catch (error) {
+      console.error('Error en login invitado:', error);
+      return { success: false, message: 'Error al iniciar como invitado' };
+    }
+  }, [api]);
+
   const registrar = useCallback(async (nombre, email, password) => {
     // Obtener info actual del dispositivo justo antes del registro
-    const uuid = deviceInfo.dispositivoId || '';
+    const uuid = deviceInfo.uuid || '';
     const modeloDispositivo = deviceInfo.modelo || undefined;
     const sisOp = deviceInfo.sistemaOperativo || undefined;
 
@@ -77,6 +118,7 @@ export function AuthProvider({ children }) {
 
     if (respuesta.success && respuesta.ID) {
       setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
+      setEsInvitado(false);
       return { success: true };
     }
     return { success: false, message: respuesta.message };
@@ -85,6 +127,7 @@ export function AuthProvider({ children }) {
   const cerrarSesion = useCallback(async () => {
     await api.cerrarSesion();
     setUsuario(null);
+    setEsInvitado(false);
   }, [api]);
 
   return (
@@ -93,10 +136,12 @@ export function AuthProvider({ children }) {
         usuario,
         cargando,
         autenticado: !!usuario,
-        dispositivoId: deviceInfo.dispositivoId,
+        esInvitado,
+        dispositivoId: deviceInfo.uuid,
         modelo: deviceInfo.modelo,
         sistemaOperativo: deviceInfo.sistemaOperativo,
         login,
+        loginInvitado,
         registrar,
         cerrarSesion,
       }}

@@ -1,17 +1,13 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 
 import { ToastProvider } from '../components/ui';
 import { AuthProvider, useAuth } from '../services';
-import { useColorScheme } from '../services/use-color-scheme';
+import { ThemeProvider as CustomThemeProvider, useTheme } from '../services/ThemeContext';
 import LoginForm from '../components/auth/ui/LoginForm';
-import RegisterScreen from './registro/RegisterScreen';
 
 function AuthNavigator() {
-  const [isLogin, setIsLogin] = useState(true);
   const { autenticado, cargando } = useAuth();
 
   if (cargando) {
@@ -34,33 +30,24 @@ function AuthNavigator() {
 
   return (
     <View style={styles.authContainer}>
-      {isLogin ? <LoginForm /> : <RegisterScreen onRegisterSuccess={() => setIsLogin(true)} />}
-      <View style={styles.toggleContainer}>
-        <Text style={styles.toggleText}>
-          {isLogin ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '}
-        </Text>
-        <TouchableOpacity onPress={() => setIsLogin(!isLogin)}>
-          <Text style={styles.toggleLink}>
-            {isLogin ? 'Regístrate' : 'Inicia sesión'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <LoginForm />
     </View>
   );
 }
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { isDark } = useTheme();
+
 
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <CustomThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
           <AuthNavigator />
-          <StatusBar style="dark" />
-        </ThemeProvider>
-      </AuthProvider>
-    </ToastProvider>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
+        </AuthProvider>
+      </ToastProvider>
+    </CustomThemeProvider>
   );
 }
 

@@ -9,7 +9,10 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Esta aplicación utiliza Face ID para asegurar el acceso a tus datos agrícolas."
+      }
     },
     "android": {
       "adaptiveIcon": {
