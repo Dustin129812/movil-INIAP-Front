@@ -172,40 +172,7 @@ export function useApi() {
     }
   }, [guardarSesion]);
 
-  const registrar = useCallback(async (datosRegistro) => {
-    setCargando(true);
-    setError(null);
 
-    try {
-      const respuesta = await fetch(`${URL_API}/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(datosRegistro),
-      });
-
-      const datos = await respuesta.json();
-
-      if (datos.success && datos.TOKEN) {
-        const guardado = await guardarSesion(datos.TOKEN, {
-          ID: datos.ID,
-          NOMBRE: datos.NOMBRE,
-          CORREO: datos.CORREO,
-        });
-        if (!guardado) {
-          setCargando(false);
-          return { success: false, message: 'Error al guardar sesion' };
-        }
-      }
-
-      setCargando(false);
-      return datos;
-    } catch (error) {
-      const mensajeError = 'Error de red';
-      setError(mensajeError);
-      setCargando(false);
-      return { success: false, message: mensajeError };
-    }
-  }, [guardarSesion]);
 
   const loginInvitado = useCallback(async (uuid, modelo, sistemaOperativo, hardware) => {
     setCargando(true);
@@ -314,7 +281,6 @@ export function useApi() {
     cargando,
     error,
     login,
-    registrar,
     loginInvitado,
     cerrarSesion,
     estaAutenticado,

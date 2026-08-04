@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { useAuth as useAuthService } from '../../../services';
 
 export const useRegister = () => {
-  const { registrar, usuario, cargando } = useAuthService();
+  const { usuario, cargando } = useAuthService();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -28,18 +28,6 @@ export const useRegister = () => {
     }
 
     setIsLoading(true);
-    try {
-      const resultado = await registrar(name.trim(), email.trim(), password);
-      if (resultado.success) {
-        Alert.alert('Éxito', 'Cuenta creada correctamente');
-      } else {
-        Alert.alert('Error', resultado.message || 'No se pudo crear la cuenta');
-      }
-    } catch (error) {
-      Alert.alert('Error', 'Ocurrió un error inesperado');
-    } finally {
-      setIsLoading(false);
-    }
   }, [name, email, password, confirmPassword, registrar]);
 
   const limpiarFormulario = useCallback(() => {
