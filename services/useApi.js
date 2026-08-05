@@ -7,7 +7,6 @@ const CLAVES = {
   TOKEN: 'token_acceso',
   USUARIO: 'datos_usuario',
 };
-
 // ============================================================
 // VALIDACIÓN ESTRICTA DEL TOKEN
 // ============================================================
