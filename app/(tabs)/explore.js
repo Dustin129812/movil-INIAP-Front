@@ -161,11 +161,6 @@ export default function SettingsScreen() {
                     <Text style={styles.guestBadgeText}>INVITADO</Text>
                   </View>
                 )}
-                {!esInvitado && (
-                  <View style={[styles.guestBadge, styles.registeredBadge]}>
-                    <Text style={[styles.guestBadgeText, styles.registeredBadgeText]}>REGISTRADO</Text>
-                  </View>
-                )}
               </View>
               
               <View style={styles.heroEmailRow}>
@@ -497,18 +492,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-  },
-  registeredBadge: {
-    backgroundColor: 'rgba(52, 199, 89, 0.12)',
-  },
-  guestBadgeText: {
-    color: '#FF9500',
-    fontSize: 10,
-    fontWeight: '800',
-    letterSpacing: 0.8,
-  },
-  registeredBadgeText: {
-    color: '#34C759',
   },
   heroEmailRow: {
     flexDirection: 'row',
