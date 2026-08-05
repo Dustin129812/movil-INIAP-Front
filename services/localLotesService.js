@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db, initDb, crearLoteLocal as crearLoteLocalDb, obtenerLotesLocales, marcarLoteComoSincronizado, SYNC_STATUS, lotes } from '../db';
 import { eq } from 'drizzle-orm';
 
-const URL_API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+const URL_API = process.env.EXPO_PUBLIC_API_URL;
 
 const obtenerToken = async () => {
     try {

@@ -34,9 +34,9 @@ import { useTheme } from '../../../services/ThemeContext';
 import { lotesService } from '../../../services/lotesService';
 
 const ESTILOS_STATUS = {
-    PENDING: { color: '#FF9500', bgColor: 'rgba(255, 149, 0, 0.15)', text: 'Pendiente' },
-    SYNCED: { color: '#34C759', bgColor: 'rgba(52, 199, 89, 0.15)', text: 'Activo' },
-    DRAFT: { color: '#8E8E93', bgColor: 'rgba(142, 142, 147, 0.15)', text: 'Borrador' },
+    pendiente: { color: '#FF9500', bgColor: 'rgba(255, 149, 0, 0.15)', text: 'Pendiente' },
+    verificado: { color: '#34C759', bgColor: 'rgba(52, 199, 89, 0.15)', text: 'Activo' },
+    borrador: { color: '#8E8E93', bgColor: 'rgba(142, 142, 147, 0.15)', text: 'Borrador' },
 };
 
 function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }) {
@@ -77,7 +77,7 @@ function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }
 }
 
 function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusChange }) {
-    const statusConfig = getStatusConfig(item.sync_status);
+    const statusConfig = getStatusConfig(item.estado_verificacion);
     const shortUuid = item.uuid_movil ? item.uuid_movil.substring(0, 8).toUpperCase() : 'N/A';
     const verticesCount = item.vertices_count || 0;
 
@@ -267,16 +267,16 @@ export default function LotesDashboardUI() {
 
         let matchesStatus = true;
         if (filtroEstado === 'PENDIENTES') {
-            matchesStatus = lote.sync_status === 'PENDING';
+            matchesStatus = lote.estado_verificacion === 'pendiente';
         } else if (filtroEstado === 'ACTIVOS') {
-            matchesStatus = lote.sync_status === 'SYNCED';
+            matchesStatus = lote.estado_verificacion === 'verificado';
         }
 
         return matchesSearch && matchesStatus;
     });
 
     const getStatusConfig = (syncStatus) => {
-        return ESTILOS_STATUS[syncStatus] || ESTILOS_STATUS.DRAFT;
+        return ESTILOS_STATUS[syncStatus] || ESTILOS_STATUS.borrador;
     };
 
     const handlePressLote = (lote) => {

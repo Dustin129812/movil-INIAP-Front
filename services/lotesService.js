@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const URL_API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+const URL_API = process.env.EXPO_PUBLIC_API_URL;
 
 const obtenerToken = async () => {
   try {
@@ -9,8 +9,12 @@ const obtenerToken = async () => {
     if (!token) token = await AsyncStorage.getItem('token');
     if (!token) token = await AsyncStorage.getItem('access_token');
     if (!token) token = await AsyncStorage.getItem('userToken');
-    
-    console.log('obtenerToken - Estado:', token ? 'ENCONTRADO' : 'NO ENCONTRADO');
+
+    console.log('obtenerToken - Todas las claves en AsyncStorage:');
+    const keys = await AsyncStorage.getAllKeys();
+    console.log('Keys:', keys);
+
+    console.log('obtenerToken - Token encontrado:', token ? token.substring(0, 50) + '...' : 'NULL');
     return token;
   } catch (error) {
     console.error('Error al obtener el token:', error);
@@ -56,17 +60,35 @@ export const lotesService = {
   async crearLote(datosLote) {
     try {
       const token = await obtenerToken();
+      console.log('crearLote - URL:', `${URL_API}/agrodecide/lotes`);
+      console.log('crearLote - Token:', token ? 'EXISTS' : 'NULL');
+      console.log('crearLote - Datos:', JSON.stringify(datosLote));
+
       const respuesta = await fetch(`${URL_API}/agrodecide/lotes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
         },
         body: JSON.stringify(datosLote),
       });
-      const datos = await respuesta.json();
-      console.log('crearLote - Status:', respuesta.status, 'Datos:', JSON.stringify(datos));
-      
+
+      // Verificar si la respuesta es JSON válido
+      const contentType = respuesta.headers.get('content-type');
+      console.log('crearLote - Content-Type:', contentType);
+      console.log('crearLote - Status:', respuesta.status);
+
+      let datos;
+      if (!contentType || !contentType.includes('application/json')) {
+        const texto = await respuesta.text();
+        console.error('crearLote - Respuesta no-JSON:', texto.substring(0, 500));
+        return { success: false, message: 'El servidor devolvió una respuesta no válida (no es JSON)', error: texto };
+      }
+
+      datos = await respuesta.json();
+      console.log('crearLote - Datos:', JSON.stringify(datos));
+
       if (respuesta.status === 201 || respuesta.status === 200) {
         return { success: true, data: datos.data, message: datos.message };
       }

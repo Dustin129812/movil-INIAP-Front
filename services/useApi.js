@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useState } from 'react';
 
-const URL_API = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000/api';
+const URL_API = process.env.EXPO_PUBLIC_API_URL;
 
 const CLAVES = {
   TOKEN: 'token_acceso',
@@ -135,11 +135,11 @@ export function useApi() {
     setError(null);
 
     try {
-      const respuesta = await fetch(`${URL_API}/agrodecide/login`, {
+      const respuesta = await fetch(`${URL_API}/agrodecide/user/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: credenciales.email,
+          correo_institucional: credenciales.email,
           password: credenciales.password,
         }),
       });
@@ -148,18 +148,18 @@ export function useApi() {
 
       if (datos.success && datos.data?.token) {
         const token = datos.data.token;
-        const tecnico = datos.data.tecnico;
+        const user = datos.data.user;
         const guardado = await guardarSesion(token, {
-          ID: tecnico.id,
-          NOMBRE: tecnico.nombre,
-          CORREO: tecnico.email,
+          ID: user.id,
+          NOMBRE: user.nombre,
+          CORREO: user.correo_institucional,
         });
         if (!guardado) {
           setCargando(false);
           return { success: false, message: 'Error al guardar sesion' };
         }
         setCargando(false);
-        return { success: true, ID: tecnico.id, NOMBRE: tecnico.nombre, CORREO: tecnico.email };
+        return { success: true, ID: user.id, NOMBRE: user.nombre, CORREO: user.correo_institucional };
       }
 
       setCargando(false);
