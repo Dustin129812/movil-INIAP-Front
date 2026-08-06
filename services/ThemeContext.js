@@ -48,7 +48,7 @@ export function ThemeProvider({ children }) {
         setThemeState(systemColorScheme);
       }
     } catch (error) {
-      console.error('Error loading theme preferences:', error);
+      console.error('Error loading theme preferences');
     }
   };
 
@@ -60,7 +60,7 @@ export function ThemeProvider({ children }) {
       setIsSystemTheme(false);
       await AsyncStorage.setItem(SYSTEM_THEME_KEY, 'false');
     } catch (error) {
-      console.error('Error saving theme preference:', error);
+      console.error('Error saving theme preference');
     }
   };
 
@@ -72,7 +72,7 @@ export function ThemeProvider({ children }) {
         setThemeState(systemColorScheme);
       }
     } catch (error) {
-      console.error('Error saving system theme preference:', error);
+      console.error('Error saving system theme preference');
     }
   };
 

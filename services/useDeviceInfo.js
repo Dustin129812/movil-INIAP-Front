@@ -139,7 +139,7 @@ export function useDeviceInfo() {
           hardware,
         });
       } catch (error) {
-        console.error('Error obteniendo información del dispositivo:', error);
+        console.error('Error obteniendo información del dispositivo');
         // Valores por defecto en caso de error
         const uuid = Crypto.randomUUID();
         setDeviceInfo({

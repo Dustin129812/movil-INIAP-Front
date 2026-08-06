@@ -41,7 +41,6 @@ export function useDevice() {
           });
         }
       } catch (error) {
-        console.warn('Error al obtener info del dispositivo:', error);
         if (mounted) {
           setInfo({
             dispositivoId: null,

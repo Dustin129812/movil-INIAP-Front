@@ -87,7 +87,6 @@ export const useCroquisMapa = (editLoteId = null) => {
                 }
             }
         } catch (error) {
-            console.error('Error cargando lote para edición:', error);
             Alert.alert('Error', 'No se pudo cargar el lote para edición');
         }
     };
@@ -136,14 +135,12 @@ export const useCroquisMapa = (editLoteId = null) => {
 
     useEffect(() => {
         if (showForm) {
-            console.log('Cargando provincias...');
             lotesService.obtenerProvincias()
                 .then(provs => {
-                    console.log('Provincias cargadas:', provs.length, provs);
                     setDbProvincias(provs);
                 })
-                .catch(e => {
-                    console.error('Error cargando provincias:', e);
+                .catch(() => {
+                    // Error cargando provincias
                 });
         }
     }, [showForm]);
@@ -168,7 +165,7 @@ export const useCroquisMapa = (editLoteId = null) => {
             mapRef.current?.animateToRegion(reg, 1000);
             setGpsAccuracy(`±${loc.coords.accuracy.toFixed(1)}m`);
         } catch (error) {
-            console.log('Error al centrar:', error);
+            // Error al centrar GPS
         }
     };
 
@@ -242,19 +239,16 @@ export const useCroquisMapa = (editLoteId = null) => {
         if (tipo === 'provincia') {
             setSelectorOptions(dbProvincias);
         } else if (tipo === 'canton') {
-            console.log('Abriendo canton, provincia:', ubicacionSeleccionada.provincia);
             if (!ubicacionSeleccionada.provincia) {
                 Alert.alert('Atención', 'Seleccione una provincia primero.');
                 return;
             }
             const provinciaId = ubicacionSeleccionada.provincia.id || ubicacionSeleccionada.provincia.uuid_movil;
-            console.log('Obteniendo cantones para provincia:', provinciaId);
             if (!provinciaId) {
                 Alert.alert('Error', 'La provincia seleccionada no tiene un identificador válido.');
                 return;
             }
             const cantones = await lotesService.obtenerCantones(provinciaId);
-            console.log('Cantones recibidos:', cantones);
             setSelectorOptions(cantones);
         } else if (tipo === 'estacion') {
             const estaciones = await lotesService.obtenerEstaciones();
@@ -277,7 +271,6 @@ export const useCroquisMapa = (editLoteId = null) => {
     };
 
     const handleSelectOption = (item) => {
-        console.log('Seleccionando item:', selectorType, item);
         if (selectorType === 'provincia') {
             // province_id es bigint, usar solo el id numérico
             setUbicacionSeleccionada({ provincia: { id: item.id, name: item.name }, canton: null, estacion: null });
@@ -296,10 +289,6 @@ export const useCroquisMapa = (editLoteId = null) => {
     };
 
     const confirmarGuardado = async () => {
-        console.log('Validando - nombreLote:', form.nombreLote);
-        console.log('Validando - provincia:', ubicacionSeleccionada.provincia);
-        console.log('Validando - canton:', ubicacionSeleccionada.canton);
-
         if (!form.nombreLote.trim() || !ubicacionSeleccionada.provincia || !ubicacionSeleccionada.canton) {
             Alert.alert('Datos Incompletos', 'Asigne un nombre, provincia y cantón al lote.');
             return;
@@ -315,7 +304,6 @@ export const useCroquisMapa = (editLoteId = null) => {
                 };
 
                 const resultado = await lotesService.actualizarLote(editLoteId, datosActualizacion);
-                console.log('Respuesta actualizar:', JSON.stringify(resultado));
 
                 if (resultado && resultado.data) {
                     Alert.alert('Éxito', 'Lote actualizado correctamente.');
@@ -352,7 +340,6 @@ export const useCroquisMapa = (editLoteId = null) => {
                 };
 
                 const resultado = await lotesService.crearLote(datosLote);
-                console.log('Respuesta crear:', resultado);
 
                 if (resultado.success !== false && resultado.data) {
                     Alert.alert('Éxito', 'Lote guardado correctamente.');
@@ -367,8 +354,7 @@ export const useCroquisMapa = (editLoteId = null) => {
             }
 
         } catch (error) {
-            console.error('Error completo:', error);
-            Alert.alert('Error Crítico', 'No se pudo guardar la geometría. Revise la consola para detalles.');
+            Alert.alert('Error Crítico', 'No se pudo guardar la geometría.');
         } finally {
             setIsSaving(false);
         }

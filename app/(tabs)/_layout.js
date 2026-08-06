@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, Text } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, Dimensions, Text, TextInput } from 'react-native';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,15 +10,17 @@ import Animated, {
   withTiming,
   FadeInUp,
   FadeOutDown,
-  FadeInRight
+  FadeIn,
+  FadeOut,
+  interpolate,
+  Easing
 } from 'react-native-reanimated';
 import { useTheme } from '@/services/ThemeContext';
+import { SearchProvider, useSearch } from '@/components/lotes/context/SearchContext';
 
 const ACTIVE_COLOR = '#10B981'; 
-const TABS_COUNT = 3;
 const TAB_WIDTH = 92; 
 const CONTAINER_PADDING = 5;
-const PILL_WIDTH = (TAB_WIDTH * TABS_COUNT) + (CONTAINER_PADDING * 2);
 const SEARCH_BTN_SIZE = 60;
 const SEARCH_GAP = 10;
 const FAB_SIZE = 52; 
@@ -27,12 +29,17 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
   const router = useRouter();
   const pathname = usePathname();
   const isLotesActive = pathname.toLowerCase().includes('lote');
-  const isSearchActive = pathname.toLowerCase().includes('explore') || pathname.toLowerCase().includes('search');
   const { isDark } = useTheme();
+  const { searchText, setSearchText } = useSearch();
+
+  // Estado local independiente para saber si el input de búsqueda está abierto o cerrado manualmente
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const screenWidth = Dimensions.get('window').width;
+
+  const searchExpandProgress = useSharedValue(0);
 
   const activeIndex = useSharedValue(state.index);
   const prevIndex = useSharedValue(state.index);
-
   const scaleX = useSharedValue(1);
   const scaleY = useSharedValue(1);
 
@@ -40,27 +47,38 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
   const iconActiveColor = ACTIVE_COLOR;
   const iconInactiveColor = isDark ? '#8E8E93' : '#687076';
   
-  // Efecto Liquid Glass refinado
   const activeBubbleBg = isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.5)';
   const glassBgColor = isDark ? 'rgba(22, 22, 28, 0.5)' : 'rgba(255, 255, 255, 0.65)';
   const glassBorderColor = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.7)';
+
+  // Si el usuario navega a otra pestaña, cerramos el buscador automáticamente
+  useEffect(() => {
+    setIsSearchOpen(false);
+  }, [state.index]);
+
+  useEffect(() => {
+    searchExpandProgress.value = withTiming(isSearchOpen ? 1 : 0, {
+      duration: 250,
+      easing: Easing.bezier(0.25, 1, 0.5, 1),
+    });
+  }, [isSearchOpen]);
 
   useEffect(() => {
     const direction = state.index - prevIndex.value;
     prevIndex.value = state.index;
 
-    scaleX.value = withTiming(1.2 + (Math.abs(direction) * 0.06), { duration: 80 }, () => {
-      scaleX.value = withSpring(1, { damping: 14, stiffness: 240 });
+    scaleX.value = withTiming(1.1 + (Math.abs(direction) * 0.04), { duration: 80 }, () => {
+      scaleX.value = withSpring(1, { damping: 18, stiffness: 300 });
     });
     
-    scaleY.value = withTiming(0.8, { duration: 80 }, () => {
-      scaleY.value = withSpring(1, { damping: 14, stiffness: 240 });
+    scaleY.value = withTiming(0.9, { duration: 80 }, () => {
+      scaleY.value = withSpring(1, { damping: 18, stiffness: 300 });
     });
 
     activeIndex.value = withSpring(state.index, {
-      damping: 14,
-      stiffness: 200,
-      mass: 0.4,
+      damping: 20,
+      stiffness: 250,
+      mass: 0.3,
     });
   }, [state.index]);
 
@@ -74,20 +92,46 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
     };
   });
 
-  const screenWidth = Dimensions.get('window').width;
-  
-  // Ancho total del conjunto (Barra principal + Espacio + Botón de Búsqueda separado) para mantenerlo perfectamente centrado
-  const totalRowWidth = PILL_WIDTH + SEARCH_GAP + SEARCH_BTN_SIZE;
-  const startLeft = (screenWidth - totalRowWidth) / 2;
+  const animatedMainPillStyle = useAnimatedStyle(() => {
+    const normalWidth = (TAB_WIDTH * 3) + (CONTAINER_PADDING * 2);
+    const soloHomeWidth = TAB_WIDTH + (CONTAINER_PADDING * 2);
+    
+    const currentWidth = interpolate(
+      searchExpandProgress.value,
+      [0, 1],
+      [normalWidth, soloHomeWidth]
+    );
+
+    return {
+      width: currentWidth,
+    };
+  });
+
+  const animatedSearchContainerStyle = useAnimatedStyle(() => {
+    const normalWidth = SEARCH_BTN_SIZE;
+    const expandedWidth = screenWidth - 44 - (TAB_WIDTH + CONTAINER_PADDING * 2) - SEARCH_GAP;
+    
+    const currentWidth = interpolate(
+      searchExpandProgress.value,
+      [0, 1],
+      [normalWidth, expandedWidth]
+    );
+
+    return {
+      width: currentWidth,
+    };
+  });
+
+  const normalTotalRowWidth = ((TAB_WIDTH * 3) + (CONTAINER_PADDING * 2)) + SEARCH_GAP + SEARCH_BTN_SIZE;
+  const startLeft = (screenWidth - normalTotalRowWidth) / 2;
 
   return (
     <View style={styles.floatingWrapper} pointerEvents="box-none">
       
-      {/* BOTÓN FLOTANTE EN FORMA DE GOTA / BURBUJA EMERGENTE (Arriba al centro de Lotes) */}
-      {isLotesActive && (
+      {isLotesActive && !isSearchOpen && (
         <Animated.View 
-          entering={FadeInUp.springify().damping(14.5).stiffness(190)} 
-          exiting={FadeOutDown.duration(120)}
+          entering={FadeInUp.springify().damping(16).stiffness(200)} 
+          exiting={FadeOutDown.duration(150)}
           style={[styles.fabWrapper, { left: (screenWidth / 2) - (FAB_SIZE / 2) }]}
         >
           <TouchableOpacity 
@@ -102,22 +146,33 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
         </Animated.View>
       )}
 
-      {/* CONTENEDOR EN FILA PARA LA BARRA Y EL BOTÓN DE BÚSQUEDA SEPARADO */}
       <View style={[styles.navContainerRow, { left: startLeft }]}>
         
-        {/* BARRA PRINCIPAL CENTRADA */}
-        <View style={[styles.mainPillContainer, { width: PILL_WIDTH }]}>
+        {/* BARRA PRINCIPAL */}
+        <Animated.View style={[styles.mainPillContainer, animatedMainPillStyle]}>
           <BlurView intensity={100} tint={blurTint} style={[styles.glassContainer, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
 
-            {/* BURBUJA ACTIVA */}
-            <Animated.View style={[styles.activeBlobBubble, animatedIndicatorStyle, { backgroundColor: activeBubbleBg }]}>
-              <View style={[styles.blobInnerGlow, { borderColor: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.85)' }]} />
-            </Animated.View>
+            {!isSearchOpen && (
+              <Animated.View style={[styles.activeBlobBubble, animatedIndicatorStyle, { backgroundColor: activeBubbleBg }]}>
+                <View style={[styles.blobInnerGlow, { borderColor: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(255, 255, 255, 0.85)' }]} />
+              </Animated.View>
+            )}
 
-            {/* ICONOS Y TEXTOS */}
             {state.routes.map((route, index) => {
               const isFocused = state.index === index;
+              const routeNameLower = route.name.toLowerCase();
+              
+              // Si la búsqueda está abierta, ocultamos las pestañas secundarias para dejar solo Home
+              if (isSearchOpen && index !== 0) {
+                return null;
+              }
+
               const onPress = () => {
+                if (isSearchOpen) {
+                  setIsSearchOpen(false);
+                  router.push('/');
+                  return;
+                }
                 const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
                 if (!isFocused && !event.defaultPrevented) {
                   navigation.navigate(route.name, route.params);
@@ -126,7 +181,6 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
 
               let iconName = 'home';
               let labelText = route.name;
-              const routeNameLower = route.name.toLowerCase();
 
               if (routeNameLower === 'index' || routeNameLower === 'home') {
                 labelText = 'Home';
@@ -139,8 +193,8 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                 iconName = isFocused ? 'settings' : 'settings-outline';
               }
 
-              const iconColor = isFocused ? iconActiveColor : iconInactiveColor;
-              const textColor = isFocused ? iconActiveColor : iconInactiveColor;
+              const iconColor = (isFocused && !isSearchOpen) ? iconActiveColor : iconInactiveColor;
+              const textColor = (isFocused && !isSearchOpen) ? iconActiveColor : iconInactiveColor;
 
               return (
                 <TouchableOpacity
@@ -161,26 +215,53 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
               );
             })}
           </BlurView>
-        </View>
+        </Animated.View>
 
-        {/* BOTÓN DE BÚSQUEDA SEPARADO A LA DERECHA (Con animación de aparición fluida) */}
+        {/* BOTÓN / INPUT DE BÚSQUEDA */}
         <Animated.View 
-          entering={FadeInRight.springify().damping(15).stiffness(180)}
-          style={[styles.searchBtnWrapper, { marginLeft: SEARCH_GAP }]}
+          style={[styles.searchBtnWrapper, animatedSearchContainerStyle, { marginLeft: SEARCH_GAP }]}
         >
-          <TouchableOpacity 
-            activeOpacity={0.8} 
-            onPress={() => router.push('/Explore')}
-            style={styles.searchTouchable}
-          >
-            <BlurView intensity={100} tint={blurTint} style={[styles.searchGlass, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
+          <BlurView intensity={100} tint={blurTint} style={[styles.searchGlass, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setIsSearchOpen(true);
+                if (!isLotesActive) {
+                  navigation.navigate('lotes');
+                }
+              }}
+              style={styles.searchInnerRow}
+            >
               <Ionicons 
-                name={isSearchActive ? "search" : "search-outline"} 
-                size={24} 
-                color={isSearchActive ? ACTIVE_COLOR : (isDark ? '#FFFFFF' : '#1C1C1E')} 
+                name={isSearchOpen ? "search" : "search-outline"} 
+                size={22} 
+                color={isSearchOpen ? ACTIVE_COLOR : (isDark ? '#FFFFFF' : '#1C1C1E')} 
               />
-            </BlurView>
-          </TouchableOpacity>
+
+              {isSearchOpen && (
+                <Animated.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={styles.inputWrapper}>
+                  <TextInput
+                    style={[styles.textInputStyle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}
+                    placeholder="Buscar..."
+                    placeholderTextColor={isDark ? '#8E8E93' : '#687076'}
+                    value={searchText}
+                    onChangeText={setSearchText}
+                    autoFocus
+                  />
+                  <TouchableOpacity
+                    onPress={() => {
+                      setSearchText('');
+                      setIsSearchOpen(false);
+                      router.push('/');
+                    }}
+                    style={styles.closeIconBtn}
+                  >
+                    <Ionicons name="close-circle" size={18} color={isDark ? '#8E8E93' : '#687076'} />
+                  </TouchableOpacity>
+                </Animated.View>
+              )}
+            </TouchableOpacity>
+          </BlurView>
         </Animated.View>
 
       </View>
@@ -191,11 +272,26 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
 
 export default function TabLayout() {
   return (
-    <Tabs tabBar={(props) => <CleanLiquidGlassTabBar {...props} />} screenOptions={{ headerShown: false }}>
-      <Tabs.Screen name="index" />
-      <Tabs.Screen name="Lotes" />
-      <Tabs.Screen name="Explore" />
-    </Tabs>
+    <SearchProvider>
+      <Tabs
+        tabBar={(props) => <CleanLiquidGlassTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            position: 'absolute',
+            backgroundColor: 'transparent',
+            borderTopWidth: 0,
+            elevation: 0,
+          },
+          tabBarSceneStyle: {
+            backgroundColor: 'transparent',
+          },
+        }}
+      >
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="lotes" />
+      </Tabs>
+    </SearchProvider>
   );
 }
 
@@ -220,6 +316,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 5,
+    overflow: 'hidden',
   },
   glassContainer: {
     flex: 1,
@@ -264,7 +361,7 @@ const styles = StyleSheet.create({
   },
   fabWrapper: {
     position: 'absolute',
-    bottom: 70, // Emerge en forma de gota animada justo arriba al centro de la barra
+    bottom: 70,
     width: FAB_SIZE,
     height: FAB_SIZE,
     borderRadius: FAB_SIZE / 2,
@@ -289,7 +386,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   searchBtnWrapper: {
-    width: SEARCH_BTN_SIZE,
     height: SEARCH_BTN_SIZE,
     borderRadius: SEARCH_BTN_SIZE / 2,
     shadowColor: '#000',
@@ -297,18 +393,34 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.18,
     shadowRadius: 12,
     elevation: 5,
-  },
-  searchTouchable: {
-    width: '100%',
-    height: '100%',
-    borderRadius: SEARCH_BTN_SIZE / 2,
+    overflow: 'hidden',
   },
   searchGlass: {
     flex: 1,
     borderRadius: SEARCH_BTN_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderWidth: 1.2,
     overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  searchInnerRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 10,
+  },
+  textInputStyle: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    paddingVertical: 0,
+  },
+  closeIconBtn: {
+    padding: 4,
   },
 });

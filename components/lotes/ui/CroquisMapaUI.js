@@ -122,28 +122,18 @@ export default function CroquisMapaUI() {
 
     // Capturar imagen del mapa para usar como fondo en la tarjeta del lote
     const capturarImagenMapa = async () => {
-        console.log('[Captura] Iniciando captura de imagen del mapa...');
-
         if (!mapViewRef.current) {
-            console.log('[Captura] mapViewRef.current es null, no se puede capturar');
             return null;
         }
 
         try {
-            // Esperar un poco para que el mapa renderize completamente
-            console.log('[Captura] Esperando renderizado del mapa...');
             await new Promise(resolve => setTimeout(resolve, 500));
 
-            console.log('[Captura] Capturando con view-shot...');
             const snapshot = await captureRef(mapViewRef, {
                 format: 'jpg',
                 quality: 0.8,
             });
 
-            console.log('[Captura] Snapshot tomado, URI:', snapshot);
-
-            // Usar la URI directamente (no mover, solo guardar la referencia)
-            // Limpiar el path si tiene format raro
             let cleanUri = snapshot;
             if (cleanUri && cleanUri.endsWith('/..')) {
                 cleanUri = cleanUri.replace('/..', '');
@@ -152,12 +142,11 @@ export default function CroquisMapaUI() {
                 cleanUri = cleanUri.slice(0, -1);
             }
 
-            console.log('[Captura] Imagen guardada, URI limpia:', cleanUri);
             setImagenUrlLote(cleanUri);
             return cleanUri;
         } catch (error) {
-            console.error('[Captura] ERROR capturando imagen:', error);
-            Alert.alert('Error', 'No se pudo capturar la imagen del mapa: ' + error.message);
+            console.error('Error capturando imagen del mapa');
+            Alert.alert('Error', 'No se pudo capturar la imagen del mapa');
             return null;
         }
     };
@@ -389,16 +378,12 @@ export default function CroquisMapaUI() {
                             onPress={async () => {
                                 if (points.length >= 3 && !isTracking) {
                                     try {
-                                        console.log('[Boton Guardar] Iniciando proceso de guardado...');
-                                        // Capturar imagen del mapa antes de guardar
                                         const imageUri = await capturarImagenMapa();
-                                        console.log('[Boton Guardar] Imagen capturada, URI:', imageUri);
                                         setImagenUrlLote(imageUri);
-                                        console.log('[Boton Guardar] Llamando preGuardarLote...');
                                         preGuardarLote();
                                     } catch (error) {
-                                        console.error('[Boton Guardar] Error:', error);
-                                        Alert.alert('Error', 'No se pudo procesar: ' + error.message);
+                                        console.error('Error en proceso de guardado');
+                                        Alert.alert('Error', 'No se pudo procesar');
                                     }
                                 }
                             }}

@@ -14,7 +14,6 @@ export const useLotesDashboard = () => {
             const data = await lotesService.obtenerLotes();
             setListaLotes(data);
         } catch (err) {
-            console.error('Error al recargar lotes:', err);
             setError('Error al recargar los lotes');
         } finally {
             setIsLoading(false);

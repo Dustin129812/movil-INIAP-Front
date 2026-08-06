@@ -18,7 +18,7 @@ export const inicializarBaseDatosLocal = async () => {
         await initDb();
         console.log('[LocalLotes] Base de datos local lista');
     } catch (error) {
-        console.error('[LocalLotes] Error inicializando DB local:', error);
+        console.error('[LocalLotes] Error inicializando DB local');
     }
 };
 
@@ -80,7 +80,7 @@ export const crearLoteLocal = async (datosLote) => {
 
         return { success: true, lote: loteLocal, pendingSync: true };
     } catch (error) {
-        console.error('[LocalLotes] Error creando lote:', error);
+        console.error('[LocalLotes] Error creando lote');
         return { success: false, message: 'Error al crear lote' };
     }
 };
@@ -123,7 +123,7 @@ export const sincronizarLotesPendientes = async () => {
 
         return { success: true, sincronizados, errores };
     } catch (error) {
-        console.error('[LocalLotes] Error en sincronización:', error);
+        console.error('[LocalLotes] Error en sincronización');
         return { success: false, message: 'Error en sincronización' };
     }
 };

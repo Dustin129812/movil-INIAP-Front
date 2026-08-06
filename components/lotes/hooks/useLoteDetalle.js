@@ -19,7 +19,6 @@ export const useLoteDetalle = (loteUuid) => {
                     const lote = await lotesService.obtenerLote(loteUuid);
                     setLoteData(lote);
                 } catch (err) {
-                    console.error('Error al cargar detalle del lote:', err);
                     setError('Error al cargar los datos del lote');
                 } finally {
                     setIsLoading(false);

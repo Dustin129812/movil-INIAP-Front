@@ -6,11 +6,13 @@ import LotesDashboardUI from '../../components/lotes/ui/LotesDashboardUI';
 
 export default function LotesScreen() {
   const { isDark } = useTheme();
-  const backgroundColor = isDark ? '#121212' : '#F2F2F7';
+  const backgroundColor = isDark ? '#000000' : '#F2F2F7';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor }]}>
-      <LotesDashboardUI />
+    <SafeAreaView style={[styles.container, { backgroundColor }]} edges={['top']}>
+      <View style={{ flex: 1, backgroundColor }}>
+        <LotesDashboardUI />
+      </View>
     </SafeAreaView>
   );
 }
@@ -18,6 +20,6 @@ export default function LotesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: '#000000',
   },
 });

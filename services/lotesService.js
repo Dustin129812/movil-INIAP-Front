@@ -4,20 +4,14 @@ const URL_API = process.env.EXPO_PUBLIC_API_URL;
 
 const obtenerToken = async () => {
   try {
-    // Buscamos el token probando las claves más comunes para evitar fallos de coincidencia
     let token = await AsyncStorage.getItem('token_acceso');
     if (!token) token = await AsyncStorage.getItem('token');
     if (!token) token = await AsyncStorage.getItem('access_token');
     if (!token) token = await AsyncStorage.getItem('userToken');
 
-    console.log('obtenerToken - Todas las claves en AsyncStorage:');
-    const keys = await AsyncStorage.getAllKeys();
-    console.log('Keys:', keys);
-
-    console.log('obtenerToken - Token encontrado:', token ? token.substring(0, 50) + '...' : 'NULL');
     return token;
   } catch (error) {
-    console.error('Error al obtener el token:', error);
+    console.error('Error al obtener el token');
     return null;
   }
 };
@@ -32,8 +26,20 @@ export const lotesService = {
           'Authorization': token ? `Bearer ${token}` : '',
         },
       });
+
+      if (!respuesta.ok) {
+        console.error('Error en respuesta de API:', respuesta.status);
+        return [];
+      }
+
       const datos = await respuesta.json();
-      return datos.data || [];
+
+      // Manejar varios formatos de respuesta
+      if (Array.isArray(datos)) return datos;
+      if (datos.data) return datos.data;
+      if (datos.lotes) return datos.lotes;
+      if (datos.result) return datos.result;
+      return datos;
     } catch (error) {
       console.error('Error obteniendo lotes:', error);
       return [];
@@ -52,7 +58,7 @@ export const lotesService = {
       const datos = await respuesta.json();
       return datos.data || null;
     } catch (error) {
-      console.error('Error obteniendo lote:', error);
+      console.error('Error obteniendo lote');
       return null;
     }
   },
@@ -60,9 +66,6 @@ export const lotesService = {
   async crearLote(datosLote) {
     try {
       const token = await obtenerToken();
-      console.log('crearLote - URL:', `${URL_API}/agrodecide/lotes`);
-      console.log('crearLote - Token:', token ? 'EXISTS' : 'NULL');
-      console.log('crearLote - Datos:', JSON.stringify(datosLote));
 
       const respuesta = await fetch(`${URL_API}/agrodecide/lotes`, {
         method: 'POST',
@@ -74,36 +77,29 @@ export const lotesService = {
         body: JSON.stringify(datosLote),
       });
 
-      // Verificar si la respuesta es JSON válido
       const contentType = respuesta.headers.get('content-type');
-      console.log('crearLote - Content-Type:', contentType);
-      console.log('crearLote - Status:', respuesta.status);
 
-      let datos;
       if (!contentType || !contentType.includes('application/json')) {
         const texto = await respuesta.text();
-        console.error('crearLote - Respuesta no-JSON:', texto.substring(0, 500));
-        return { success: false, message: 'El servidor devolvió una respuesta no válida (no es JSON)', error: texto };
+        console.error('Respuesta no-JSON del servidor');
+        return { success: false, message: 'Respuesta no válida del servidor' };
       }
 
-      datos = await respuesta.json();
-      console.log('crearLote - Datos:', JSON.stringify(datos));
+      const datos = await respuesta.json();
 
       if (respuesta.status === 201 || respuesta.status === 200) {
         return { success: true, data: datos.data, message: datos.message };
       }
-      return { success: false, message: datos.message || 'Error desconocido', error: datos };
+      return { success: false, message: datos.message || 'Error desconocido' };
     } catch (error) {
-      console.error('Error creando lote:', error);
-      return { success: false, message: 'Error de red: ' + error.message };
+      console.error('Error creando lote');
+      return { success: false, message: 'Error de red' };
     }
   },
 
   async actualizarLote(id, datosLote) {
     try {
       const token = await obtenerToken();
-      console.log('actualizarLote - Enviando a:', `${URL_API}/agrodecide/lotes/${id}`);
-      console.log('actualizarLote - Datos:', JSON.stringify(datosLote));
 
       const respuesta = await fetch(`${URL_API}/agrodecide/lotes/${id}`, {
         method: 'PUT',
@@ -114,24 +110,21 @@ export const lotesService = {
         body: JSON.stringify(datosLote),
       });
 
-      // Verificar si la respuesta es JSON válido
       const contentType = respuesta.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        const texto = await respuesta.text();
-        console.error('actualizarLote - Respuesta HTML (no JSON):', texto.substring(0, 500));
-        return { success: false, message: 'El servidor devolvió una respuesta no válida (HTML)', error: texto };
+        console.error('Respuesta no-JSON del servidor');
+        return { success: false, message: 'Respuesta no válida del servidor' };
       }
 
       const datos = await respuesta.json();
-      console.log('actualizarLote - Respuesta:', respuesta.status, JSON.stringify(datos));
 
       if (respuesta.ok && datos.data) {
         return { success: true, data: datos.data, message: datos.message };
       }
-      return { success: false, message: datos.message || 'Error al actualizar', error: datos };
+      return { success: false, message: datos.message || 'Error al actualizar' };
     } catch (error) {
-      console.error('Error actualizando lote:', error);
-      return { success: false, message: 'Error de red: ' + error.message };
+      console.error('Error actualizando lote');
+      return { success: false, message: 'Error de red' };
     }
   },
 
@@ -151,17 +144,14 @@ export const lotesService = {
       });
       return await respuesta.json();
     } catch (error) {
-      console.error('Error eliminando lote:', error);
+      console.error('Error eliminando lote');
       return { success: false, message: 'Error de red' };
     }
   },
 
-  // Obtiene todos los catálogos de ubicación de una vez (provincias, cantones, estaciones)
   async obtenerCatalogos() {
     try {
       const token = await obtenerToken();
-      console.log('obtenerCatalogos - Token:', token ? 'EXISTS' : 'NULL/EMPTY');
-      console.log('obtenerCatalogos - URL:', `${URL_API}/agrodecide/catalogosMobile`);
 
       const respuesta = await fetch(`${URL_API}/agrodecide/catalogosMobile`, {
         headers: {
@@ -170,16 +160,12 @@ export const lotesService = {
         },
       });
 
-      console.log('obtenerCatalogos - Status:', respuesta.status);
-
       if (!respuesta.ok) {
-        const texto = await respuesta.text();
-        console.error('obtenerCatalogos - Error:', texto.substring(0, 500));
+        console.error('Error obteniendo catálogos');
         return { provincias: [], cantones: [], estaciones: [] };
       }
 
       const datos = await respuesta.json();
-      console.log('obtenerCatalogos - Datos success:', datos.success, 'provincias:', datos.data?.provincias?.length);
 
       if (datos.success && datos.data) {
         return {
@@ -190,7 +176,7 @@ export const lotesService = {
       }
       return { provincias: [], cantones: [], estaciones: [] };
     } catch (error) {
-      console.error('Error obteniendo catálogos:', error);
+      console.error('Error obteniendo catálogos');
       return { provincias: [], cantones: [], estaciones: [] };
     }
   },
@@ -202,12 +188,10 @@ export const lotesService = {
 
   async obtenerCantones(provinciaId) {
     const catalogos = await this.obtenerCatalogos();
-    // Si no hay provinciaId o el filtro devuelve vacío, devolver todos los cantones
     if (!provinciaId) {
       return catalogos.cantones;
     }
     const filtrados = catalogos.cantones.filter(c => c.provincia_id === provinciaId);
-    // Si no hay cantones con ese provincia_id, devolver todos ( Workaround: datos sin provincia_id )
     return filtrados.length > 0 ? filtrados : catalogos.cantones;
   },
 

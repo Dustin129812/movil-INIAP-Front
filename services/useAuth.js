@@ -32,7 +32,6 @@ export function AuthProvider({ children }) {
           setUsuario(usuarioGuardado);
         }
       } catch (error) {
-        console.warn('Error inicializando auth:', error);
         if (mounted) {
           setUsuario(null);
         }
@@ -96,7 +95,6 @@ export function AuthProvider({ children }) {
 
       return { success: false, message: respuesta.message || 'No se pudo iniciar sesión como invitado' };
     } catch (error) {
-      console.error('Error en login invitado:', error);
       return { success: false, message: 'Error al iniciar como invitado' };
     }
   }, [api]);
