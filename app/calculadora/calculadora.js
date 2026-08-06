@@ -15,15 +15,15 @@ import {
   View,
 } from "react-native";
 
-import { COLORS } from "../components/calculadora/colors";
-import { useCalculadora } from "../components/calculadora/hooks/useCalculadora";
+import { COLORS } from "../../components/calculadora/colors";
+import { useCalculadora } from "../../components/calculadora/hooks/useCalculadora";
 import {
   DetalleCalculo,
   DimensionesParcela,
   ListaFertilizantes,
   NivelNutrientes,
   ResultadosCalculo,
-} from "../components/calculadora/ui";
+} from "../../components/calculadora/ui";
 
 function BotonAccion({
   label,

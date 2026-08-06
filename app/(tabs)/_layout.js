@@ -180,6 +180,7 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
               };
 
               let iconName = 'home';
+              let iconLibrary = 'ionicons';
               let labelText = route.name;
 
               if (routeNameLower === 'index' || routeNameLower === 'home') {
@@ -187,7 +188,12 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                 iconName = isFocused ? 'home' : 'home-outline';
               } else if (routeNameLower.includes('lote') || routeNameLower === 'new') {
                 labelText = 'Lotes';
-                iconName = isFocused ? 'grid' : 'grid-outline';
+                iconName = isFocused ? 'view-grid' : 'view-grid-outline';
+                iconLibrary = 'material';
+              } else if (routeNameLower.includes('calculadora')) {
+                labelText = 'Calcular';
+                iconName = isFocused ? 'calculator-variant' : 'calculator-variant-outline';
+                iconLibrary = 'material';
               } else {
                 labelText = 'Ajustes';
                 iconName = isFocused ? 'settings' : 'settings-outline';
@@ -203,8 +209,8 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                   activeOpacity={0.7}
                   style={styles.tabItem}
                 >
-                  {routeNameLower.includes('lote') ? (
-                    <MaterialCommunityIcons name={isFocused ? 'view-grid' : 'view-grid-outline'} size={24} color={iconColor} />
+                  {iconLibrary === 'material' ? (
+                    <MaterialCommunityIcons name={iconName} size={24} color={iconColor} />
                   ) : (
                     <Ionicons name={iconName} size={24} color={iconColor} />
                   )}
@@ -290,6 +296,7 @@ export default function TabLayout() {
       >
         <Tabs.Screen name="index" />
         <Tabs.Screen name="lotes" />
+        <Tabs.Screen name="calculadora" />
       </Tabs>
     </SearchProvider>
   );
