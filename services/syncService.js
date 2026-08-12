@@ -1,225 +1,211 @@
-// import { db } from '../db/client';
-// import { lotes, ciclos, visitas, hojas_datos, SYNC_STATUS,
-//     provinces, cantons, locations, cultivos, variedades, proyectos, configuracion
-// } from '../db/schema';
-// import { eq, or, inArray} from 'drizzle-orm';
-// import NetInfo from '@react-native-community/netinfo';
-// import * as SecureStore from 'expo-secure-store';
-// import { fetchApi } from './apiClient';
+import { db } from '../db/client';
+import {
+    lotes, ciclos_cultivo, visitas, hojas_datos, SYNC_STATUS,
+    provincias, cantones, estaciones, cultivos, variedades, proyectos
+} from '../db/schema';
+import { inArray } from 'drizzle-orm';
+import NetInfo from '@react-native-community/netinfo';
+import * as SecureStore from 'expo-secure-store';
+import { fetchApi } from './apiClient';
 
-// export const descargarCatalogos = async () => {
-//     const netInfo = await NetInfo.fetch();
-//     if (!netInfo.isConnected) return;
+export const descargarCatalogos = async () => {
+    const netInfo = await NetInfo.fetch();
+    if (!netInfo.isConnected) return;
 
-//     const token = await SecureStore.getItemAsync('userToken');
-//     if (!token) return;
+    const token = await SecureStore.getItemAsync('userToken');
+    if (!token) return;
 
-//     try {
-//         const response = await fetchApi('/catalogosMobile', {
-//             method: 'GET',
-//             headers: {
-//                 'Authorization': `Bearer ${token}`
-//             }
-//         });
+    try {
+        const response = await fetchApi('/catalogosMobile', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
 
-//         if (!response.ok) throw new Error('Fallo al obtener catálogos');
-//         const jsonResponse = await response.json();
-//         const data = jsonResponse.data;
+        if (!response.ok) throw new Error('Fallo al obtener catálogos');
+        const jsonResponse = await response.json();
+        const data = jsonResponse.data;
 
-//         await db.delete(provinces);
-//         await db.delete(cantons);
-//         await db.delete(locations);
-//         await db.delete(cultivos);
-//         await db.delete(variedades);
+        await db.delete(provincias);
+        await db.delete(cantones);
+        await db.delete(estaciones);
+        await db.delete(cultivos);
+        await db.delete(variedades);
 
-//         if (data.provincias?.length) await db.insert(provinces).values(data.provincias);
-//         if (data.cantones?.length) await db.insert(cantons).values(data.cantones);
-//         if (data.estaciones?.length) await db.insert(locations).values(data.estaciones);
-//         if (data.cultivos?.length) await db.insert(cultivos).values(data.cultivos);
+        if (data.provincias?.length) await db.insert(provincias).values(data.provincias);
+        if (data.cantones?.length) await db.insert(cantones).values(data.cantones);
+        if (data.estaciones?.length) await db.insert(estaciones).values(data.estaciones);
+        if (data.cultivos?.length) await db.insert(cultivos).values(data.cultivos);
 
-//         if (data.variedades?.length) {
-//             const varsLimpio = data.variedades.map(v => ({
-//                 ...v,
-//                 caracteristicas_base: typeof v.caracteristicas_base === 'object' ? JSON.stringify(v.caracteristicas_base) : v.caracteristicas_base
-//             }));
-//             await db.insert(variedades).values(varsLimpio);
-//         }
+        if (data.variedades?.length) {
+            const varsLimpio = data.variedades.map(v => ({
+                ...v,
+                caracteristicas_base: typeof v.caracteristicas_base === 'object' ? JSON.stringify(v.caracteristicas_base) : v.caracteristicas_base
+            }));
+            await db.insert(variedades).values(varsLimpio);
+        }
 
-//     } catch (error) {
-//         console.error('[Sync] Error descargando catálogos:', error);
-//     }
-// };
+    } catch (error) {
+        console.error('[Sync] Error descargando catálogos:', error);
+    }
+};
 
-// const ensureUuid = (id) => {
-//     if (!id) return uuidv4();
-//     const str = String(id);
-//     if (str.length === 36 && str.includes('-')) return str;
-//     const p = str.padStart(32, '0');
-//     return `${p.slice(0,8)}-${p.slice(8,12)}-${p.slice(12,16)}-${p.slice(16,20)}-${p.slice(20)}`;
-// };
+const marcarComoSincronizado = async (uuids) => {
+    if (!uuids || uuids.length === 0) return;
+    try {
+        await db.update(lotes)
+            .set({ sync_status: SYNC_STATUS.SYNCED })
+            .where(inArray(lotes.uuid_movil, uuids));
 
-// const marcarComoSincronizado = async (uuids) => {
-//     if (!uuids || uuids.length === 0) return;
-//     try {
-//         await db.update(lotes)
-//             .set({ sync_status: SYNC_STATUS.SYNCED })
-//             .where(inArray(lotes.uuid_movil, uuids));
+    } catch (error) {
+        console.error('[Sync] Error al actualizar estado local:', error);
+    }
+};
 
-//     } catch (error) {
-//         console.error('[Sync] Error al actualizar estado local:', error);
-//     }
-// };
+export const descargarMisDatos = async () => {
+    const netInfo = await NetInfo.fetch();
+    if (!netInfo.isConnected) return;
 
-// export const descargarMisDatos = async () => {
-//     const netInfo = await NetInfo.fetch();
-//     if (!netInfo.isConnected) return;
+    const token = await SecureStore.getItemAsync('userToken');
+    const userIdStr = await SecureStore.getItemAsync('offlineUserId');
+    if (!token) return;
 
-//     const token = await SecureStore.getItemAsync('userToken');
-//     const userIdStr = await SecureStore.getItemAsync('offlineUserId');
-//     if (!token || !userIdStr) return;
+    try {
+        const response = await fetchApi('/sync/download', {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
 
-//     const currentUserId = Number(userIdStr);
+        if (!response.ok) {
+            throw new Error(`Fallo del servidor: ${response.status}`);
+        }
 
-//     try {
-//         const response = await fetchApi('/sync/download', {
-//             method: 'GET',
-//             headers: {
-//                 'Authorization': `Bearer ${token}`
-//             }
-//         });
+        const jsonResponse = await response.json();
+        const lotesDescargados = jsonResponse.data?.lotes || jsonResponse.data || [];
 
-//         if (!response.ok) {
-//             throw new Error(`Fallo del servidor: ${response.status}`);
-//         }
+        if (!Array.isArray(lotesDescargados) || lotesDescargados.length === 0) {
+            return;
+        }
 
-//         const jsonResponse = await response.json();
-//         const lotesDescargados = jsonResponse.data?.lotes || jsonResponse.data || [];
+        const lotesFlat = [];
+        const proyectosFlat = [];
+        const ciclosFlat = [];
+        const visitasFlat = [];
+        const hojasFlat = [];
 
-//         if (!Array.isArray(lotesDescargados) || lotesDescargados.length === 0) {
-//             return;
-//         }
+        lotesDescargados.forEach(lote => {
+            const loteUuid = lote.uuid_movil || lote.id;
+            if (!loteUuid) return;
 
-//         const lotesFlat = [];
-//         const proyectosFlat = [];
-//         const ciclosFlat = [];
-//         const visitasFlat = [];
-//         const hojasFlat = [];
+            lotesFlat.push({
+                uuid_movil: loteUuid,
+                user_id: userIdStr ? Number(userIdStr) : null,
+                nombre_lote: lote.nombre_lote || lote.nombre || 'Lote Asignado',
+                ubicacion_manual: lote.ubicacion_manual || '',
+                coordenadas: typeof lote.geometria === 'string' ? lote.geometria : JSON.stringify(lote.geometria || []),
+                provincia_id: lote.province_id || 1,
+                canton_id: lote.canton_id || 1,
+                estacion_id: lote.location_id || null,
+                sync_status: SYNC_STATUS.SYNCED
+            });
 
-//         lotesDescargados.forEach(lote => {
-//             const loteUuid = lote.uuid_movil || lote.id;
-//             if (!loteUuid) return;
+            if (lote.proyectos && Array.isArray(lote.proyectos)) {
+                lote.proyectos.forEach(proyecto => {
+                    const proyUuid = proyecto.uuid_movil || proyecto.id;
+                    if (!proyUuid) return;
 
-//             lotesFlat.push({
-//                 uuid_movil: loteUuid,
-//                 usuario_id: currentUserId,
-//                 nombre_lote: lote.nombre_lote || lote.nombre || 'Lote Asignado',
-//                 ubicacion_manual: lote.jerarquia_ubicacion?.referencia_manual || '',
-//                 coordenadas: typeof lote.geometria === 'string' ? lote.geometria : JSON.stringify(lote.geometria || []),
-//                 province_id: lote.province_id || 1,
-//                 canton_id: lote.canton_id || 1,
-//                 sync_status: SYNC_STATUS.SYNCED
-//             });
+                    proyectosFlat.push({
+                        uuid_movil: proyUuid,
+                        lote_id: null, // se resuelve después con uuid matching
+                        titulo: proyecto.titulo || 'Proyecto Experimental',
+                        descripcion: proyecto.descripcion || '',
+                        variedad: proyecto.variedad || 'Desconocida',
+                        fecha_siembra: proyecto.fecha_siembra || null,
+                        tipo_acolchado: proyecto.tipo_acolchado || null,
+                        tipo_ensayo: proyecto.tipo_ensayo || null,
+                        diseno_experimental: proyecto.diseno_experimental || null,
+                        financiamiento: proyecto.financiamiento || null,
+                        colaborador_nombre: proyecto.colaborador_nombre || null,
+                        colaborador_telefono: proyecto.colaborador_telefono || null,
+                        colaborador_celular: proyecto.colaborador_celular || null,
+                        sync_status: SYNC_STATUS.SYNCED
+                    });
 
-//             if (lote.proyectos && Array.isArray(lote.proyectos)) {
-//                 lote.proyectos.forEach(proyecto => {
-//                     const proyUuid = proyecto.uuid_movil || proyecto.id;
-//                     if (!proyUuid) return;
+                    if (proyecto.ciclos && Array.isArray(proyecto.ciclos)) {
+                        proyecto.ciclos.forEach(ciclo => {
+                            const cicloUuid = ciclo.uuid_movil || ciclo.id;
+                            if (!cicloUuid) return;
 
-//                     proyectosFlat.push({
-//                         uuid_movil: proyUuid,
-//                         usuario_id: currentUserId,
-//                         lote_uuid: loteUuid,
-//                         responsable_id: proyecto.responsable_id || currentUserId,
+                            ciclosFlat.push({
+                                uuid_movil: cicloUuid,
+                                proyecto_id: null,
+                                cultivo_variedad: ciclo.cultivo_variedad || ciclo.cultivo || proyecto.variedad || 'Evaluación',
+                                distancia_siembra: ciclo.distancia_siembra || 'N/A',
+                                fecha_siembra: ciclo.fecha_siembra || ciclo.fechas?.siembra || proyecto.fecha_siembra || new Date().toISOString().split('T')[0],
+                                sync_status: SYNC_STATUS.SYNCED
+                            });
 
-//                         variedad: proyecto.variedad || 'Desconocida',
-//                         fecha_siembra: proyecto.fecha_siembra || null,
-//                         tipo_acolchado: proyecto.tipo_acolchado || null,
-//                         tipo_ensayo: proyecto.tipo_ensayo || null,
-//                         financiamiento: proyecto.financiamiento || null,
-//                         colaborador_nombre: proyecto.colaborador_nombre || null,
-//                         colaborador_telefono: proyecto.colaborador_telefono || null,
-//                         colaborador_celular: proyecto.colaborador_celular || null,
-//                         titulo: proyecto.titulo || 'Proyecto Experimental',
-//                         descripcion: proyecto.descripcion || '',
-//                         sync_status: SYNC_STATUS.SYNCED
-//                     });
+                            if (ciclo.visitas && Array.isArray(ciclo.visitas)) {
+                                ciclo.visitas.forEach(visita => {
+                                    const visitaUuid = visita.uuid_movil || visita.id;
+                                    if (!visitaUuid) return;
 
-//                     if (proyecto.ciclos && Array.isArray(proyecto.ciclos)) {
-//                         proyecto.ciclos.forEach(ciclo => {
-//                             const cicloUuid = ciclo.uuid_movil || ciclo.id;
-//                             if (!cicloUuid) return;
+                                    visitasFlat.push({
+                                        uuid_movil: visitaUuid,
+                                        ciclo_id: null,
+                                        proyecto_id: null,
+                                        tecnico_nombre: visita.tecnico_nombre || visita.tecnico || 'Técnico',
+                                        fecha_visita: visita.fecha_visita || visita.fecha || new Date().toISOString().split('T')[0],
+                                        observaciones: visita.observaciones || '',
+                                        recomendaciones: visita.recomendaciones || '',
+                                        sync_status: SYNC_STATUS.SYNCED
+                                    });
 
-//                             ciclosFlat.push({
-//                                 uuid_movil: cicloUuid,
-//                                 usuario_id: currentUserId,
-//                                 lote_uuid: loteUuid,
-//                                 proyecto_uuid: proyUuid,
-//                                 cultivo_variedad: ciclo.cultivo_variedad || ciclo.cultivo || proyecto.variedad || 'Evaluación',
-//                                 distancia_siembra: ciclo.distancia_siembra || 'N/A',
-//                                 fecha_siembra: ciclo.fecha_siembra || ciclo.fechas?.siembra || proyecto.fecha_siembra || new Date().toISOString().split('T')[0],
-//                                 sync_status: SYNC_STATUS.SYNCED
-//                             });
+                                    const hojas = visita.hojasDatos || visita.hojas_datos || visita.datos_tecnicos || [];
 
-//                             if (ciclo.visitas && Array.isArray(ciclo.visitas)) {
-//                                 ciclo.visitas.forEach(visita => {
-//                                     const visitaUuid = visita.uuid_movil || visita.id;
-//                                     if (!visitaUuid) return;
+                                    if (Array.isArray(hojas)) {
+                                        hojas.forEach(hoja => {
+                                            hojasFlat.push({
+                                                uuid_movil: hoja.uuid_movil || hoja.id,
+                                                visita_id: null,
+                                                nombre_plantilla: hoja.nombre_plantilla || hoja.plantilla || 'Bitácora Científica',
+                                                datos_variables: typeof hoja.datos_variables === 'object' ? JSON.stringify(hoja.datos_variables) : (hoja.variables || '{}'),
+                                                sync_status: SYNC_STATUS.SYNCED
+                                            });
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
 
-//                                     visitasFlat.push({
-//                                         uuid_movil: visitaUuid,
-//                                         usuario_id: currentUserId,
-//                                         proyecto_uuid: proyUuid,
-//                                         ciclo_uuid: cicloUuid,
-//                                         tecnico_nombre: visita.tecnico_nombre || visita.tecnico || 'Técnico',
-//                                         fecha_visita: visita.fecha_visita || visita.fecha || new Date().toISOString().split('T')[0],
-//                                         observaciones: visita.observaciones || '',
-//                                         recomendaciones: visita.recomendaciones || '',
-//                                         sync_status: SYNC_STATUS.SYNCED
-//                                     });
+        const upsertData = async (nombreTablaStr, tablaDb, dataArray) => {
+            if (dataArray.length === 0) return;
+            for (const item of dataArray) {
+                try {
+                    await db.insert(tablaDb).values(item).onConflictDoUpdate({
+                        target: tablaDb.uuid_movil,
+                        set: item
+                    });
+                } catch (e) {
+                    console.log(`[Sync] Error guardando en ${nombreTablaStr}:`, e.message);
+                }
+            }
+        };
 
-//                                     const hojas = visita.hojasDatos || visita.hojas_datos || visita.datos_tecnicos || [];
+        await upsertData('Lotes', lotes, lotesFlat);
+        await upsertData('Proyectos', proyectos, proyectosFlat);
+        await upsertData('Ciclos', ciclos_cultivo, ciclosFlat);
+        await upsertData('Visitas', visitas, visitasFlat);
+        await upsertData('Hojas Datos', hojas_datos, hojasFlat);
 
-//                                     if (Array.isArray(hojas)) {
-//                                         hojas.forEach(hoja => {
-//                                             hojasFlat.push({
-//                                                 uuid_movil: hoja.uuid_movil || hoja.id,
-//                                                 usuario_id: currentUserId,
-//                                                 visita_uuid: visitaUuid,
-//                                                 nombre_plantilla: hoja.nombre_plantilla || hoja.plantilla || 'Bitácora Científica',
-//                                                 datos_variables: typeof hoja.datos_variables === 'object' ? hoja.datos_variables : (hoja.variables || {}),
-//                                                 sync_status: SYNC_STATUS.SYNCED
-//                                             });
-//                                         });
-//                                     }
-//                                 });
-//                             }
-//                         });
-//                     }
-//                 });
-//             }
-//         });
-
-//         const upsertData = async (nombreTablaStr, tablaDb, dataArray) => {
-//             if (dataArray.length === 0) return;
-//             for (const item of dataArray) {
-//                 try {
-//                     await db.insert(tablaDb).values(item).onConflictDoUpdate({
-//                         target: tablaDb.uuid_movil,
-//                         set: item
-//                     });
-//                 } catch (e) {
-//                     console.log(`[Sync] Error guardando en ${nombreTablaStr}:`, e.message);
-//                 }
-//             }
-//         };
-
-//         await upsertData('Lotes', lotes, lotesFlat);
-//         await upsertData('Proyectos', proyectos, proyectosFlat);
-//         await upsertData('Ciclos', ciclos, ciclosFlat);
-//         await upsertData('Visitas', visitas, visitasFlat);
-//         await upsertData('Hojas Datos', hojas_datos, hojasFlat);
-        
-//     } catch (error) {
-//         console.error('[Sync] Error crítico en descargarMisDatos:', error);
-//     }
-// };
+    } catch (error) {
+        console.error('[Sync] Error crítico en descargarMisDatos:', error);
+    }
+};

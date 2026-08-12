@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, Text, TextInput, useWindowDimensions, View } from "react-native";
 
-import { COLORS } from "../colors";
+import { COLORS_CALC, getCalcColors } from "../colors";
 
 const formatearNumero = (valor, decimales = 2) => {
   if (!Number.isFinite(valor)) return "0";
@@ -18,17 +18,20 @@ const obtenerColumnas = (ancho) => {
   return 4;
 };
 
-function CampoDimension({ label, value, onChangeText }) {
+function CampoDimension({ label, value, onChangeText, colors }) {
   return (
     <View style={styles.inputGroup}>
-      <Text style={styles.labelLight}>{label}</Text>
+      <Text style={[styles.labelLight, { color: colors.dimTextSub }]}>{label}</Text>
       <TextInput
-        style={styles.inputParcela}
+        style={[styles.inputParcela, {
+          backgroundColor: colors.dimInputBg,
+          color: colors.dimInputText,
+        }]}
         keyboardType="decimal-pad"
         value={value}
         onChangeText={onChangeText}
         placeholder="0"
-        placeholderTextColor={COLORS.textMuted}
+        placeholderTextColor={colors.inputPlaceholder}
       />
     </View>
   );
@@ -44,23 +47,25 @@ export function DimensionesParcela({
   distanciaEntrePlantas,
   setDistanciaEntrePlantas,
   areaPreview,
+  isDark,
 }) {
   const { width } = useWindowDimensions();
   const columnas = obtenerColumnas(width);
   const itemWidth = columnas === 1 ? "100%" : `${100 / columnas - 2}%`;
+  const colors = getCalcColors(isDark);
 
   return (
     <LinearGradient
-      colors={[COLORS.primary, COLORS.primaryDark]}
+      colors={[colors.dimGradientStart, colors.dimGradientEnd]}
       style={styles.card}
     >
       <View style={styles.cardHeaderRow}>
-        <View style={styles.iconBadgeOnDark}>
-          <MaterialCommunityIcons name="ruler-square" size={18} color="#fff" />
+        <View style={[styles.iconBadgeOnDark, { backgroundColor: colors.dimIconBadge }]}>
+          <MaterialCommunityIcons name="ruler-square" size={18} color={colors.dimText} />
         </View>
         <View style={styles.headerTextWrap}>
-          <Text style={styles.cardTitleLight}>Dimensiones de la parcela</Text>
-          <Text style={styles.cardSubtitleLight}>Área = largo × ancho</Text>
+          <Text style={[styles.cardTitleLight, { color: colors.dimText }]}>Dimensiones de la parcela</Text>
+          <Text style={[styles.cardSubtitleLight, { color: colors.dimTextSub }]}>Área = largo × ancho</Text>
         </View>
       </View>
 
@@ -70,6 +75,7 @@ export function DimensionesParcela({
             label="Largo de la parcela (m)"
             value={largoMetros}
             onChangeText={setLargoMetros}
+            colors={colors}
           />
         </View>
         <View style={{ width: itemWidth }}>
@@ -77,6 +83,7 @@ export function DimensionesParcela({
             label="Ancho de la parcela (m)"
             value={anchoMetros}
             onChangeText={setAnchoMetros}
+            colors={colors}
           />
         </View>
         <View style={{ width: itemWidth }}>
@@ -84,6 +91,7 @@ export function DimensionesParcela({
             label="Distancia entre surcos (m)"
             value={distanciaEntreSurcos}
             onChangeText={setDistanciaEntreSurcos}
+            colors={colors}
           />
         </View>
         <View style={{ width: itemWidth }}>
@@ -91,17 +99,18 @@ export function DimensionesParcela({
             label="Distancia entre plantas (m)"
             value={distanciaEntrePlantas}
             onChangeText={setDistanciaEntrePlantas}
+            colors={colors}
           />
         </View>
       </View>
 
-      <View style={styles.areaPreviewPill}>
+      <View style={[styles.areaPreviewPill, { backgroundColor: colors.dimAreaPillBg }]}>
         <MaterialCommunityIcons
           name="texture-box"
           size={16}
-          color={COLORS.primaryDark}
+          color={colors.dimAreaPillText}
         />
-        <Text style={styles.areaPreviewText}>
+        <Text style={[styles.areaPreviewText, { color: colors.dimAreaPillText }]}>
           Área: {formatearNumero(areaPreview.areaM2, 2)} m² ·{" "}
           {formatearNumero(areaPreview.areaHa, 4)} ha
         </Text>
@@ -125,7 +134,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -136,11 +144,9 @@ const styles = StyleSheet.create({
   cardTitleLight: {
     fontSize: 16,
     fontWeight: "800",
-    color: COLORS.white,
   },
   cardSubtitleLight: {
     fontSize: 12,
-    color: "rgba(255,255,255,0.78)",
     marginTop: 2,
   },
   grid: {
@@ -152,24 +158,20 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   labelLight: {
-    color: "rgba(255,255,255,0.9)",
     fontWeight: "700",
     fontSize: 12,
     marginBottom: 6,
   },
   inputParcela: {
-    backgroundColor: COLORS.white,
     minHeight: 44,
     borderRadius: 10,
     textAlign: "center",
     fontWeight: "800",
-    color: COLORS.textDark,
     paddingHorizontal: 10,
   },
   areaPreviewPill: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.white,
     borderRadius: 20,
     paddingVertical: 9,
     paddingHorizontal: 12,
@@ -177,7 +179,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   areaPreviewText: {
-    color: COLORS.primaryDark,
     fontWeight: "800",
     fontSize: 12,
     marginLeft: 6,

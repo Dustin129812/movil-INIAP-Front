@@ -321,6 +321,7 @@ export const useCroquisMapa = (editLoteId = null) => {
                     nombre_lote: form.nombreLote.trim(),
                     coordenadas: points,
                     ubicacion_manual: form.cultivoAnterior.trim() || null,
+                    estado_verificacion: form.estadoVerificacion || 'pendiente',
                     province_id: ubicacionSeleccionada.provincia.id,
                     canton_id: ubicacionSeleccionada.canton.id,
                     location_id: ubicacionSeleccionada.estacion?.id || null,

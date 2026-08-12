@@ -27,7 +27,6 @@ export function SearchProvider({ children }) {
         setError(null);
         try {
             const data = await lotesService.obtenerLotes();
-            // El servicio puede retornar: array directo, { data: [] }, { lotes: [] }
             if (Array.isArray(data)) {
                 setListaLotes(data);
             } else if (data && Array.isArray(data.data)) {
@@ -48,8 +47,6 @@ export function SearchProvider({ children }) {
     const recargar = useCallback(() => {
         cargarLotes();
     }, [cargarLotes]);
-
-    // Recargar cuando la pantalla recibe foco
     useFocusEffect(
         useCallback(() => {
             cargarLotes();
@@ -58,7 +55,6 @@ export function SearchProvider({ children }) {
 
     const lotesFiltrados = useMemo(() => {
         if (!searchText.trim()) {
-            // Sin texto de búsqueda, solo filtra por estado
             if (filtroEstado === 'TODOS') {
                 return listaLotes;
             }
@@ -71,12 +67,9 @@ export function SearchProvider({ children }) {
                 return true;
             });
         }
-
-        // Con texto de búsqueda - búsqueda flexible por cualquier caracter
         const query = searchText.toLowerCase().trim();
 
         return listaLotes.filter(lote => {
-            // Busca en todos los campos disponibles
             const searchableFields = [
                 lote.nombre_lote,
                 lote.uuid_movil,

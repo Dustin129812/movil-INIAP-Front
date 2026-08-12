@@ -6,7 +6,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,8 +13,10 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { COLORS } from "../../components/calculadora/colors";
+import { useTheme } from "../../services/ThemeContext";
+import { COLORS_CALC, getCalcColors } from "../../components/calculadora/colors";
 import { useCalculadora } from "../../components/calculadora/hooks/useCalculadora";
 import {
   DetalleCalculo,
@@ -31,6 +32,7 @@ function BotonAccion({
   onPress,
   tipo = "secundario",
   deshabilitado = false,
+  colors,
 }) {
   const esPrimario = tipo === "primario";
 
@@ -43,7 +45,7 @@ function BotonAccion({
         disabled={deshabilitado}
       >
         <LinearGradient
-          colors={[COLORS.primary, COLORS.primaryDark]}
+          colors={[colors.dimGradientStart, colors.dimGradientEnd]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={[styles.actionButton, deshabilitado && styles.actionDisabled]}
@@ -60,14 +62,15 @@ function BotonAccion({
       style={[
         styles.actionButton,
         styles.actionButtonSecondary,
+        { backgroundColor: colors.macroTint },
         deshabilitado && styles.actionDisabled,
       ]}
       onPress={onPress}
       activeOpacity={0.82}
       disabled={deshabilitado}
     >
-      <MaterialCommunityIcons name={icono} size={19} color={COLORS.primaryDark} />
-      <Text style={styles.actionSecondaryText}>{label}</Text>
+      <MaterialCommunityIcons name={icono} size={19} color={colors.macroBorder} />
+      <Text style={[styles.actionSecondaryText, { color: colors.macroBorder }]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -76,6 +79,8 @@ export default function CalculadoraScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
+  const { isDark } = useTheme();
+  const colors = getCalcColors(isDark);
 
   const calculadora = useCalculadora();
   const {
@@ -144,13 +149,13 @@ export default function CalculadoraScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.dimGradientEnd }]}>
       <KeyboardAvoidingView
-        style={styles.container}
+        style={[styles.container, { backgroundColor: colors.bg }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <LinearGradient
-          colors={[COLORS.primaryDark, COLORS.primary]}
+          colors={[colors.dimGradientStart, colors.dimGradientEnd]}
           style={styles.header}
         >
           <TouchableOpacity
@@ -177,6 +182,7 @@ export default function CalculadoraScreen() {
               nivelRecomendado={nivelRecomendado}
               cambiarNivelRecomendado={cambiarNivelRecomendado}
               resultadoCalculo={resultadoCalculo}
+              isDark={isDark}
             />
 
             <DimensionesParcela
@@ -189,55 +195,68 @@ export default function CalculadoraScreen() {
               distanciaEntrePlantas={distanciaEntrePlantas}
               setDistanciaEntrePlantas={setDistanciaEntrePlantas}
               areaPreview={areaPreview}
+              isDark={isDark}
             />
 
             <ListaFertilizantes
               sacosPorHectarea={sacosPorHectarea}
               cambiarSacosPorHectarea={cambiarSacosPorHectarea}
               limpiarCantidades={limpiarCantidades}
+              isDark={isDark}
             />
 
-            <View style={styles.actionsCard}>
+            <View style={[styles.actionsCard, {
+              backgroundColor: colors.cardBg,
+              borderColor: colors.dividerColor,
+            }]}>
               <BotonAccion
                 label="Calcular"
                 icono="calculator-variant-outline"
                 onPress={ejecutarCalculo}
                 tipo="primario"
+                colors={colors}
               />
               <BotonAccion
                 label="Limpiar"
                 icono="broom"
                 onPress={confirmarLimpieza}
+                colors={colors}
               />
               <BotonAccion
                 label="Restaurar ejemplo del Excel"
                 icono="restore"
                 onPress={restaurarEjemplo}
+                colors={colors}
               />
               <BotonAccion
                 label={mostrarDetalle ? "Ocultar detalle" : "Ver detalle"}
                 icono={mostrarDetalle ? "eye-off-outline" : "eye-outline"}
                 onPress={() => setMostrarDetalle((prev) => !prev)}
                 deshabilitado={!resultadoCalculo}
+                colors={colors}
               />
             </View>
 
             {!!mensajeError && (
-              <View style={styles.errorBox}>
+              <View style={[styles.errorBox, {
+                backgroundColor: colors.dangerSoft,
+                borderColor: colors.danger,
+              }]}>
                 <MaterialCommunityIcons
                   name="alert-circle-outline"
                   size={18}
-                  color={COLORS.danger}
+                  color={colors.danger}
                 />
-                <Text style={styles.errorText}>{mensajeError}</Text>
+                <Text style={[styles.errorText, { color: colors.danger }]}>{mensajeError}</Text>
               </View>
             )}
 
-            <ResultadosCalculo resultadoCalculo={resultadoCalculo} />
+            <ResultadosCalculo resultadoCalculo={resultadoCalculo} isDark={isDark} />
 
             {resultadoCalculo && mostrarDetalle && (
               <DetalleCalculo
                 detalles={resultadoCalculo.detallePorFertilizante}
+                isDark={isDark}
               />
             )}
           </View>
@@ -250,11 +269,9 @@ export default function CalculadoraScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.primaryDark,
   },
   container: {
     flex: 1,
-    backgroundColor: COLORS.bg,
   },
   header: {
     paddingTop: Platform.OS === "ios" ? 12 : 36,
@@ -294,12 +311,10 @@ const styles = StyleSheet.create({
     alignSelf: "center",
   },
   actionsCard: {
-    backgroundColor: COLORS.cardBg,
     borderRadius: 20,
     padding: 14,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
@@ -319,7 +334,6 @@ const styles = StyleSheet.create({
   },
   actionButtonSecondary: {
     width: "100%",
-    backgroundColor: COLORS.primarySoft,
     marginBottom: 10,
   },
   actionPrimaryText: {
@@ -330,7 +344,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   actionSecondaryText: {
-    color: COLORS.primaryDark,
     fontWeight: "900",
     fontSize: 13,
     marginLeft: 8,
@@ -342,16 +355,13 @@ const styles = StyleSheet.create({
   errorBox: {
     flexDirection: "row",
     alignItems: "flex-start",
-    backgroundColor: COLORS.dangerSoft,
     borderRadius: 14,
     padding: 12,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: "#f3b2a9",
   },
   errorText: {
     flex: 1,
-    color: COLORS.danger,
     fontWeight: "800",
     fontSize: 12,
     lineHeight: 17,

@@ -16,7 +16,6 @@ const obtenerToken = async () => {
 export const inicializarBaseDatosLocal = async () => {
     try {
         await initDb();
-        console.log('[LocalLotes] Base de datos local lista');
     } catch (error) {
         console.error('[LocalLotes] Error inicializando DB local');
     }
@@ -26,16 +25,23 @@ export const inicializarBaseDatosLocal = async () => {
 export const obtenerLotes = async () => {
     try {
         const token = await obtenerToken();
-        const respuesta = await fetch(`${URL_API}/lotes`, {
+        const respuesta = await fetch(`${URL_API}/agrodecide/lotes`, {
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
             },
         });
         const datos = await respuesta.json();
-        return datos.success ? datos.lotes || [] : [];
+
+        // Manejar varios formatos de respuesta igual que lotesService
+        if (Array.isArray(datos)) return datos;
+        if (datos.data) return datos.data;
+        if (datos.lotes) return datos.lotes;
+        if (datos.result) return datos.result;
+        if (datos.success && Array.isArray(datos.lotes)) return datos.lotes;
+        if (datos.success && Array.isArray(datos.data)) return datos.data;
+        return [];
     } catch (error) {
-        console.warn('[LocalLotes] Error conectando al servidor, usando datos locales');
         const lotesLocales = await obtenerLotesLocales();
         return lotesLocales;
     }
@@ -55,7 +61,7 @@ export const crearLoteLocal = async (datosLote) => {
 
         // Intentar guardar en servidor
         try {
-            const respuesta = await fetch(`${URL_API}/lotes`, {
+            const respuesta = await fetch(`${URL_API}/agrodecide/lotes`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -75,7 +81,6 @@ export const crearLoteLocal = async (datosLote) => {
                 }
             }
         } catch (serverError) {
-            console.warn('[LocalLotes] Guardado solo localmente, pendiente sincronización');
         }
 
         return { success: true, lote: loteLocal, pendingSync: true };
@@ -101,7 +106,7 @@ export const sincronizarLotesPendientes = async () => {
 
         for (const lote of lotesPendientes) {
             try {
-                const respuesta = await fetch(`${URL_API}/lotes`, {
+                const respuesta = await fetch(`${URL_API}/agrodecide/lotes`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

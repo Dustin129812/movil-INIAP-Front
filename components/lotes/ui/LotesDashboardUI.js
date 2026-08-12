@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -12,12 +12,23 @@ import {
     ActivityIndicator,
     Modal,
     ImageBackground,
-    Image,
+    Dimensions,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    useAnimatedReaction,
+    withTiming,
+    withDelay,
+    Easing,
+    interpolate,
+    runOnJS,
+} from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import { useSearch } from '../context/SearchContext';
 import { useTheme } from '../../../services/ThemeContext';
@@ -35,6 +46,9 @@ import {
 } from './lotesDashboardAnimations';
 
 import VerticesMap from './VerticesMap';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES'];
 
 // ============================================
 // COMPONENTE: Modal Selector de Estado
@@ -82,19 +96,12 @@ function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }
 function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusChange }) {
     const colores = getColores(isDark);
     const statusConfig = getStatusConfig(item.estado_verificacion);
-    const shortUuid = item.uuid_movil ? item.uuid_movil.substring(0, 8).toUpperCase() : 'N/A';
 
-    // Obtener vértices reales del item
     const vertices = item.vertices || item.coordenadas || item.puntos || null;
     const verticesCount = vertices
         ? (Array.isArray(vertices) ? vertices.length : 0)
         : (item.vertices_count || 0);
 
-    // Determinar si tiene croquis o imagen
-    const hasImage = !!(item.croquis_url || item.imagen_url);
-    const hasVertices = verticesCount > 0;
-
-    // Obtener coordenadas de inicio y fin
     const getFirstVertex = () => {
         if (!vertices || !Array.isArray(vertices) || vertices.length === 0) return null;
         const first = vertices[0];
@@ -109,18 +116,14 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
 
     const firstVertex = getFirstVertex();
     const lastVertex = getLastVertex();
-
-    // Cultivo del proyecto asociado
     const cultivo = item.proyectos?.[0]?.cultivo || item.cultivo || null;
 
-    // Formatear coordenada
     const formatCoord = (val) => {
         if (val == null) return '-';
         return val.toFixed(6);
     };
 
     const { animateIn, handlePressIn, handlePressOut, containerAnimatedStyle } = useCardAnimations(index);
-
     const defaultImage = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop';
 
     useEffect(() => {
@@ -136,15 +139,12 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
                 onPress={onPress}
                 style={[styles.figmaCardContainer, { backgroundColor: colores.cardBg }]}
             >
-                {/* SECCIÓN SUPERIOR: IMAGEN */}
                 <ImageBackground
                     source={{ uri: item.imagen_url || defaultImage }}
                     style={styles.figmaImageSection}
                     imageStyle={styles.figmaImageStyle}
                 >
                     <View style={styles.imageOverlay} />
-
-                    {/* Fila superior: Estado y Botón Editar */}
                     <View style={styles.figmaTopRow}>
                         <TouchableOpacity
                             onPress={(e) => { e.stopPropagation(); onStatusChange(item); }}
@@ -166,7 +166,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
                         </TouchableOpacity>
                     </View>
 
-                    {/* Fila inferior: Título y Ubicación */}
                     <View style={styles.figmaImageBottomRow}>
                         <View style={styles.figmaTitleArea}>
                             <Text style={styles.figmaCardTitle} numberOfLines={1}>
@@ -191,9 +190,7 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
                     </View>
                 </ImageBackground>
 
-                {/* SECCIÓN INFERIOR: Información detallada */}
                 <View style={styles.infoBottomSection}>
-                    {/* Fila 1: Ubicación */}
                     <View style={styles.infoRowGrid}>
                         <View style={styles.infoItem}>
                             <MaterialCommunityIcons name="map-marker-radius" size={14} color={colores.textSecondary} />
@@ -211,7 +208,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
                         </View>
                     </View>
 
-                    {/* Fila 2: Características */}
                     <View style={styles.infoRowGrid}>
                         <View style={styles.infoItem}>
                             <MaterialCommunityIcons name="water" size={14} color="#0A84FF" />
@@ -229,7 +225,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
                         </View>
                     </View>
 
-                    {/* Fila 3: Vértices y Estación */}
                     <View style={styles.infoRowGrid}>
                         <View style={styles.infoItem}>
                             <MaterialCommunityIcons name="vector-polygon" size={14} color="#FF9500" />
@@ -247,8 +242,7 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
                         </View>
                     </View>
 
-                    {/* Fila 4: Coordenadas (solo si hay vértices) */}
-                    {hasVertices && firstVertex && (
+                    {verticesCount > 0 && firstVertex && (
                         <View style={[styles.coordsRow, { backgroundColor: colores.subCardBg }]}>
                             <View style={styles.coordItem}>
                                 <Text style={[styles.coordLabel, { color: colores.textSecondary }]}>Inicio</Text>
@@ -269,15 +263,13 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
                                     Lat: {formatCoord(lastVertex?.lat)}
                                 </Text>
                             </View>
-                            {/* Mini mapa con croquis */}
                             <View style={[styles.miniMapContainer, { backgroundColor: colores.cardBg }]}>
                                 <VerticesMap vertices={vertices} color={statusConfig.color} />
                             </View>
                         </View>
                     )}
 
-                    {/* Si no hay vértices, mostrar placeholder del mapa */}
-                    {!hasVertices && (
+                    {verticesCount === 0 && (
                         <View style={[styles.noVerticesPlaceholder, { backgroundColor: colores.subCardBg }]}>
                             <MaterialCommunityIcons name="vector-polyline" size={24} color={colores.textSecondary} />
                             <Text style={[styles.noVerticesText, { color: colores.textSecondary }]}>
@@ -292,7 +284,7 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onPress, onStatusC
 }
 
 // ============================================
-// COMPONENTE: Tarjeta Skeleton (Loading)
+// COMPONENTE: Tarjeta Skeleton Exacta Estilo YouTube
 // ============================================
 function SkeletonCard({ isDark }) {
     const colores = getColores(isDark);
@@ -303,13 +295,16 @@ function SkeletonCard({ isDark }) {
     }, []);
 
     return (
-        <Animated.View style={[styles.skeletonCard, animatedStyle, { backgroundColor: colores.skeletonBg }]}>
-            <View style={styles.skeletonHeader}>
-                <View style={[styles.skeletonBadge, { backgroundColor: colores.skeletonBadgeBg }]} />
-                <View style={[styles.skeletonStatus, { backgroundColor: colores.skeletonBadgeBg }]} />
+        <Animated.View style={[styles.figmaCardContainer, animatedStyle, { backgroundColor: colores.skeletonBg }]}>
+            {/* Bloque grande superior simulando la imagen de la tarjeta */}
+            <View style={[styles.figmaImageSection, { backgroundColor: colores.skeletonBadgeBg, height: 210, marginBottom: 12 }]} />
+            
+            {/* Bloques de líneas simulando los textos (estilo YouTube) */}
+            <View style={{ gap: 8 }}>
+                <View style={[styles.skeletonLine, { backgroundColor: colores.skeletonBadgeBg, width: '85%', height: 18, borderRadius: 6 }]} />
+                <View style={[styles.skeletonLine, { backgroundColor: colores.skeletonBadgeBg, width: '60%', height: 14, borderRadius: 6 }]} />
+                <View style={[styles.skeletonLine, { backgroundColor: colores.skeletonBadgeBg, width: '40%', height: 12, borderRadius: 6, marginTop: 4 }]} />
             </View>
-            <View style={[styles.skeletonBlock, { backgroundColor: colores.skeletonBadgeBg }]} />
-            <View style={[styles.skeletonMetrics, { backgroundColor: colores.skeletonBadgeBg }]} />
         </Animated.View>
     );
 }
@@ -319,6 +314,7 @@ function SkeletonCard({ isDark }) {
 // ============================================
 export default function LotesDashboardUI() {
     const router = useRouter();
+    const insets = useSafeAreaInsets();
     const { isLoading, error, recargar, lotesFiltrados, filtroEstado, setFiltroEstado, searchText, listaLotes } = useSearch();
     const { isDark } = useTheme();
 
@@ -327,6 +323,93 @@ export default function LotesDashboardUI() {
     const [statusPickerVisible, setStatusPickerVisible] = useState(false);
     const [loteSeleccionado, setLoteSeleccionado] = useState(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+
+    const horizontalScrollRef = useRef(null);
+    const scrollY = useSharedValue(0);
+
+    // --- Header estilo Apple (mismo patrón que Home) ---
+    // El título "Lotes", el contador Y los tabs (TODOS/ACTIVOS/PENDIENTES)
+    // se ocultan TODOS juntos apenas se empieza a scrollear, y solo
+    // reaparecen cuando el scroll vuelve arriba del todo — o al instante si
+    // el usuario desliza el dedo para cambiar de tab (swipe horizontal).
+    const TOP_REVEAL_THRESHOLD = 12;
+    const HIDE_DURATION = 160;
+    const REVEAL_DURATION = 260;
+    const STAGGER = 70; // cuánto se retrasa el elemento que va "atrás" en cada dirección
+
+    const titleOpacity = useSharedValue(1);
+    const titleTranslateY = useSharedValue(0);
+    const counterOpacity = useSharedValue(1);
+    const counterTranslateY = useSharedValue(0);
+    const tabsOpacity = useSharedValue(1);
+    const tabsTranslateY = useSharedValue(0);
+
+    useAnimatedReaction(
+        () => scrollY.value <= TOP_REVEAL_THRESHOLD,
+        (isAtTop, wasAtTop) => {
+            if (isAtTop === wasAtTop) return;
+
+            if (isAtTop) {
+                // Reaparece: contador + tabs primero, título con un pequeño retraso
+                counterOpacity.value = withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
+                counterTranslateY.value = withTiming(0, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
+                tabsOpacity.value = withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
+                tabsTranslateY.value = withTiming(0, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
+                titleOpacity.value = withDelay(STAGGER, withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) }));
+                titleTranslateY.value = withDelay(STAGGER, withTiming(0, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) }));
+            } else {
+                // Desaparece: el título se va primero, el contador y los tabs aguantan un poco más
+                titleOpacity.value = withTiming(0, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) });
+                titleTranslateY.value = withTiming(-6, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) });
+                counterOpacity.value = withDelay(STAGGER, withTiming(0, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) }));
+                counterTranslateY.value = withDelay(STAGGER, withTiming(-6, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) }));
+                tabsOpacity.value = withDelay(STAGGER, withTiming(0, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) }));
+                tabsTranslateY.value = withDelay(STAGGER, withTiming(-6, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) }));
+            }
+        },
+        [TOP_REVEAL_THRESHOLD]
+    );
+
+    const titleAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: titleOpacity.value,
+        transform: [{ translateY: titleTranslateY.value }],
+    }));
+
+    const counterAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: counterOpacity.value,
+        transform: [{ translateY: counterTranslateY.value }],
+    }));
+
+    const tabsAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: tabsOpacity.value,
+        transform: [{ translateY: tabsTranslateY.value }],
+    }));
+
+    // Alturas reales del header, para reservar el espacio justo arriba del
+    // contenido SIN dejar un hueco fijo: este padding vive DENTRO del
+    // contentContainerStyle de cada lista, así que se scrollea junto con el
+    // contenido en vez de quedar pegado como un tope permanente.
+    const TITLE_ROW_HEIGHT = 40;
+    const TITLE_ROW_MARGIN_TOP = 6;
+    const TABS_ROW_HEIGHT = 40;
+    const TABS_ROW_MARGIN_TOP = 14;
+    const HEADER_BOTTOM_GAP = 10;
+    const pinnedTabsHeight = insets.top + TITLE_ROW_MARGIN_TOP + TITLE_ROW_HEIGHT + TABS_ROW_MARGIN_TOP + TABS_ROW_HEIGHT + HEADER_BOTTOM_GAP;
+
+    const handleScroll = (event) => {
+        scrollY.value = event.nativeEvent.contentOffset.y;
+    };
+
+    // Al deslizar el dedo para cambiar de tab (TODOS/ACTIVOS/PENDIENTES),
+    // el header entero (título + contador + tabs) vuelve a aparecer al
+    // instante, sin esperar a que el usuario scrollee la lista de vuelta
+    // arriba. Como todas las listas comparten el mismo `scrollY`, esto
+    // dispara automáticamente la animación de reaparición vía
+    // useAnimatedReaction de arriba.
+    const revealHeaderForTabChange = () => {
+        scrollY.value = 0;
+    };
 
     const getStatusConfig = (syncStatus) => {
         return ESTILOS_STATUS[syncStatus] || ESTILOS_STATUS.borrador;
@@ -362,20 +445,32 @@ export default function LotesDashboardUI() {
         }
     };
 
-    const renderItem = ({ item, index }) => (
-        <AnimatedCard
-            item={item}
-            index={index}
-            getStatusConfig={getStatusConfig}
-            isDark={isDark}
-            onPress={() => handlePressLote(item)}
-            onStatusChange={handleStatusChange}
-        />
-    );
+    const handleTabPress = (tabName, index) => {
+        setFiltroEstado(tabName);
+        revealHeaderForTabChange();
+        if (horizontalScrollRef.current) {
+            horizontalScrollRef.current.scrollTo({ x: index * SCREEN_WIDTH, animated: false });
+        }
+    };
 
-    const renderEmptyState = () => {
+    const handleScrollEnd = (e) => {
+        const offsetX = e.nativeEvent.contentOffset.x;
+        const index = Math.round(offsetX / SCREEN_WIDTH);
+        if (TABS[index] && TABS[index] !== filtroEstado) {
+            setFiltroEstado(TABS[index]);
+        }
+        revealHeaderForTabChange();
+    };
+
+    const onRefresh = async () => {
+        setRefreshing(true);
+        await recargar();
+        setRefreshing(false);
+    };
+
+    const renderEmptyState = (currentTab) => {
         const hasSearch = searchText && searchText.trim().length > 0;
-        const hasFilter = filtroEstado !== 'TODOS';
+        const hasFilter = currentTab !== 'TODOS';
         const isFiltered = hasSearch || hasFilter;
 
         let title = 'Sin Lotes Encontrados';
@@ -384,13 +479,13 @@ export default function LotesDashboardUI() {
         if (isFiltered) {
             if (hasSearch && hasFilter) {
                 title = 'Sin resultados';
-                message = `No se encontraron lotes para "${searchText}" con filtro ${filtroEstado}`;
+                message = `No se encontraron lotes para "${searchText}" con filtro ${currentTab}`;
             } else if (hasSearch) {
                 title = 'Sin resultados';
                 message = `No se encontraron lotes para "${searchText}"`;
             } else {
                 title = 'Sin lotes';
-                message = `No hay lotes ${filtroEstado === 'ACTIVOS' ? 'activos' : 'pendientes'}`;
+                message = `No hay lotes ${currentTab === 'ACTIVOS' ? 'activos' : 'pendientes'}`;
             }
         }
 
@@ -409,9 +504,8 @@ export default function LotesDashboardUI() {
         );
     };
 
-    const renderLoading = () => (
+    const renderLoadingSkeletons = () => (
         <View style={styles.skeletonListContainer}>
-            <SkeletonCard isDark={isDark} />
             <SkeletonCard isDark={isDark} />
             <SkeletonCard isDark={isDark} />
         </View>
@@ -429,7 +523,7 @@ export default function LotesDashboardUI() {
 
     return (
         <View style={[styles.container, { backgroundColor: colores.bg }]}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
             <StatusPickerModal
                 visible={statusPickerVisible}
@@ -439,74 +533,179 @@ export default function LotesDashboardUI() {
                 isDark={isDark}
             />
 
-            <View style={[styles.header, { backgroundColor: colores.bg }]}>
+            {/* Scrim de legibilidad para el status bar: fijo, no se desvanece,
+                para que la hora/batería/wifi se lean bien aunque la lista
+                pase justo por debajo. */}
+            <LinearGradient
+                pointerEvents="none"
+                colors={
+                    isDark
+                        ? ['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']
+                        : ['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0)']
+                }
+                style={[styles.statusBarScrim, { height: insets.top + 40 }]}
+            />
+
+            {/* TÍTULO "Lotes" + CONTADOR — se ocultan por completo al scrollear
+                y solo reaparecen arriba del todo, igual que "Home". */}
+            <View style={[styles.header, { paddingTop: insets.top + TITLE_ROW_MARGIN_TOP }]}>
                 <View style={styles.headerTopRow}>
-                    <View style={styles.headerLeft}>
-                        <Text style={[styles.headerTitle, { color: colores.textPrimary }]}>Lotes</Text>
-                        <View style={[styles.headerDividerVertical, { backgroundColor: colores.dividerColor }]} />
-                        <Text style={[styles.headerSubtitle, { color: colores.textSecondary }]}>Gestión y control</Text>
-                    </View>
+                    <Animated.Text style={[styles.headerHomeTitle, { color: colores.textPrimary }, titleAnimatedStyle]}>
+                        Lotes
+                    </Animated.Text>
 
-                    <View style={styles.headerRight}>
-                        <View style={[styles.counterBadge, { backgroundColor: colores.counterBg }]}>
-                            <Text style={[styles.counterText, { color: colores.counterText }]}>{lotesFiltrados.length}</Text>
-                        </View>
-                    </View>
-                </View>
-
-                {/* TABS DE FILTRO */}
-                <View style={styles.filterTabsContainer}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
-                        {['TODOS', 'ACTIVOS', 'PENDIENTES'].map((tab) => (
-                            <TouchableOpacity
-                                key={tab}
-                                activeOpacity={0.7}
-                                onPress={() => setFiltroEstado(tab)}
+                    <Animated.View style={counterAnimatedStyle}>
+                        <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.counterGlassPill}>
+                            <View
                                 style={[
-                                    styles.filterTab,
-                                    { backgroundColor: colores.badgeBg },
-                                    filtroEstado === tab && { backgroundColor: colores.textPrimary },
+                                    StyleSheet.absoluteFillObject,
+                                    { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' },
                                 ]}
-                            >
-                                <Text
-                                    style={[
-                                        styles.filterTabText,
-                                        { color: colores.textSecondary },
-                                        filtroEstado === tab && { color: colores.bg },
-                                    ]}
-                                >
-                                    {tab}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
+                            />
+                            <LinearGradient
+                                colors={
+                                    isDark
+                                        ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
+                                        : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
+                                }
+                                start={{ x: 0.15, y: 0 }}
+                                end={{ x: 0.85, y: 1 }}
+                                style={StyleSheet.absoluteFillObject}
+                            />
+                            <View
+                                style={[
+                                    styles.counterGlassSpecular,
+                                    { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' },
+                                ]}
+                            />
+                            <View
+                                style={[
+                                    styles.counterGlassBorder,
+                                    { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' },
+                                ]}
+                            />
+                            <MaterialCommunityIcons name="vector-square" size={16} color="#34C759" style={{ marginRight: 6 }} />
+                            <Text style={[styles.counterGlassNumber, { color: colores.textPrimary }]}>{lotesFiltrados.length}</Text>
+                        </BlurView>
+                    </Animated.View>
                 </View>
             </View>
 
-            {isLoading ? renderLoading() : error ? renderError() : (
-                <>
-                    {listaLotes.length === 0 ? (
-                        <View style={styles.emptyState}>
-                            <View style={[styles.emptyIconContainer, { backgroundColor: colores.emptyIconBg }]}>
-                                <MaterialCommunityIcons name="folder-open-outline" size={44} color={colores.textSecondary} />
+            {/* TABS DE FILTRO — liquid glass; se ocultan y reaparecen JUNTO
+                con "Lotes" y el contador (mismo trigger de scroll), y
+                también reaparecen al instante al deslizar el dedo para
+                cambiar de tab. */}
+            <View style={[styles.pinnedTabsWrap, { paddingTop: insets.top + TITLE_ROW_MARGIN_TOP + TITLE_ROW_HEIGHT + TABS_ROW_MARGIN_TOP }]}>
+                <Animated.View style={tabsAnimatedStyle}>
+                    <BlurView intensity={isDark ? 45 : 65} tint={isDark ? 'dark' : 'light'} style={styles.tabsGlassContainer}>
+                        <View
+                            style={[
+                                StyleSheet.absoluteFillObject,
+                            { backgroundColor: isDark ? 'rgba(20,20,22,0.30)' : 'rgba(255,255,255,0.35)' },
+                        ]}
+                    />
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
+                        {TABS.map((tab, index) => {
+                            const active = filtroEstado === tab;
+                            return (
+                                <TouchableOpacity
+                                    key={tab}
+                                    activeOpacity={0.7}
+                                    onPress={() => handleTabPress(tab, index)}
+                                    style={styles.filterTabTouchable}
+                                >
+                                    {active ? (
+                                        <BlurView intensity={isDark ? 60 : 85} tint={isDark ? 'dark' : 'light'} style={styles.filterTabActiveGlass}>
+                                            <View
+                                                style={[
+                                                    StyleSheet.absoluteFillObject,
+                                                    { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' },
+                                                ]}
+                                            />
+                                            <View
+                                                style={[
+                                                    styles.counterGlassBorder,
+                                                    { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' },
+                                                ]}
+                                            />
+                                            <Text style={[styles.filterTabText, { color: colores.textPrimary, fontWeight: '800' }]}>
+                                                {tab}
+                                            </Text>
+                                        </BlurView>
+                                    ) : (
+                                        <View style={styles.filterTabInactive}>
+                                            <Text style={[styles.filterTabText, { color: colores.textSecondary }]}>{tab}</Text>
+                                        </View>
+                                    )}
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                    </BlurView>
+                </Animated.View>
+            </View>
+
+
+            {/* CONTENIDO — sin padding fijo: el espacio para el header vive
+                DENTRO de cada lista (contentContainerStyle), así que se
+                scrollea junto con el contenido y no deja ningún tope. */}
+            <View style={styles.contentWrapper}>
+                {/* VISTA DESLIZABLE HORIZONTALMENTE ULTRA RÁPIDA Y FLUIDA */}
+                {error ? (
+                    renderError()
+                ) : (
+                    <ScrollView
+                        ref={horizontalScrollRef}
+                        horizontal
+                        pagingEnabled
+                        showsHorizontalScrollIndicator={false}
+                        onScrollBeginDrag={revealHeaderForTabChange}
+                        onMomentumScrollEnd={handleScrollEnd}
+                        scrollEventThrottle={16}
+                        style={{ flex: 1 }}
+                        contentInsetAdjustmentBehavior="never"
+                        automaticallyAdjustContentInsets={false}
+                    >
+                        {TABS.map((tab) => (
+                            <View key={tab} style={{ width: SCREEN_WIDTH, flex: 1 }}>
+                                {isLoading && listaLotes.length === 0 ? (
+                                    <View style={{ paddingTop: pinnedTabsHeight }}>
+                                        {renderLoadingSkeletons()}
+                                    </View>
+                                ) : (
+                                    <FlatList
+                                        data={lotesFiltrados}
+                                        keyExtractor={(item) => item.id?.toString() || item.uuid_movil?.toString()}
+                                        renderItem={({ item, index }) => (
+                                            <AnimatedCard
+                                                item={item}
+                                                index={index}
+                                                getStatusConfig={getStatusConfig}
+                                                isDark={isDark}
+                                                onPress={() => handlePressLote(item)}
+                                                onStatusChange={handleStatusChange}
+                                            />
+                                        )}
+                                        ListEmptyComponent={() => (refreshing ? renderLoadingSkeletons() : renderEmptyState(tab))}
+                                        contentContainerStyle={[styles.listContainer, { paddingTop: pinnedTabsHeight }]}
+                                        showsVerticalScrollIndicator={false}
+                                        refreshing={refreshing}
+                                        onRefresh={onRefresh}
+                                        onScroll={handleScroll}
+                                        scrollEventThrottle={16}
+                                        removeClippedSubviews={Platform.OS === 'android'}
+                                        maxToRenderPerBatch={10}
+                                        windowSize={5}
+                                        contentInsetAdjustmentBehavior="never"
+                                        automaticallyAdjustContentInsets={false}
+                                        automaticallyAdjustsScrollIndicatorInsets={false}
+                                    />
+                                )}
                             </View>
-                            <Text style={[styles.emptyTitle, { color: colores.textPrimary }]}>Sin Registros</Text>
-                            <Text style={[styles.emptyText, { color: colores.textSecondary }]}>
-                                No hay lotes registrados. Toca el botón + para crear uno nuevo.
-                            </Text>
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={lotesFiltrados}
-                            keyExtractor={(item) => item.id?.toString() || item.uuid_movil?.toString()}
-                            renderItem={renderItem}
-                            ListEmptyComponent={renderEmptyState}
-                            contentContainerStyle={styles.listContainer}
-                            showsVerticalScrollIndicator={false}
-                        />
-                    )}
-                </>
-            )}
+                        ))}
+                    </ScrollView>
+                )}
+            </View>
 
             {isUpdatingStatus && (
                 <View style={styles.updatingOverlay}>
@@ -534,52 +733,116 @@ const styles = StyleSheet.create({
     retryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
 
     header: {
-        paddingTop: Platform.OS === 'ios' ? 54 : 36,
-        paddingBottom: 4,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 20,
         paddingHorizontal: 16,
+    },
+    statusBarScrim: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 15,
+    },
+    contentWrapper: {
+        flex: 1,
     },
     headerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        height: 34,
+        height: 40,
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    headerTitle: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
-    headerDividerVertical: { width: 1.5, height: 16 },
-    headerSubtitle: { fontSize: 14, fontWeight: '500' },
+    headerHomeTitle: {
+        fontSize: 36,
+        fontWeight: '800',
+        letterSpacing: -0.8,
+    },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    counterBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
-    counterText: { fontWeight: '700', fontSize: 13 },
 
-    filterTabsContainer: { marginTop: 16, marginBottom: 8 },
-    filterTabsScroll: { flexDirection: 'row', gap: 8 },
-    filterTab: {
+    // Contador "liquid glass" grande, mismo lenguaje visual que el botón
+    // de notificaciones de Home (blur + degradado + brillo especular + borde).
+    counterGlassPill: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 8,
-        borderRadius: 20,
+        borderRadius: 22,
+        overflow: 'hidden',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.16,
+        shadowRadius: 14,
+        elevation: 6,
+    },
+    counterGlassSpecular: {
+        position: 'absolute',
+        top: 0,
+        left: 8,
+        right: 8,
+        height: 1,
+        borderRadius: 1,
+        opacity: 0.6,
+    },
+    counterGlassBorder: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 22,
+        borderWidth: 1,
+    },
+    counterGlassNumber: {
+        fontSize: 20,
+        fontWeight: '800',
+        letterSpacing: -0.4,
+    },
+
+    // Barra de tabs "liquid glass", SIEMPRE fija/visible arriba (no se
+    // desvanece con el scroll); el contenido pasa por debajo con blur.
+    pinnedTabsWrap: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 18,
+        paddingHorizontal: 16,
+    },
+    tabsGlassContainer: {
+        borderRadius: 22,
+        overflow: 'hidden',
+        paddingVertical: 6,
+        paddingHorizontal: 6,
+    },
+    filterTabsScroll: { flexDirection: 'row', gap: 8 },
+    filterTabTouchable: {
+        borderRadius: 18,
+        overflow: 'hidden',
+    },
+    filterTabActiveGlass: {
+        paddingHorizontal: 16,
+        paddingVertical: 9,
+        borderRadius: 18,
+        justifyContent: 'center',
+        alignItems: 'center',
+        overflow: 'hidden',
+    },
+    filterTabInactive: {
+        paddingHorizontal: 16,
+        paddingVertical: 9,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
     },
     filterTabText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
 
-    listContainer: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 120 },
+    listContainer: { paddingHorizontal: 16, paddingBottom: 120, width: SCREEN_WIDTH },
 
-    skeletonListContainer: { paddingHorizontal: 16, paddingTop: 12 },
-    skeletonCard: {
-        borderRadius: 32,
-        padding: 16,
-        marginBottom: 20,
-        height: 340,
-        justifyContent: 'space-between',
-    },
-    skeletonHeader: { flexDirection: 'row', justifyContent: 'space-between' },
-    skeletonBadge: { width: 80, height: 28, borderRadius: 14 },
-    skeletonStatus: { width: 36, height: 36, borderRadius: 18 },
-    skeletonBlock: { width: '75%', height: 40, borderRadius: 12 },
-    skeletonMetrics: { width: '100%', height: 80, borderRadius: 20 },
+    skeletonListContainer: { paddingHorizontal: 16, width: SCREEN_WIDTH },
+    skeletonLine: {},
 
-    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 30 },
+    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 30, width: SCREEN_WIDTH },
     emptyIconContainer: {
         width: 80,
         height: 80,
@@ -621,7 +884,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-    // Estilos Figma Card
     figmaCardContainer: {
         marginBottom: 24,
         borderRadius: 36,
@@ -689,7 +951,6 @@ const styles = StyleSheet.create({
     },
     figmaStartRouteText: { color: '#111111', fontSize: 13, fontWeight: '700' },
 
-    // Nueva sección de información detallada
     infoBottomSection: {
         paddingTop: 12,
         gap: 8,
@@ -719,7 +980,6 @@ const styles = StyleSheet.create({
         textAlign: 'right',
     },
 
-    // Coordenadas y mini mapa
     coordsRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -753,7 +1013,6 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
 
-    // Placeholder sin vértices
     noVerticesPlaceholder: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -766,7 +1025,4 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '500',
     },
-
-    // Estilos anteriores (mantenidos por compatibilidad)
-    figmaMapImage: { width: '100%', height: '100%', resizeMode: 'cover' },
 });

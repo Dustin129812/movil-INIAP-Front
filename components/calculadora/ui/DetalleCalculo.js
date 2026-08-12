@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 
-import { COLORS } from "../colors";
+import { COLORS_CALC, getCalcColors } from "../colors";
 import { NUTRIENTES } from "../nutrientes";
 
 const formatearNumero = (valor, decimales = 2) => {
@@ -25,82 +25,92 @@ const obtenerColumnas = (ancho) => {
   return 3;
 };
 
-function DatoDetalle({ label, value, destacado }) {
+function DatoDetalle({ label, value, destacado, colors }) {
   return (
-    <View style={styles.detailItem}>
-      <Text style={styles.detailLabel}>{label}</Text>
-      <Text style={[styles.detailValue, destacado && styles.detailValueGold]}>
+    <View style={[styles.detailItem, {
+      backgroundColor: colors.cardBg,
+      borderColor: colors.dividerColor,
+    }]}>
+      <Text style={[styles.detailLabel, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.detailValue, destacado && { color: colors.gold }]}>
         {value}
       </Text>
     </View>
   );
 }
 
-function FormulaTexto({ children }) {
+function FormulaTexto({ children, colors }) {
   return (
     <View style={styles.formulaRow}>
       <MaterialCommunityIcons
         name="function-variant"
         size={16}
-        color={COLORS.primaryDark}
+        color={colors.macroBorder}
       />
-      <Text style={styles.formulaText}>{children}</Text>
+      <Text style={[styles.formulaText, { color: colors.textPrimary }]}>{children}</Text>
     </View>
   );
 }
 
-export function DetalleCalculo({ detalles }) {
+export function DetalleCalculo({ detalles, isDark }) {
   const [mostrarFormulas, setMostrarFormulas] = useState(false);
   const { width } = useWindowDimensions();
   const columnas = obtenerColumnas(width);
   const cardWidth = columnas === 1 ? "100%" : `${100 / columnas - 2}%`;
+  const colors = getCalcColors(isDark);
 
   if (!detalles?.length) return null;
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, {
+      backgroundColor: colors.cardBg,
+      borderColor: colors.dividerColor,
+    }]}>
       <View style={styles.cardHeaderRow}>
-        <View style={styles.iconBadge}>
+        <View style={[styles.iconBadge, { backgroundColor: colors.iconBadgeMacro }]}>
           <MaterialCommunityIcons
             name="clipboard-text-outline"
             size={18}
-            color={COLORS.primaryDark}
+            color={COLORS_CALC.ACTIVE_COLOR}
           />
         </View>
         <View style={styles.headerTextWrap}>
-          <Text style={styles.cardTitle}>Detalle por fertilizante</Text>
-          <Text style={styles.cardSubtitle}>
+          <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>Detalle por fertilizante</Text>
+          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
             Solo se muestran fertilizantes con sacos por hectárea mayores que cero
           </Text>
         </View>
       </View>
 
       <TouchableOpacity
-        style={styles.formulasButton}
+        style={[styles.formulasButton, { backgroundColor: colors.macroTint }]}
         onPress={() => setMostrarFormulas((prev) => !prev)}
         activeOpacity={0.82}
       >
         <MaterialCommunityIcons
           name={mostrarFormulas ? "chevron-up" : "chevron-down"}
           size={18}
-          color={COLORS.primaryDark}
+          color={colors.macroBorder}
         />
-        <Text style={styles.formulasButtonText}>Ver detalle de fórmulas</Text>
+        <Text style={[styles.formulasButtonText, { color: colors.macroBorder }]}>Ver detalle de fórmulas</Text>
       </TouchableOpacity>
 
       {mostrarFormulas && (
-        <View style={styles.formulasBox}>
-          <FormulaTexto>Kg/ha = sacos/ha × 50</FormulaTexto>
-          <FormulaTexto>
+        <View style={[styles.formulasBox, {
+          backgroundColor: colors.subCardBg,
+          borderColor: colors.dividerColor,
+        }]}>
+          <FormulaTexto colors={colors}>Kg/ha = sacos/ha × 50</FormulaTexto>
+          <FormulaTexto colors={colors}>
             Sacos parcela = sacos/ha × área ÷ 10 000
           </FormulaTexto>
-          <FormulaTexto>
+          <FormulaTexto colors={colors}>
             Kg parcela = kg/ha × área ÷ 10 000
           </FormulaTexto>
-          <FormulaTexto>
+          <FormulaTexto colors={colors}>
             Ingrediente activo = kg/ha × porcentaje ÷ 100
           </FormulaTexto>
-          <FormulaTexto>
+          <FormulaTexto colors={colors}>
             Costo parcela = costo/ha × área ÷ 10 000
           </FormulaTexto>
         </View>
@@ -108,10 +118,14 @@ export function DetalleCalculo({ detalles }) {
 
       <View style={styles.grid}>
         {detalles.map((detalle) => (
-          <View key={detalle.id} style={[styles.detalleCard, { width: cardWidth }]}>
+          <View key={detalle.id} style={[styles.detalleCard, {
+            width: cardWidth,
+            backgroundColor: colors.subCardBg,
+            borderColor: colors.dividerColor,
+          }]}>
             <View style={styles.detalleHeader}>
-              <Text style={styles.detalleTitle}>{detalle.nombre}</Text>
-              <Text style={styles.detalleSubtitle}>
+              <Text style={[styles.detalleTitle, { color: colors.textPrimary }]}>{detalle.nombre}</Text>
+              <Text style={[styles.detalleSubtitle, { color: COLORS_CALC.ACTIVE_COLOR }]}>
                 {formatearNumero(detalle.sacosPorHectarea, 2)} sacos/ha
               </Text>
             </View>
@@ -120,37 +134,43 @@ export function DetalleCalculo({ detalles }) {
               <DatoDetalle
                 label="Kg/ha"
                 value={`${formatearNumero(detalle.kgPorHectarea, 2)} kg`}
+                colors={colors}
               />
               <DatoDetalle
                 label="Precio por saco"
                 value={`$${formatearNumero(detalle.precioSaco, 2)}`}
+                colors={colors}
               />
               <DatoDetalle
                 label="Costo/ha"
                 value={`$${formatearNumero(detalle.costoPorHectarea, 2)}`}
                 destacado
+                colors={colors}
               />
               <DatoDetalle
                 label="Sacos parcela"
                 value={formatearNumero(detalle.sacosParcela, 4)}
+                colors={colors}
               />
               <DatoDetalle
                 label="Kg parcela"
                 value={`${formatearNumero(detalle.kgParcela, 2)} kg`}
+                colors={colors}
               />
               <DatoDetalle
                 label="Costo parcela"
                 value={`$${formatearNumero(detalle.costoParcela, 2)}`}
                 destacado
+                colors={colors}
               />
             </View>
 
-            <Text style={styles.aportesTitle}>Aporte de nutrientes</Text>
+            <Text style={[styles.aportesTitle, { color: colors.textSecondary }]}>Aporte de nutrientes</Text>
             <View style={styles.aportesGrid}>
               {NUTRIENTES.map((nutriente) => (
-                <View key={nutriente.key} style={styles.aportePill}>
-                  <Text style={styles.aporteLabel}>{nutriente.simbolo}</Text>
-                  <Text style={styles.aporteValue}>
+                <View key={nutriente.key} style={[styles.aportePill, { backgroundColor: colors.macroTint }]}>
+                  <Text style={[styles.aporteLabel, { color: colors.macroBorder }]}>{nutriente.simbolo}</Text>
+                  <Text style={[styles.aporteValue, { color: colors.textPrimary }]}>
                     {formatearNumero(detalle.aportes[nutriente.key], 2)}
                   </Text>
                 </View>
@@ -165,12 +185,10 @@ export function DetalleCalculo({ detalles }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.cardBg,
     borderRadius: 20,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
   cardHeaderRow: {
     flexDirection: "row",
@@ -181,7 +199,6 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: COLORS.macroTint,
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
@@ -192,11 +209,9 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: "900",
-    color: COLORS.textDark,
   },
   cardSubtitle: {
     fontSize: 12,
-    color: COLORS.textMuted,
     marginTop: 2,
     lineHeight: 16,
   },
@@ -205,24 +220,20 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     alignSelf: "flex-start",
-    backgroundColor: COLORS.primarySoft,
     borderRadius: 12,
     paddingHorizontal: 12,
     marginBottom: 12,
   },
   formulasButtonText: {
-    color: COLORS.primaryDark,
     fontSize: 12,
     fontWeight: "900",
     marginLeft: 6,
   },
   formulasBox: {
-    backgroundColor: "#f8fafc",
     borderRadius: 14,
     padding: 12,
     marginBottom: 14,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
   formulaRow: {
     flexDirection: "row",
@@ -231,7 +242,6 @@ const styles = StyleSheet.create({
   },
   formulaText: {
     flex: 1,
-    color: COLORS.textDark,
     fontSize: 12,
     fontWeight: "700",
     lineHeight: 17,
@@ -244,23 +254,19 @@ const styles = StyleSheet.create({
   },
   detalleCard: {
     minWidth: 260,
-    backgroundColor: "#f8fafc",
     borderRadius: 16,
     padding: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
   detalleHeader: {
     marginBottom: 10,
   },
   detalleTitle: {
-    color: COLORS.textDark,
     fontWeight: "900",
     fontSize: 15,
   },
   detalleSubtitle: {
-    color: COLORS.primary,
     fontWeight: "800",
     fontSize: 12,
     marginTop: 2,
@@ -272,29 +278,21 @@ const styles = StyleSheet.create({
   },
   detailItem: {
     width: "48%",
-    backgroundColor: COLORS.white,
     borderRadius: 10,
     padding: 10,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
   detailLabel: {
-    color: COLORS.textMuted,
     fontSize: 10,
     fontWeight: "800",
   },
   detailValue: {
-    color: COLORS.textDark,
     fontSize: 13,
     fontWeight: "900",
     marginTop: 4,
   },
-  detailValueGold: {
-    color: COLORS.goldDark,
-  },
   aportesTitle: {
-    color: COLORS.textMuted,
     fontWeight: "900",
     fontSize: 12,
     marginTop: 4,
@@ -309,7 +307,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: COLORS.primarySoft,
     borderRadius: 10,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -317,12 +314,10 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   aporteLabel: {
-    color: COLORS.primaryDark,
     fontWeight: "900",
     fontSize: 11,
   },
   aporteValue: {
-    color: COLORS.textDark,
     fontWeight: "900",
     fontSize: 11,
     marginLeft: 6,

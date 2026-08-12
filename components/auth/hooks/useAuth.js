@@ -3,7 +3,7 @@ import { Alert } from 'react-native';
 import { useAuth as useAuthService } from '../../../services';
 
 export const useAuth = () => {
-  const { login, loginInvitado, usuario, cargando, cerrarSesion, dispositivoId } = useAuthService();
+  const { login, loginInvitado, usuario, cargando, cargandoLogin, cerrarSesion, dispositivoId } = useAuthService();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -65,6 +65,7 @@ export const useAuth = () => {
     password,
     setPassword,
     isLoading: isLoading || cargando,
+    cargandoLogin,
     usuario,
     dispositivoId,
     handleLogin,

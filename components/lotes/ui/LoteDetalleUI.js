@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View,
     Text,
@@ -8,7 +8,8 @@ import {
     ActivityIndicator,
     Platform,
     Alert,
-    Modal,
+    Animated,
+    Pressable,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -46,38 +47,128 @@ function VerticeItem({ vertice, index, isDark }) {
 
 function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }) {
     const opciones = [
-        { value: 'pendiente', label: 'Pendiente', color: '#FF9500' },
-        { value: 'verificado', label: 'Activo', color: '#34C759' },
+        { value: 'pendiente', label: 'Pendiente', color: '#FF9500', icon: 'clock-outline' },
+        { value: 'verificado', label: 'Activo', color: '#34C759', icon: 'check-circle-outline' },
     ];
 
+    const slideAnim = useRef(new Animated.Value(0)).current;
+    const backdropAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (visible) {
+            Animated.parallel([
+                Animated.spring(slideAnim, {
+                    toValue: 1,
+                    useNativeDriver: true,
+                    tension: 65,
+                    friction: 11,
+                }),
+                Animated.timing(backdropAnim, {
+                    toValue: 1,
+                    duration: 250,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        } else {
+            Animated.parallel([
+                Animated.timing(slideAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(backdropAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true,
+                }),
+            ]).start();
+        }
+    }, [visible]);
+
+    const sheetTranslateY = slideAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [300, 0],
+    });
+
+    const backdropOpacity = backdropAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 1],
+    });
+
+    if (!visible) return null;
+
     return (
-        <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-            <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={onClose}>
-                <View style={[styles.statusPickerCard, isDark && styles.statusPickerCardDark]}>
-                    <Text style={[styles.statusPickerTitle, isDark && { color: '#fff' }]}>Cambiar Estado</Text>
-                    {opciones.map((op) => (
+        <View style={styles.modalContainer} pointerEvents="box-none">
+            <Animated.View style={[styles.modalBackdrop, { opacity: backdropOpacity }]}>
+                <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+            </Animated.View>
+
+            <Animated.View
+                style={[
+                    styles.bottomSheet,
+                    isDark && styles.bottomSheetDark,
+                    { transform: [{ translateY: sheetTranslateY }] },
+                ]}
+            >
+                {/* Handle bar */}
+                <View style={styles.handleContainer}>
+                    <View style={[styles.handleBar, isDark && styles.handleBarDark]} />
+                </View>
+
+                {/* Title */}
+                <Text style={[styles.bottomSheetTitle, isDark && styles.bottomSheetTitleDark]}>
+                    Cambiar Estado
+                </Text>
+
+                {/* Options */}
+                {opciones.map((op) => {
+                    const isSelected = currentStatus === op.value;
+                    return (
                         <TouchableOpacity
                             key={op.value}
                             style={[
                                 styles.statusOption,
-                                currentStatus === op.value && styles.statusOptionActive,
-                                { borderColor: op.color }
+                                isSelected && { backgroundColor: op.color + '18' },
+                                isSelected && { borderColor: op.color },
                             ]}
                             onPress={() => onSelect(op.value)}
+                            activeOpacity={0.7}
                         >
-                            <View style={[styles.statusDot, { backgroundColor: op.color }]} />
-                            <Text style={[styles.statusOptionText, isDark && { color: '#fff' }]}>{op.label}</Text>
-                            {currentStatus === op.value && (
-                                <MaterialCommunityIcons name="check" size={20} color={op.color} />
+                            <View style={[styles.statusIconContainer, { backgroundColor: op.color + '20' }]}>
+                                <MaterialCommunityIcons name={op.icon} size={22} color={op.color} />
+                            </View>
+                            <View style={styles.statusOptionContent}>
+                                <Text style={[styles.statusOptionLabel, isDark && styles.statusOptionLabelDark]}>
+                                    {op.label}
+                                </Text>
+                                {isSelected && (
+                                    <Text style={[styles.statusOptionSublabel, { color: op.color }]}>
+                                        Estado actual
+                                    </Text>
+                                )}
+                            </View>
+                            {isSelected && (
+                                <MaterialCommunityIcons name="check-circle" size={24} color={op.color} />
                             )}
                         </TouchableOpacity>
-                    ))}
-                    <TouchableOpacity style={styles.statusCancelBtn} onPress={onClose}>
-                        <Text style={styles.statusCancelText}>Cancelar</Text>
-                    </TouchableOpacity>
-                </View>
-            </TouchableOpacity>
-        </Modal>
+                    );
+                })}
+
+                {/* Cancel Button */}
+                <TouchableOpacity
+                    style={[styles.cancelButton, isDark && styles.cancelButtonDark]}
+                    onPress={onClose}
+                    activeOpacity={0.7}
+                >
+                    <Text style={[styles.cancelButtonText, isDark && styles.cancelButtonTextDark]}>
+                        Cancelar
+                    </Text>
+                </TouchableOpacity>
+
+                {/* Safe area bottom padding */}
+                <View style={styles.bottomSafeArea} />
+            </Animated.View>
+        </View>
     );
 }
 
@@ -505,35 +596,101 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-    // Status Picker Modal
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: 20,
+    // Bottom Sheet Status Picker
+    modalContainer: {
+        ...StyleSheet.absoluteFillObject,
+        justifyContent: 'flex-end',
+        zIndex: 1000,
     },
-    statusPickerCard: {
+    modalBackdrop: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    bottomSheet: {
         backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 20,
-        width: '85%',
-        maxWidth: 320,
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 20,
+        paddingBottom: 0,
     },
-    statusPickerCardDark: { backgroundColor: '#2C2C2E' },
-    statusPickerTitle: { fontSize: 18, fontWeight: '700', color: '#000', textAlign: 'center', marginBottom: 16 },
+    bottomSheetDark: {
+        backgroundColor: '#1C1C1E',
+    },
+    handleContainer: {
+        alignItems: 'center',
+        paddingVertical: 12,
+    },
+    handleBar: {
+        width: 36,
+        height: 5,
+        borderRadius: 3,
+        backgroundColor: '#C7C7CC',
+    },
+    handleBarDark: {
+        backgroundColor: '#48484A',
+    },
+    bottomSheetTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#000',
+        textAlign: 'center',
+        marginBottom: 20,
+    },
+    bottomSheetTitleDark: {
+        color: '#fff',
+    },
     statusOption: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 14,
-        borderRadius: 12,
+        padding: 16,
+        borderRadius: 16,
         borderWidth: 1.5,
-        marginBottom: 8,
+        marginBottom: 10,
         borderColor: '#E5E5EA',
     },
-    statusOptionActive: { backgroundColor: 'rgba(52, 199, 89, 0.08)' },
-    statusDot: { width: 8, height: 8, borderRadius: 4, marginRight: 10 },
-    statusOptionText: { flex: 1, fontSize: 16, fontWeight: '600', color: '#000' },
-    statusCancelBtn: { marginTop: 8, padding: 14, alignItems: 'center' },
-    statusCancelText: { color: '#FF3B30', fontSize: 16, fontWeight: '600' },
+    statusIconContainer: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 14,
+    },
+    statusOptionContent: {
+        flex: 1,
+    },
+    statusOptionLabel: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#000',
+    },
+    statusOptionLabelDark: {
+        color: '#fff',
+    },
+    statusOptionSublabel: {
+        fontSize: 13,
+        fontWeight: '500',
+        marginTop: 2,
+    },
+    cancelButton: {
+        backgroundColor: '#F2F2F7',
+        borderRadius: 14,
+        padding: 16,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    cancelButtonDark: {
+        backgroundColor: '#2C2C2E',
+    },
+    cancelButtonText: {
+        fontSize: 17,
+        fontWeight: '600',
+        color: '#007AFF',
+    },
+    cancelButtonTextDark: {
+        color: '#0A84FF',
+    },
+    bottomSafeArea: {
+        height: 34,
+    },
 });

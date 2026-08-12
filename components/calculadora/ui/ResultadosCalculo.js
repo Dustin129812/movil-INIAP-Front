@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { StyleSheet, Text, useWindowDimensions, View } from "react-native";
 
-import { COLORS } from "../colors";
+import { COLORS_CALC, getCalcColors } from "../colors";
 
 const formatearNumero = (valor, decimales = 2) => {
   if (!Number.isFinite(valor)) return "0";
@@ -20,21 +20,21 @@ const obtenerColumnas = (ancho) => {
   return 3;
 };
 
-function Metrica({ icono, label, value, destacado }) {
+function Metrica({ icono, label, value, destacado, colors }) {
   return (
-    <View style={[styles.metricBox, destacado && styles.metricBoxGold]}>
+    <View style={[styles.metricBox, destacado && { backgroundColor: colors.goldSoft, borderColor: colors.gold }]}>
       <MaterialCommunityIcons
         name={icono}
         size={20}
-        color={destacado ? COLORS.goldDark : COLORS.primaryDark}
+        color={destacado ? colors.gold : colors.macroBorder}
       />
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
+      <Text style={[styles.metricValue, { color: colors.textPrimary }]}>{value}</Text>
+      <Text style={[styles.metricLabel, { color: colors.textSecondary }]}>{label}</Text>
     </View>
   );
 }
 
-function Seccion({ titulo, children, color = COLORS.primaryDark }) {
+function Seccion({ titulo, children, color, colors }) {
   return (
     <View style={styles.section}>
       <Text style={[styles.sectionTitle, { color }]}>{titulo}</Text>
@@ -43,17 +43,18 @@ function Seccion({ titulo, children, color = COLORS.primaryDark }) {
   );
 }
 
-export function ResultadosCalculo({ resultadoCalculo }) {
+export function ResultadosCalculo({ resultadoCalculo, isDark }) {
   const { width } = useWindowDimensions();
   const columnas = obtenerColumnas(width);
   const itemWidth = columnas === 1 ? "100%" : `${100 / columnas - 2}%`;
+  const colors = getCalcColors(isDark);
 
   if (!resultadoCalculo) return null;
 
   return (
     <View style={styles.wrapper}>
       <LinearGradient
-        colors={[COLORS.gold, COLORS.goldDark]}
+        colors={[colors.heroGradientStart, colors.heroGradientEnd]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.heroCosto}
@@ -68,13 +69,17 @@ export function ResultadosCalculo({ resultadoCalculo }) {
         </Text>
       </LinearGradient>
 
-      <View style={styles.card}>
-        <Seccion titulo="Resultado por hectárea">
+      <View style={[styles.card, {
+        backgroundColor: colors.cardBg,
+        borderColor: colors.dividerColor,
+      }]}>
+        <Seccion titulo="Resultado por hectárea" color={colors.macroBorder} colors={colors}>
           <View style={{ width: itemWidth }}>
             <Metrica
               icono="sack"
               label="Total de sacos por hectárea"
               value={formatearNumero(resultadoCalculo.totalSacosPorHectarea, 2)}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -82,6 +87,7 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               icono="weight-kilogram"
               label="Total de kilogramos por hectárea"
               value={`${formatearNumero(resultadoCalculo.totalKgPorHectarea, 2)} kg`}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -90,16 +96,18 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               label="Costo total por hectárea"
               value={formatearDinero(resultadoCalculo.totalCostoPorHectarea)}
               destacado
+              colors={colors}
             />
           </View>
         </Seccion>
 
-        <Seccion titulo="Resultado para la parcela" color={COLORS.goldDark}>
+        <Seccion titulo="Resultado para la parcela" color={colors.gold} colors={colors}>
           <View style={{ width: itemWidth }}>
             <Metrica
               icono="texture-box"
               label="Área en metros cuadrados"
               value={`${formatearNumero(resultadoCalculo.areaM2, 2)} m²`}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -107,6 +115,7 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               icono="map-outline"
               label="Área en hectáreas"
               value={`${formatearNumero(resultadoCalculo.areaHa, 4)} ha`}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -114,6 +123,7 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               icono="sack-percent"
               label="Total de sacos para la parcela"
               value={formatearNumero(resultadoCalculo.totalSacosParcela, 4)}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -121,6 +131,7 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               icono="weight"
               label="Total de kilogramos para la parcela"
               value={`${formatearNumero(resultadoCalculo.totalKgParcela, 2)} kg`}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -129,16 +140,18 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               label="Costo total para la parcela"
               value={formatearDinero(resultadoCalculo.totalCostoParcela)}
               destacado
+              colors={colors}
             />
           </View>
         </Seccion>
 
-        <Seccion titulo="Distribución en el terreno">
+        <Seccion titulo="Distribución en el terreno" color={colors.macroBorder} colors={colors}>
           <View style={{ width: itemWidth }}>
             <Metrica
               icono="drag-vertical-variant"
               label="Número de surcos"
               value={formatearNumero(resultadoCalculo.numeroSurcos, 2)}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -146,6 +159,7 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               icono="sprout-outline"
               label="Sitios por surco"
               value={formatearNumero(resultadoCalculo.sitiosPorSurco, 2)}
+              colors={colors}
             />
           </View>
           <View style={{ width: itemWidth }}>
@@ -153,6 +167,7 @@ export function ResultadosCalculo({ resultadoCalculo }) {
               icono="beaker-outline"
               label="Kilogramos de mezcla por surco"
               value={`${formatearNumero(resultadoCalculo.kgMezclaPorSurco, 2)} kg`}
+              colors={colors}
             />
           </View>
         </Seccion>
@@ -180,7 +195,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   heroValue: {
-    color: COLORS.white,
+    color: "#ffffff",
     fontWeight: "900",
     fontSize: 36,
     marginTop: 4,
@@ -194,11 +209,9 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   card: {
-    backgroundColor: COLORS.cardBg,
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
   section: {
     marginBottom: 16,
@@ -215,25 +228,20 @@ const styles = StyleSheet.create({
   },
   metricBox: {
     minHeight: 104,
-    backgroundColor: COLORS.primarySoft,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderRadius: 14,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  metricBoxGold: {
-    backgroundColor: COLORS.goldSoft,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
   },
   metricValue: {
     fontSize: 17,
     fontWeight: "900",
-    color: COLORS.textDark,
     marginTop: 8,
   },
   metricLabel: {
     fontSize: 11,
-    color: COLORS.textMuted,
     marginTop: 4,
     fontWeight: "700",
     lineHeight: 15,

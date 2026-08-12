@@ -30,7 +30,6 @@ class ServicioNotificaciones {
   async configurar() {
     try {
       if (esExpoGo) {
-        console.log('Notificaciones no disponibles en Expo Go (SDK 53+)');
         return;
       }
 
@@ -44,7 +43,6 @@ class ServicioNotificaciones {
           const nuevosPermisos = await Notifications.requestPermissionsAsync();
 
           if (nuevosPermisos.status !== 'granted') {
-            console.log('Permisos de notificaciones no otorgados');
             return;
           }
         }
@@ -59,7 +57,6 @@ class ServicioNotificaciones {
         }
       }
     } catch (error) {
-      console.log('Notificaciones no disponibles en Expo Go:', error);
     }
   }
 

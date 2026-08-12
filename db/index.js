@@ -1,2 +1,2 @@
-export { db, initDb, crearLoteLocal, obtenerLotesLocales, obtenerLotesPendientesSync, marcarLoteComoSincronizado, SYNC_STATUS } from './client';
+export { db, initDb, crearLoteLocal, obtenerLotesLocales, obtenerLotesPendientesSync, marcarLoteComoSincronizado, crearProyectoLocal, obtenerProyectosLocales, obtenerProyectoLocal, obtenerProyectosPorLote, marcarProyectoComoSincronizado, crearCicloLocal, crearVisitaLocal, crearHojaDatosLocal, obtenerCiclosPorProyecto, obtenerVisitasPorProyecto, obtenerHojaDatosPorVisita, SYNC_STATUS, proyectos } from './client';
 export { lotes, provincias, cantones, estaciones, configuracion } from './schema';
