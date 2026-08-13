@@ -4,7 +4,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/services/ThemeContext';
 import { ProyectoDetalleUI } from '@/components/proyectos/ui';
-import { useProyectoDetalle } from '@/components/proyectos/hooks';
+import { useProyectoDetalle } from '../../../components/proyectos/hooks/useProyectoDetalle';
 
 export default function ProyectoDetalleScreen() {
     const { id } = useLocalSearchParams();

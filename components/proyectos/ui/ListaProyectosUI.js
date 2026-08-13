@@ -224,7 +224,7 @@ export default function ListaProyectosUI({
         revealHeaderForTabChange();
     };
 
-    const onRefresh = async () => {
+    const handleRefresh = async () => {
         setRefreshing(true);
         await onRefresh();
         setRefreshing(false);
@@ -355,7 +355,7 @@ export default function ListaProyectosUI({
                                     refreshControl={
                                         <RefreshControl
                                             refreshing={refreshing}
-                                            onRefresh={onRefresh}
+                                            onRefresh={handleRefresh}
                                             tintColor="#0A84FF"
                                         />
                                     }

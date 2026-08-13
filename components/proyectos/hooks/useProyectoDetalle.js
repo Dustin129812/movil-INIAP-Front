@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { proyectosService } from '@/services/proyectosService';
-import { proyectosLocalService } from '@/services/proyectosLocalService';
+import  proyectosLocalService  from '@/services/proyectosLocalService';
 
 export const useProyectoDetalle = (proyectoUuid) => {
     const [proyectoData, setProyectoData] = useState(null);

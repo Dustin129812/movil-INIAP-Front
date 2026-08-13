@@ -163,7 +163,7 @@ function AuthNavigator() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="lotes/[id]" />
         <Stack.Screen name="lotes/nuevo/index" />
-        <Stack.Screen name="proyectos" />
+        {/* <Stack.Screen name="proyectos" /> */}
         <Stack.Screen name="proyectos/lista/index" />
         <Stack.Screen name="proyectos/nuevo/index" />
         <Stack.Screen name="proyectos/[id]/index" />

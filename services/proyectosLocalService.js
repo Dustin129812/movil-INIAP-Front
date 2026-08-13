@@ -226,7 +226,7 @@ export const sincronizarProyectosPendientes = async () => {
     }
 };
 
-export default {
+export const proyectosLocalService = {
     inicializarBaseDatosProyectos,
     obtenerProyectos,
     crearProyectoLocal,
@@ -238,3 +238,5 @@ export default {
     obtenerHojasDeVisita,
     sincronizarProyectosPendientes,
 };
+
+export default proyectosLocalService;
