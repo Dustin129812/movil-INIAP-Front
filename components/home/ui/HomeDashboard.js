@@ -1,63 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, Text, View, Platform, TouchableOpacity, StatusBar, Pressable, Modal } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Modal, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    useAnimatedScrollHandler,
-    withSpring,
-    withTiming,
-    withRepeat,
-    withDelay,
     cancelAnimation,
     Easing,
     interpolate,
-    Extrapolation,
     useAnimatedReaction,
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withRepeat,
+    withTiming
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path } from 'react-native-svg';
-import { useRouter } from 'expo-router';
 import { useTheme } from '../../../services/theme';
-import { useHomeDashboard } from '../hooks/useHomeDashboard';
 import NotificationsCenter from '../../notifications/ui/NotificationsCenter';
+import { useHomeDashboard } from '../hooks/useHomeDashboard';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
 const QUICK_CARDS = [
-    {
-        id: 0,
-        title: 'Ensayos',
-        subtitle: 'Proyectos',
-        route: '/(tabs)/proyectos',
-        icon: 'flask-outline',
-        color: '#2563eb',
-        bg: 'rgba(37, 99, 235, 0.1)',
-        info: 'Gestión de proyectos y catálogos de ensayos agrícolas.'
-    },
-    {
-        id: 1,
-        title: 'Evaluaciones',
-        subtitle: 'Campo',
-        route: '/(tabs)/proyectos',
-        icon: 'clipboard-check-outline',
-        color: '#a855f7',
-        bg: 'rgba(168, 85, 247, 0.1)',
-        info: 'Registra y analiza las evaluaciones de campo.'
-    },
-    {
-        id: 2,
-        title: 'Lotes',
-        subtitle: 'Dashboard',
-        route: '/(tabs)/lotes',
-        icon: 'vector-polygon',
-        color: '#34C759',
-        bg: 'rgba(52, 199, 89, 0.1)',
-        info: 'Administración de geometría y delimitación de lotes.'
-    },
     {
         id: 3,
         title: 'Calculadora',
@@ -70,126 +37,13 @@ const QUICK_CARDS = [
     },
 ];
 
-const AUTO_ROTATE_DURATION = 20000;
-const SELECT_ANIM_DURATION = 280;
-const SELECT_ANIM_EASING = Easing.out(Easing.cubic);
-const getShortestTarget = (current, targetLogical) => {
-    const currentMod = current % 360;
-    let delta = (targetLogical - currentMod) % 360;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    return current + delta;
-};
-
-function QuickAccessCard({ item, index, carouselRotation, isExpanded, anyExpanded, cardBg, textPrimary, textSecondary, onPress, router }) {
-    const contentOpacity = useSharedValue(0);
-
-    useEffect(() => {
-        if (isExpanded) {
-            contentOpacity.value = withDelay(SELECT_ANIM_DURATION - 60, withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) }));
-        } else {
-            contentOpacity.value = withTiming(0, { duration: 120, easing: Easing.in(Easing.ease) });
-        }
-    }, [isExpanded, contentOpacity]);
-
-    const cardAnimatedStyle = useAnimatedStyle(() => {
-        const angleDeg = carouselRotation.value + index * 90;
-        const angleRad = (angleDeg * Math.PI) / 180;
-        const radius = 120;
-
-        const tx = Math.sin(angleRad) * radius;
-        const cos = Math.cos(angleRad);
-
-        const scale = interpolate(cos, [-1, 1], [0.75, 1], 'clamp');
-        const opacity = interpolate(cos, [-1, 1], [0.35, 1], 'clamp');
-        const zIndex = isExpanded ? 50 : Math.round(cos * 10);
-        const sizeConfig = { duration: SELECT_ANIM_DURATION, easing: SELECT_ANIM_EASING };
-
-        return {
-            transform: [
-                { translateX: tx },
-                { scale: isExpanded ? withTiming(1.12, sizeConfig) : scale }
-            ],
-            opacity: isExpanded ? 1 : opacity,
-            zIndex,
-            elevation: isExpanded ? 50 : 1,
-            height: withTiming(isExpanded ? 175 : 120, sizeConfig),
-            width: withTiming(isExpanded ? 160 : 130, sizeConfig),
-        };
-    });
-
-    const contentAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: contentOpacity.value,
-        transform: [{ translateY: interpolate(contentOpacity.value, [0, 1], [8, 0]) }]
-    }));
-
-    const subtitleAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: isExpanded ? 0 : 1,
-    }));
-
-    const combinedStyle = [
-        styles.quickCarouselCard,
-        { backgroundColor: cardBg },
-        cardAnimatedStyle
-    ];
-
-    if (isExpanded) {
-        return (
-            <Animated.View style={combinedStyle}>
-                <TouchableOpacity
-                    style={styles.closeBtn}
-                    onPress={onPress}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    activeOpacity={0.7}
-                >
-                    <MaterialCommunityIcons name="close" size={16} color={textSecondary} />
-                </TouchableOpacity>
-
-                <View style={[styles.metricIconWrap, { backgroundColor: item.bg, marginBottom: 4 }]}>
-                    <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
-                </View>
-                <Text style={[styles.quickCardTitle, { color: textPrimary, marginTop: 2 }]}>{item.title}</Text>
-
-                <Animated.View style={[styles.expandedContentBox, contentAnimatedStyle]}>
-                    <Text style={[styles.quickCardInfo, { color: textSecondary }]} numberOfLines={2}>{item.info}</Text>
-                    <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: item.color }]}
-                        onPress={() => router.push(item.route)}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.actionBtnText}>Ingresar</Text>
-                    </TouchableOpacity>
-                </Animated.View>
-            </Animated.View>
-        );
-    }
-
-    return (
-        <AnimatedTouchable
-            style={combinedStyle}
-            activeOpacity={0.9}
-            onPress={onPress}
-            pointerEvents={anyExpanded ? 'none' : 'auto'}
-        >
-            <View style={[styles.metricIconWrap, { backgroundColor: item.bg, marginBottom: 4 }]}>
-                <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
-            </View>
-            <Text style={[styles.quickCardTitle, { color: textPrimary, marginTop: 2 }]}>{item.title}</Text>
-            <Animated.Text style={[styles.quickCardSubtitle, { color: textSecondary }, subtitleAnimatedStyle]}>
-                {item.subtitle}
-            </Animated.Text>
-        </AnimatedTouchable>
-    );
-}
-
 export default function HomeDashboard() {
     const router = useRouter();
     const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
+    
     const {
         usuario,
-        weatherExpanded,
-        toggleWeatherDetails,
         totalLotes,
         isSyncing,
         syncMessage,
@@ -198,12 +52,12 @@ export default function HomeDashboard() {
         pendingCount,
         pendingCounts,
         verificarPendientes,
-        syncInProgress,
     } = useHomeDashboard();
 
     const [isSyncModalVisible, setIsSyncModalVisible] = useState(false);
     const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
 
+    // Animaciones del Modal de Sincronización
     const anim1 = useSharedValue(0);
     const anim2 = useSharedValue(0);
 
@@ -241,6 +95,7 @@ export default function HomeDashboard() {
         return { left, opacity };
     });
 
+    // Animaciones de Scroll y Header
     const HEADER_ROW_HEIGHT = 54; 
     const HEADER_ROW_GAP = 10;    
     const headerContentHeight = insets.top + 2 + HEADER_ROW_HEIGHT + HEADER_ROW_GAP;
@@ -252,6 +107,7 @@ export default function HomeDashboard() {
             scrollY.value = event.contentOffset.y;
         },
     });
+    
     const TOP_REVEAL_THRESHOLD = 12; 
     const HIDE_DURATION = 160;
     const REVEAL_DURATION = 260;
@@ -292,87 +148,17 @@ export default function HomeDashboard() {
         transform: [{ translateY: notifTranslateY.value }],
     }));
 
-    const weatherHeight = useSharedValue(0);
-    const weatherRotate = useSharedValue(0);
-
-    const carouselRotation = useSharedValue(0);
-    const rotationOffset = useSharedValue(0);
-    const [activeAccessIndex, setActiveAccessIndex] = useState(null);
-    const startAutoRotation = useCallback((fromDeg = 0) => {
-        'worklet';
-        const base = fromDeg % 360;
-        carouselRotation.value = base;
-        carouselRotation.value = withRepeat(
-            withTiming(base + 360, { duration: AUTO_ROTATE_DURATION, easing: Easing.linear }),
-            -1,
-            false
-        );
-    }, [carouselRotation]);
-
-    useEffect(() => {
-        startAutoRotation(0);
-    }, [startAutoRotation]);
-
-    const gesture = Gesture.Pan()
-        .enabled(activeAccessIndex === null)
-        .onStart(() => {
-            cancelAnimation(carouselRotation);
-        })
-        .onUpdate((event) => {
-            carouselRotation.value = rotationOffset.value + (event.translationX / 2);
-        })
-        .onEnd(() => {
-            rotationOffset.value = carouselRotation.value;
-            startAutoRotation(carouselRotation.value);
-        });
-
-    const handleSelectCard = (index) => {
-        setActiveAccessIndex(index);
-        cancelAnimation(carouselRotation);
-
-        const targetRotLocal = -index * 90;
-        const shortestTarget = getShortestTarget(carouselRotation.value, targetRotLocal);
-        rotationOffset.value = shortestTarget;
-        carouselRotation.value = withTiming(shortestTarget, {
-            duration: SELECT_ANIM_DURATION,
-            easing: SELECT_ANIM_EASING,
-        });
-    };
-
-    const handleCloseExpanded = () => {
-        setActiveAccessIndex(null);
-        startAutoRotation(carouselRotation.value);
-    };
-
-    const handleToggleWeather = () => {
-        const nextState = !weatherExpanded;
-        toggleWeatherDetails();
-        weatherHeight.value = withSpring(nextState ? 1 : 0, { damping: 14, stiffness: 120 });
-        weatherRotate.value = withSpring(nextState ? 180 : 0, { damping: 14, stiffness: 120 });
-    };
-
-    const animatedWeatherStyle = useAnimatedStyle(() => ({
-        maxHeight: interpolate(weatherHeight.value, [0, 1], [0, 90]),
-        opacity: weatherHeight.value,
-        transform: [{ translateY: interpolate(weatherHeight.value, [0, 1], [-10, 0]) }]
-    }));
-
-    const animatedChevronStyle = useAnimatedStyle(() => ({
-        transform: [{ rotate: `${weatherRotate.value}deg` }]
-    }));
-
+    // Variables de estilo adaptativas
     const bg = isDark ? '#000000' : '#F2F2F7';
-    const statusBarBg = isDark ? '#000000' : '#F2F2F7';
     const cardBg = isDark ? '#1E1E24' : '#FFFFFF';
     const textPrimary = isDark ? '#FFFFFF' : '#000000';
     const textSecondary = isDark ? '#98989F' : '#8E8E93';
     const dividerLine = isDark ? '#3A3A3C' : '#F2F2F7';
 
     return (
-        <View
-            style={[styles.container, { backgroundColor: bg }]}
-        >
+        <View style={[styles.container, { backgroundColor: bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+            
             <LinearGradient
                 pointerEvents="none"
                 colors={
@@ -447,7 +233,7 @@ export default function HomeDashboard() {
                 contentContainerStyle={[styles.scrollContent, { paddingTop: scrollTopPadding }]}
                 showsVerticalScrollIndicator={false}
             >
-
+                {/* HERO CARD */}
                 <View style={styles.heroCard}>
                     <MaterialCommunityIcons
                         name="sprout"
@@ -490,59 +276,19 @@ export default function HomeDashboard() {
                         </TouchableOpacity>
                     )}
                 </View>
+
+                {/* SINCRONIZAR SECCIÓN */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: textSecondary }]}>Herramienta Destacada</Text>
                     
                     <View style={[styles.card, { backgroundColor: cardBg, paddingVertical: 28, alignItems: 'center' }]}>
                         <TouchableOpacity
                             style={styles.uiverseBtn}
-                            activeOpacity={0.9}
+                            activeOpacity={0.8}
                             onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
                         >
-                            <View style={styles.uiverseWrapper}>
-                                <Text style={styles.uiverseText}>Sincronizar</Text>
-
-                                <View style={[styles.flower, styles.flower1]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower2]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower3]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower4]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower5]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower6]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower7]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower8]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower9]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower10]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                            </View>
+                            <MaterialCommunityIcons name="cloud-sync" size={24} color="#FFFFFF" />
+                            <Text style={styles.uiverseText}>Sincronizar </Text>
                         </TouchableOpacity>
 
                         <View style={[styles.prefDivider, { backgroundColor: dividerLine, width: '100%', marginVertical: 16 }]} />
@@ -559,41 +305,35 @@ export default function HomeDashboard() {
                     </View>
                 </View> 
 
+                {/* ACCESO RÁPIDO */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: textSecondary }]}>Acceso Rápido</Text>
-
-                    <GestureDetector gesture={gesture}>
-                        <View style={styles.carouselContainer}>
-                            {QUICK_CARDS.map((item, index) => {
-                                const isExpanded = activeAccessIndex === index;
-                                return (
-                                    <QuickAccessCard
-                                        key={item.id}
-                                        item={item}
-                                        index={index}
-                                        carouselRotation={carouselRotation}
-                                        isExpanded={isExpanded}
-                                        anyExpanded={activeAccessIndex !== null}
-                                        cardBg={cardBg}
-                                        textPrimary={textPrimary}
-                                        textSecondary={textSecondary}
-                                        onPress={() => {
-                                            if (isExpanded) {
-                                                handleCloseExpanded();
-                                            } else {
-                                                handleSelectCard(index);
-                                            }
-                                        }}
-                                        router={router}
-                                    />
-                                );
-                            })}
+                    
+                    <TouchableOpacity
+                        style={[styles.card, { 
+                            backgroundColor: cardBg, 
+                            padding: 20, 
+                            flexDirection: 'row', 
+                            alignItems: 'center',
+                            marginHorizontal: 4 
+                        }]}
+                        activeOpacity={0.8}
+                        onPress={() => router.push(QUICK_CARDS[0].route)}
+                    >
+                        <View style={[styles.metricIconWrap, { backgroundColor: QUICK_CARDS[0].bg, marginRight: 15 }]}>
+                            <MaterialCommunityIcons name={QUICK_CARDS[0].icon} size={24} color={QUICK_CARDS[0].color} />
                         </View>
-                    </GestureDetector>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '700', color: textPrimary }}>{QUICK_CARDS[0].title}</Text>
+                            <Text style={{ fontSize: 12, color: textSecondary, marginTop: 2 }}>{QUICK_CARDS[0].subtitle}</Text>
+                        </View>
+                        <MaterialCommunityIcons name="chevron-right" size={20} color={textSecondary} />
+                    </TouchableOpacity>
                 </View>
 
             </Animated.ScrollView>
 
+            {/* MODAL DE SINCRONIZACIÓN (Earth Loading) */}
             <Modal
                 visible={isSyncModalVisible}
                 transparent={true}
@@ -654,7 +394,6 @@ export default function HomeDashboard() {
                 onSincronizar={sincronizar}
                 pendingCounts={pendingCounts}
             />
-
         </View>
     );
 }
@@ -662,10 +401,6 @@ export default function HomeDashboard() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 40,
     },
     scrollContent: {
         paddingHorizontal: 16,
@@ -691,11 +426,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        letterSpacing: -0.3,
     },
     headerHomeTitle: {
         fontSize: 34,
@@ -731,6 +461,23 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         borderRadius: 27,
         borderWidth: 1.25,
+    },
+    notifBadge: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        backgroundColor: '#FF9500',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+    },
+    notifBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
     },
     heroCard: {
         backgroundColor: '#1C1C1E',
@@ -811,6 +558,22 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.3,
     },
+    pendingSyncAlert: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 149, 0, 0.15)',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginTop: 10,
+        gap: 8,
+    },
+    pendingSyncText: {
+        flex: 1,
+        color: '#FF9500',
+        fontSize: 13,
+        fontWeight: '600',
+    },
     section: {
         marginBottom: 20,
     },
@@ -832,232 +595,35 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 1,
     },
-    weatherMainRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 12,
-    },
-    statusLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    statusTextPrimary: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    statusTextSecondary: {
-        fontSize: 11,
-        marginTop: 1,
-    },
     metricIconWrap: {
-        width: 32,
-        height: 32,
+        width: 40,
+        height: 40,
         borderRadius: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
-    weatherExpandableContent: {
-        overflow: 'hidden',
-    },
-    weatherSubMetrics: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 10,
-        paddingHorizontal: 4,
-    },
-    subMetricBox: {
-        alignItems: 'center',
-    },
-    subMetricLabel: {
-        fontSize: 10,
-        fontWeight: '500',
-        marginBottom: 2,
-        textTransform: 'uppercase',
-    },
-    subMetricVal: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
     prefDivider: {
         height: 1,
     },
-    carouselContainer: {
-        height: 210,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginVertical: 10,
-    },
-    quickCarouselCard: {
-        position: 'absolute',
-        borderRadius: 16,
-        padding: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
-        shadowRadius: 10,
-        elevation: 5,
-    },
-    quickCardTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-    quickCardSubtitle: {
-        fontSize: 11,
-        marginTop: 2,
-    },
-    expandedContentBox: {
-        alignItems: 'center',
-        flex: 1,
-        justifyContent: 'space-between',
-        marginTop: 4,
-        width: '100%',
-    },
-    quickCardInfo: {
-        fontSize: 10,
-        textAlign: 'center',
-        lineHeight: 13,
-        paddingHorizontal: 2,
-    },
-    actionBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 6,
-        marginTop: 2,
-    },
-    actionBtnText: {
-        color: '#FFFFFF',
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    closeBtn: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        zIndex: 10,
-        width: 24,
-        height: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     uiverseBtn: {
-        height: 76,
-        width: 220,
+        height: 60,
+        width: '90%',
+        borderRadius: 16,
+        backgroundColor: '#34C759', 
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: 'transparent',
-    },
-    uiverseWrapper: {
-        height: 36,
-        width: 140,
-        position: 'relative',
-        backgroundColor: 'transparent',
-        alignItems: 'center',
-        justifyContent: 'center',
+        shadowColor: '#34C759',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.4,
+        shadowRadius: 8,
+        elevation: 6, 
     },
     uiverseText: {
-        fontSize: 17,
-        zIndex: 2,
-        color: '#000',
-        paddingHorizontal: 18,
-        paddingVertical: 6,
-        borderRadius: 12,
-        overflow: 'hidden',
+        fontSize: 18,
+        color: '#FFFFFF',
         fontWeight: '700',
-        backgroundColor: 'rgba(255, 255, 255, 0.35)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.85)',
-        shadowColor: '#fff',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    flower: {
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        width: 32,
-        height: 32,
-        position: 'absolute',
-        zIndex: 1,
-    },
-    flower1: {
-        top: -16,
-        left: -22,
-        transform: [{ rotate: '5deg' }],
-    },
-    flower2: {
-        bottom: -10,
-        left: -6,
-        transform: [{ rotate: '35deg' }],
-    },
-    flower3: {
-        bottom: -18,
-        left: 36,
-        transform: [{ rotate: '0deg' }],
-    },
-    flower4: {
-        top: -18,
-        left: 22,
-        transform: [{ rotate: '15deg' }],
-    },
-    flower5: {
-        right: -8,
-        top: -14,
-        transform: [{ rotate: '25deg' }],
-    },
-    flower6: {
-        right: -24,
-        bottom: -12,
-        transform: [{ rotate: '30deg' }],
-    },
-    flower7: {
-        top: -16,
-        left: 70,
-        transform: [{ rotate: '45deg' }],
-    },
-    flower8: {
-        bottom: -16,
-        right: 32,
-        transform: [{ rotate: '12deg' }],
-    },
-    flower9: {
-        left: -26,
-        top: 4,
-        transform: [{ rotate: '60deg' }],
-    },
-    flower10: {
-        right: -28,
-        top: 2,
-        transform: [{ rotate: '75deg' }],
-    },
-    petal: {
-        height: 16,
-        width: 16,
-        borderTopLeftRadius: '40%',
-        borderTopRightRadius: '70%',
-        borderBottomRightRadius: '7%',
-        borderBottomLeftRadius: '90%',
-        backgroundColor: 'violet',
-        borderWidth: 0.5,
-        borderColor: 'purple',
-        zIndex: 0,
-        margin: 0,
-    },
-    one: {},
-    two: {
-        transform: [{ rotate: '90deg' }],
-    },
-    three: {
-        transform: [{ rotate: '270deg' }],
-    },
-    four: {
-        transform: [{ rotate: '180deg' }],
+        marginLeft: 10,
     },
     syncInfoBox: {
         flexDirection: 'row',
@@ -1130,38 +696,5 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '700',
         fontSize: 14,
-    },
-    notifBadge: {
-        position: 'absolute',
-        top: 6,
-        right: 6,
-        backgroundColor: '#FF9500',
-        borderRadius: 10,
-        minWidth: 20,
-        height: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 6,
-    },
-    notifBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    pendingSyncAlert: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 149, 0, 0.15)',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginTop: 10,
-        gap: 8,
-    },
-    pendingSyncText: {
-        flex: 1,
-        color: '#FF9500',
-        fontSize: 13,
-        fontWeight: '600',
     },
 });

@@ -9,10 +9,37 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { Feather, FontAwesome5 } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
 import { useDeviceInfo } from '../../../services/device';
+
+// PALETA DE COLORES PERSONALIZADA
+const COLORS = {
+  verdeOscuroProfundo: '#012A20',
+  verdeBosquePrimario: '#0B5D3F',
+  verdeEsmeraldaMedio: '#1FA968',
+  verdeNeonBright: '#4EDB8E',
+  verdeMentaPastel: '#D6FCE6',
+  verdeSuaveFondo: '#E4FCEB',
+  verdeMentaBorde: '#7FE0A8',
+
+  naranjaAmbar: '#B45309',
+  naranjaCremaFondo: '#FFF7ED',
+  naranjaClaroBorde: '#FED7AA',
+
+  blancoPuro: '#FFFFFF',
+  blancoHumo: '#F8FAFC',
+  grisClaroFondo: '#F1F5F9',
+  grisBorde: '#E2E8F0',
+  grisSombra: '#94A3B8',
+
+  grisMedioTexto: '#64748B',
+  grisOscuroTexto: '#475569',
+  azulOscuroTitulo: '#1E293B',
+  azulNochePrincipal: '#0F172A',
+};
 
 export default function LoginForm() {
   const {
@@ -96,23 +123,30 @@ export default function LoginForm() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.logo}>INIAP</Text>
-          <Text style={styles.subtitle}>Gestión Agrícola</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        {/* Cabecera Superior con la Ilustración/Ícono Agrícola */}
+        <View style={styles.topSection}>
+          <View style={styles.leafBadge}>
+            <FontAwesome5 name="seedling" size={32} color={COLORS.verdeNeonBright} />
+          </View>
+          <Text style={styles.logo}>AGRODECIDE</Text>
+          <Text style={styles.subtitle}>SISTEMA DE GESTIÓN AGRÍCOLA</Text>
         </View>
 
-        <View style={styles.form}>
+        {/* Tarjeta del Formulario */}
+        <View style={styles.cardForm}>
           <Text style={styles.title}>Iniciar Sesión</Text>
+          <Text style={styles.welcomeText}>Ingresa tus credenciales para continuar</Text>
 
+          {/* Campo Correo */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Correo electrónico</Text>
             <View style={styles.inputWrapper}>
-              <Feather name="mail" size={20} color="#8E8E93" style={styles.inputIcon} />
+              <Feather name="mail" size={20} color={COLORS.verdeBosquePrimario} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="tucorreo@ejemplo.com"
-                placeholderTextColor="#AEAEB2"
+                placeholderTextColor={COLORS.grisSombra}
                 value={email}
                 onChangeText={setEmail}
                 keyboardType="email-address"
@@ -123,14 +157,15 @@ export default function LoginForm() {
             </View>
           </View>
 
+          {/* Campo Contraseña */}
           <View style={styles.inputContainer}>
             <Text style={styles.label}>Contraseña</Text>
             <View style={styles.inputWrapper}>
-              <Feather name="lock" size={20} color="#8E8E93" style={styles.inputIcon} />
+              <Feather name="lock" size={20} color={COLORS.verdeBosquePrimario} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
                 placeholder="••••••••"
-                placeholderTextColor="#AEAEB2"
+                placeholderTextColor={COLORS.grisSombra}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!mostrarPassword}
@@ -144,24 +179,25 @@ export default function LoginForm() {
                 <Feather
                   name={mostrarPassword ? 'eye-off' : 'eye'}
                   size={20}
-                  color="#8E8E93"
+                  color={COLORS.grisMedioTexto}
                 />
               </TouchableOpacity>
             </View>
           </View>
 
+          {/* Botón Principal Login */}
           <TouchableOpacity
             style={[styles.button, isAnyLoading && styles.buttonDisabled]}
             onPress={handleLoginSubmit}
             disabled={isAnyLoading}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             {isLoading ? (
-              <ActivityIndicator color="#fff" />
+              <ActivityIndicator color={COLORS.blancoPuro} />
             ) : (
               <>
-                <Text style={styles.buttonText}>Iniciar Sesión</Text>
-                <Feather name="arrow-right" size={20} color="#fff" style={{ marginLeft: 8 }} />
+                <Text style={styles.buttonText}>Acceder al Sistema</Text>
+                <Feather name="arrow-right" size={20} color={COLORS.blancoPuro} style={{ marginLeft: 8 }} />
               </>
             )}
           </TouchableOpacity>
@@ -169,28 +205,28 @@ export default function LoginForm() {
           {/* Separador */}
           <View style={styles.dividerContainer}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>o</Text>
+            <Text style={styles.dividerText}>O</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Botón Invitado - entra automáticamente */}
+          {/* Botón Invitado */}
           <TouchableOpacity
             style={[styles.invitadoButton, isAnyLoading && styles.buttonDisabled]}
             onPress={handleInvitado}
             disabled={isAnyLoading}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             {cargandoInvitado || isLoadingDevice ? (
-              <ActivityIndicator color="#34C759" />
+              <ActivityIndicator color={COLORS.verdeBosquePrimario} />
             ) : (
               <>
-                <Feather name="user" size={20} color="#34C759" style={styles.invitadoIcon} />
+                <Feather name="user-check" size={20} color={COLORS.verdeBosquePrimario} style={styles.invitadoIcon} />
                 <Text style={styles.invitadoButtonText}>Ingresar como Invitado</Text>
               </>
             )}
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -198,56 +234,88 @@ export default function LoginForm() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    backgroundColor: COLORS.verdeOscuroProfundo,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingVertical: 24,
   },
-  header: {
+  topSection: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 28,
+    paddingHorizontal: 20,
+  },
+  leafBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderWidth: 1.5,
+    borderColor: COLORS.verdeMentaBorde,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
   logo: {
-    fontSize: 44,
-    fontWeight: '700',
-    color: '#34C759',
-    letterSpacing: 2,
+    fontSize: 38,
+    fontWeight: '800',
+    color: COLORS.blancoPuro,
+    letterSpacing: 3,
   },
   subtitle: {
-    fontSize: 14,
-    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.verdeNeonBright,
     marginTop: 4,
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
   },
-  form: {
-    width: '100%',
+  cardForm: {
+    backgroundColor: COLORS.blancoPuro,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    marginHorizontal: 16,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    color: '#000',
+    color: COLORS.azulNochePrincipal,
     textAlign: 'center',
-    marginBottom: 32,
+  },
+  welcomeText: {
+    fontSize: 14,
+    color: COLORS.grisMedioTexto,
+    textAlign: 'center',
+    marginTop: 4,
+    marginBottom: 24,
   },
   inputContainer: {
-    marginBottom: 20,
+    marginBottom: 18,
   },
   label: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#3C3C43',
+    color: COLORS.grisOscuroTexto,
     marginBottom: 8,
     marginLeft: 4,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
+    backgroundColor: COLORS.grisClaroFondo,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: COLORS.grisBorde,
   },
   inputIcon: {
     paddingLeft: 16,
@@ -255,65 +323,65 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingRight: 16,
-    fontSize: 17,
-    color: '#000',
+    fontSize: 16,
+    color: COLORS.azulNochePrincipal,
   },
   eyeButton: {
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   button: {
-    backgroundColor: '#34C759',
-    borderRadius: 12,
+    backgroundColor: COLORS.verdeBosquePrimario,
+    borderRadius: 14,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 12,
+    marginTop: 10,
   },
   buttonDisabled: {
-    backgroundColor: '#AEAEB2',
-    borderColor: '#AEAEB2',
+    backgroundColor: COLORS.grisSombra,
+    borderColor: COLORS.grisSombra,
   },
   buttonText: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
+    color: COLORS.blancoPuro,
+    fontSize: 16,
+    fontWeight: '700',
   },
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 32,
-    marginBottom: 24,
+    marginVertical: 22,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: COLORS.grisBorde,
   },
   dividerText: {
     marginHorizontal: 16,
     fontSize: 13,
-    color: '#8E8E93',
+    fontWeight: '600',
+    color: COLORS.grisSombra,
   },
   invitadoButton: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: COLORS.verdeSuaveFondo,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: '#34C759',
+    borderColor: COLORS.verdeMentaBorde,
   },
   invitadoIcon: {
     marginRight: 8,
   },
   invitadoButtonText: {
-    color: '#34C759',
-    fontSize: 17,
-    fontWeight: '600',
+    color: COLORS.verdeBosquePrimario,
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
