@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -20,7 +20,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
 import { WebView } from 'react-native-webview';
 import { useCroquisMapa } from '../hooks/useCroquisMapa';
-import { useTheme } from '../../../services/ThemeContext';
+import { useTheme } from '../../../services/theme';
+import { useLocalNotifications } from '../../notifications/hooks/useLocalNotifications';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,6 +48,13 @@ export default function CroquisMapaUI() {
     const { edit } = useLocalSearchParams();
     const editLoteId = edit ? parseInt(edit) : null;
 
+    const { isDark } = useTheme();
+    const { notifyLoteGuardado } = useLocalNotifications();
+
+    const handleLoteSaved = useCallback((nombreLote, isPendingSync) => {
+        notifyLoteGuardado(nombreLote);
+    }, [notifyLoteGuardado]);
+
     const {
         mapRef, location, points, isSaving, gpsAccuracy, isTracking,
         showForm, setShowForm, form, updateForm,
@@ -55,9 +63,7 @@ export default function CroquisMapaUI() {
         preGuardarLote, abrirSelector, handleSelectOption, confirmarGuardado, origen, mostrarCondiciones,
         setMostrarCondiciones, mapType, rotarTipoMapa, isEditMode, editLoteData,
         setImagenUrlLote
-    } = useCroquisMapa(editLoteId);
-
-    const { isDark } = useTheme();
+    } = useCroquisMapa(editLoteId, handleLoteSaved);
 
     const [mostrarHectareas, setMostrarHectareas] = useState(false);
     const [busquedaText, setBusquedaText] = useState('');

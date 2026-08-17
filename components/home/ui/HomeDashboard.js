@@ -21,8 +21,9 @@ import Animated, {
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { useTheme } from '../../../services/ThemeContext';
+import { useTheme } from '../../../services/theme';
 import { useHomeDashboard } from '../hooks/useHomeDashboard';
+import NotificationsCenter from '../../notifications/ui/NotificationsCenter';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -31,7 +32,7 @@ const QUICK_CARDS = [
         id: 0,
         title: 'Ensayos',
         subtitle: 'Proyectos',
-        route: '/proyectos/lista',
+        route: '/(tabs)/proyectos',
         icon: 'flask-outline',
         color: '#2563eb',
         bg: 'rgba(37, 99, 235, 0.1)',
@@ -41,7 +42,7 @@ const QUICK_CARDS = [
         id: 1,
         title: 'Evaluaciones',
         subtitle: 'Campo',
-        route: '/proyectos/lista',
+        route: '/(tabs)/proyectos',
         icon: 'clipboard-check-outline',
         color: '#a855f7',
         bg: 'rgba(168, 85, 247, 0.1)',
@@ -61,7 +62,7 @@ const QUICK_CARDS = [
         id: 3,
         title: 'Calculadora',
         subtitle: 'Fertilizantes',
-        route: '/(tabs)/calculadora',
+        route: '/calculadora/calculadora',
         icon: 'calculator',
         color: '#FF9500',
         bg: 'rgba(255, 149, 0, 0.1)',
@@ -194,9 +195,14 @@ export default function HomeDashboard() {
         syncMessage,
         sincronizar,
         limpiarSyncMessage,
+        pendingCount,
+        pendingCounts,
+        verificarPendientes,
+        syncInProgress,
     } = useHomeDashboard();
 
     const [isSyncModalVisible, setIsSyncModalVisible] = useState(false);
+    const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
 
     const anim1 = useSharedValue(0);
     const anim2 = useSharedValue(0);
@@ -381,7 +387,11 @@ export default function HomeDashboard() {
                 <View style={styles.headerTopRow}>
                     <Animated.Text style={[styles.headerHomeTitle, { color: textPrimary }, homeTitleAnimatedStyle]}>Home</Animated.Text>
 
-                    <AnimatedTouchable style={[styles.notifTouchable, notifAnimatedStyle]} activeOpacity={0.75}>
+                    <AnimatedTouchable
+                        style={[styles.notifTouchable, notifAnimatedStyle]}
+                        activeOpacity={0.75}
+                        onPress={() => setIsNotificationsVisible(true)}
+                    >
                         <BlurView
                             intensity={isDark ? 55 : 80}
                             tint={isDark ? 'dark' : 'light'}
@@ -417,10 +427,15 @@ export default function HomeDashboard() {
                             />
 
                             <MaterialCommunityIcons
-                                name="bell-badge-outline"
+                                name={pendingCount > 0 ? "bell-badge-outline" : "bell-outline"}
                                 size={22}
-                                color={isDark ? '#30D158' : '#34C759'}
+                                color={pendingCount > 0 ? '#FF9500' : (isDark ? '#30D158' : '#34C759')}
                             />
+                            {pendingCount > 0 && (
+                                <View style={styles.notifBadge}>
+                                    <Text style={styles.notifBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+                                </View>
+                            )}
                         </BlurView>
                     </AnimatedTouchable>
                 </View>
@@ -460,6 +475,20 @@ export default function HomeDashboard() {
                             <Text style={styles.heroStatLabel}>Lotes Activos</Text>
                         </View>
                     </View>
+
+                    {pendingCount > 0 && (
+                        <TouchableOpacity
+                            style={styles.pendingSyncAlert}
+                            activeOpacity={0.8}
+                            onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
+                        >
+                            <MaterialCommunityIcons name="cloud-upload-outline" size={18} color="#FF9500" />
+                            <Text style={styles.pendingSyncText}>
+                                Tienes {pendingCount} cambio{pendingCount > 1 ? 's' : ''} pendiente{pendingCount > 1 ? 's' : ''} de sincronizar
+                            </Text>
+                            <MaterialCommunityIcons name="chevron-right" size={16} color="#FF9500" />
+                        </TouchableOpacity>
+                    )}
                 </View>
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: textSecondary }]}>Herramienta Destacada</Text>
@@ -528,49 +557,7 @@ export default function HomeDashboard() {
                             </View>
                         </View>
                     </View>
-                </View>
-
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: textSecondary }]}>Condiciones Ambientales</Text>
-                    <TouchableOpacity
-                        style={[styles.card, { backgroundColor: cardBg }]}
-                        activeOpacity={0.9}
-                        onPress={handleToggleWeather}
-                    >
-                        <View style={styles.weatherMainRow}>
-                            <View style={styles.statusLeft}>
-                                <View style={[styles.metricIconWrap, { backgroundColor: 'rgba(0, 122, 255, 0.1)' }]}>
-                                    <MaterialCommunityIcons name="weather-partly-cloudy" size={18} color="#007AFF" />
-                                </View>
-                                <View>
-                                    <Text style={[styles.statusTextPrimary, { color: textPrimary }]}>Estación Pichincha - INIAP</Text>
-                                    <Text style={[styles.statusTextSecondary, { color: textSecondary }]}>Humedad óptima • 22°C</Text>
-                                </View>
-                            </View>
-                            <Animated.View style={animatedChevronStyle}>
-                                <MaterialCommunityIcons name="chevron-down" size={20} color={textSecondary} />
-                            </Animated.View>
-                        </View>
-
-                        <Animated.View style={[styles.weatherExpandableContent, animatedWeatherStyle]}>
-                            <View style={[styles.prefDivider, { backgroundColor: dividerLine }]} />
-                            <View style={styles.weatherSubMetrics}>
-                                <View style={styles.subMetricBox}>
-                                    <Text style={[styles.subMetricLabel, { color: textSecondary }]}>Precipitación</Text>
-                                    <Text style={[styles.subMetricVal, { color: textPrimary }]}>1.2 mm</Text>
-                                </View>
-                                <View style={styles.subMetricBox}>
-                                    <Text style={[styles.subMetricLabel, { color: textSecondary }]}>Viento</Text>
-                                    <Text style={[styles.subMetricVal, { color: textPrimary }]}>8 km/h</Text>
-                                </View>
-                                <View style={styles.subMetricBox}>
-                                    <Text style={[styles.subMetricLabel, { color: textSecondary }]}>Radiación UV</Text>
-                                    <Text style={[styles.subMetricVal, { color: '#FF9500' }]}>Moderada</Text>
-                                </View>
-                            </View>
-                        </Animated.View>
-                    </TouchableOpacity>
-                </View>
+                </View> 
 
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: textSecondary }]}>Acceso Rápido</Text>
@@ -657,6 +644,16 @@ export default function HomeDashboard() {
                     </View>
                 </View>
             </Modal>
+
+            <NotificationsCenter
+                visible={isNotificationsVisible}
+                onClose={() => setIsNotificationsVisible(false)}
+                isDark={isDark}
+                isSyncing={isSyncing}
+                syncMessage={syncMessage}
+                onSincronizar={sincronizar}
+                pendingCounts={pendingCounts}
+            />
 
         </View>
     );
@@ -1133,5 +1130,38 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '700',
         fontSize: 14,
+    },
+    notifBadge: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        backgroundColor: '#FF9500',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 6,
+    },
+    notifBadgeText: {
+        color: '#FFFFFF',
+        fontSize: 11,
+        fontWeight: '700',
+    },
+    pendingSyncAlert: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 149, 0, 0.15)',
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        marginTop: 10,
+        gap: 8,
+    },
+    pendingSyncText: {
+        flex: 1,
+        color: '#FF9500',
+        fontSize: 13,
+        fontWeight: '600',
     },
 });

@@ -1,3 +1,9 @@
+// ============================================
+// TAB LAYOUT - Liquid Glass Navigation
+// ============================================
+// Navegacion principal con tab bar personalizado estilo Liquid Glass
+// Estructura: Tabs + Custom TabBar con glass morphism
+
 import React, { useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Dimensions, Text, TextInput, Keyboard, Platform } from 'react-native';
 import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
@@ -17,20 +23,39 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useTheme } from '@/services/ThemeContext';
-import { SearchProvider, useSearch } from '@/components/lotes/context/SearchContext';
+import { useTheme } from '../../services/theme';
+import { SearchProvider, useSearch } from '../../components/lotes/context/SearchContext';
 
-const ACTIVE_COLOR = '#10B981';
-const TAB_WIDTH = 64;
-const CONTAINER_PADDING = 6;
-const SEARCH_BTN_SIZE = 52;
-const SEARCH_GAP = 12;
-const FAB_SIZE = 52;
-const SIDE_MARGIN = 20;
-const ICON_SIZE = 24;
-const TOTAL_TABS = 4;
-const APPLE_SPRING = { damping: 24, stiffness: 280, mass: 0.8 };
-const BUBBLE_SPRING = { damping: 16, stiffness: 180, mass: 0.7 };
+// --- TEMA DEL TAB BAR ---
+// Origen: services/theme/tabBarTheme.js
+import {
+  TAB_BAR_COLORS,
+  TAB_BAR_DIMENSIONS,
+  TAB_BAR_SPRING_CONFIG,
+  getTabBarColors,
+} from '../../services/theme';
+
+// --- ESTILOS ---
+// Origen: app/styles/tabBarStyles.js
+import { tabBarStyles } from '../../src/styles/tabBarStyles';
+
+// Desestructuracion para uso directo
+const {
+  TAB_WIDTH,
+  CONTAINER_PADDING,
+  SEARCH_BTN_SIZE,
+  SEARCH_GAP,
+  FAB_SIZE,
+  SIDE_MARGIN,
+  ICON_SIZE,
+  TOTAL_TABS,
+} = TAB_BAR_DIMENSIONS;
+
+const { APPLE_SPRING, BUBBLE_SPRING, SCALE_SPRING, DRAG_SPRING } = TAB_BAR_SPRING_CONFIG;
+
+// ============================================
+// TAB BAR PERSONALIZADO - Liquid Glass
+// ============================================
 
 function CleanLiquidGlassTabBar({ state, navigation }) {
   const router = useRouter();
@@ -41,11 +66,13 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
   const { isDark } = useTheme();
   const { searchText, setSearchText } = useSearch();
 
+  // --- ESTADO LOCAL ---
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [cerrando, setCerrando] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const screenWidth = Dimensions.get('window').width;
 
+  // --- VISIBILIDAD SEGUN RUTA ---
   const isTabBarVisible = !(
     pathname.includes('/lotes/nuevo') ||
     pathname.match(/^\/lotes\/[^\/]+$/) ||
@@ -54,6 +81,10 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
     pathname.match(/^\/proyectos\/[^\/]+\/matriz$/)
   );
 
+  // --- COLORES DINAMICOS SEGUN TEMA ---
+  const colors = getTabBarColors(isDark);
+
+  // --- ANIMACIONES (shared values) ---
   const searchExpandProgress = useSharedValue(0);
   const activeIndex = useSharedValue(state.index);
   const bubbleX = useSharedValue(state.index * TAB_WIDTH);
@@ -61,70 +92,12 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
   const isLongPressing = useSharedValue(false);
   const bubbleScaleX = useSharedValue(1);
   const bubbleScaleY = useSharedValue(1);
-  const blurTint = isDark ? 'dark' : 'light';
-  const iconActiveColor = ACTIVE_COLOR;
-  const iconInactiveColor = isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.4)';
-  const labelColor = isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)';
-  const glassBgColor = isDark ? 'rgba(30, 30, 32, 0.25)' : 'rgba(255, 255, 255, 0.32)';
-  const glassBorderColor = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(255, 255, 255, 0.35)';
-  const activeBubbleTint = isDark ? 'dark' : 'light';
-  const activeBubbleOverlay = isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.30)';
-  const activeBubbleBorder = isDark ? 'transparent' : 'rgba(255, 255, 255, 0.4)';
-  const activeBubbleBorderWidth = isDark ? 0 : 0.5;
-  const glassIntensity = 65;
-  const bubbleIntensity = 85;
+
+  // --- EFECTOS ---
   useEffect(() => {
     bubbleX.value = withSpring(state.index * TAB_WIDTH, BUBBLE_SPRING);
     activeIndex.value = state.index;
   }, [state.index]);
-  const navigateToTab = (index) => {
-    const route = state.routes[index];
-    if (route) {
-      const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-      if (!event.defaultPrevented) {
-        navigation.navigate(route.name, route.params);
-      }
-    }
-  };
-
-  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-  const longPressGesture = Gesture.LongPress()
-    .minDuration(180)
-    .onStart(() => {
-      isLongPressing.value = true;
-      isDragging.value = true;
-      bubbleScaleX.value = withSpring(1.18, { damping: 12, stiffness: 200 });
-      bubbleScaleY.value = withSpring(0.88, { damping: 12, stiffness: 200 });
-    });
-
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
-      if (!isDragging.value) return;
-      const minX = CONTAINER_PADDING;
-      const maxX = CONTAINER_PADDING + (TOTAL_TABS - 1) * TAB_WIDTH;
-      bubbleX.value = clamp(e.absoluteX - 40 - SIDE_MARGIN, minX, maxX);
-    })
-    .onEnd(() => {
-      if (!isDragging.value) return;
-      const rawIndex = Math.round((bubbleX.value - CONTAINER_PADDING) / TAB_WIDTH);
-      const targetIndex = clamp(rawIndex, 0, TOTAL_TABS - 1);
-      bubbleX.value = withSpring(targetIndex * TAB_WIDTH, BUBBLE_SPRING);
-      bubbleScaleX.value = withSpring(1, { damping: 14, stiffness: 180 });
-      bubbleScaleY.value = withSpring(1, { damping: 14, stiffness: 180 });
-      isDragging.value = false;
-      isLongPressing.value = false;
-      runOnJS(navigateToTab)(targetIndex);
-    })
-    .onFinalize(() => {
-      if (isDragging.value) {
-        bubbleScaleX.value = withSpring(1, { damping: 14, stiffness: 180 });
-        bubbleScaleY.value = withSpring(1, { damping: 14, stiffness: 180 });
-        isDragging.value = false;
-        isLongPressing.value = false;
-      }
-    });
-
-  const composedGesture = Gesture.Simultaneous(longPressGesture, panGesture);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -142,12 +115,63 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
     };
   }, []);
 
-  const closingAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(cerrando ? 0 : 1, { duration: 150 }),
-  }));
+  useEffect(() => {
+    searchExpandProgress.value = withSpring(isSearchOpen ? 1 : 0, APPLE_SPRING);
+  }, [isSearchOpen]);
 
-  const showFullWidthSearch = isSearchOpen || cerrando;
+  // --- HELPERS ---
+  const navigateToTab = (index) => {
+    const route = state.routes[index];
+    if (route) {
+      const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+      if (!event.defaultPrevented) {
+        navigation.navigate(route.name, route.params);
+      }
+    }
+  };
 
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+
+  // --- GESTURES ---
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(180)
+    .onStart(() => {
+      isLongPressing.value = true;
+      isDragging.value = true;
+      bubbleScaleX.value = withSpring(1.18, DRAG_SPRING);
+      bubbleScaleY.value = withSpring(0.88, DRAG_SPRING);
+    });
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      if (!isDragging.value) return;
+      const minX = CONTAINER_PADDING;
+      const maxX = CONTAINER_PADDING + (TOTAL_TABS - 1) * TAB_WIDTH;
+      bubbleX.value = clamp(e.absoluteX - 40 - SIDE_MARGIN, minX, maxX);
+    })
+    .onEnd(() => {
+      if (!isDragging.value) return;
+      const rawIndex = Math.round((bubbleX.value - CONTAINER_PADDING) / TAB_WIDTH);
+      const targetIndex = clamp(rawIndex, 0, TOTAL_TABS - 1);
+      bubbleX.value = withSpring(targetIndex * TAB_WIDTH, BUBBLE_SPRING);
+      bubbleScaleX.value = withSpring(1, SCALE_SPRING);
+      bubbleScaleY.value = withSpring(1, SCALE_SPRING);
+      isDragging.value = false;
+      isLongPressing.value = false;
+      runOnJS(navigateToTab)(targetIndex);
+    })
+    .onFinalize(() => {
+      if (isDragging.value) {
+        bubbleScaleX.value = withSpring(1, SCALE_SPRING);
+        bubbleScaleY.value = withSpring(1, SCALE_SPRING);
+        isDragging.value = false;
+        isLongPressing.value = false;
+      }
+    });
+
+  const composedGesture = Gesture.Simultaneous(longPressGesture, panGesture);
+
+  // --- PENDING SEARCH REF ---
   const pendingSearchOpenRef = useRef(false);
 
   useEffect(() => {
@@ -159,9 +183,10 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
     }
   }, [state.index]);
 
-  useEffect(() => {
-    searchExpandProgress.value = withSpring(isSearchOpen ? 1 : 0, APPLE_SPRING);
-  }, [isSearchOpen]);
+  // --- ANIMATED STYLES ---
+  const closingAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: withTiming(cerrando ? 0 : 1, { duration: 150 }),
+  }));
 
   const animatedIndicatorStyle = useAnimatedStyle(() => {
     return {
@@ -191,33 +216,42 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
     };
   });
 
+  // --- RENDER ---
+  const showFullWidthSearch = isSearchOpen || cerrando;
   const baseBottomOffset = Platform.OS === 'ios' ? Math.max(insets.bottom, 15) : 25;
   const tabBarBottom = keyboardHeight > 0 ? keyboardHeight + 16 : baseBottomOffset;
 
   if (!isTabBarVisible) return null;
 
   return (
-    <View style={styles.outerContainer}>
+    <View style={tabBarStyles.outerContainer}>
+
+      {/* --- SEARCH EXPANDIDO (full width) --- */}
       {showFullWidthSearch && (
         <Animated.View
           entering={FadeInUp.springify().damping(24).stiffness(280)}
-          style={[styles.fullWidthSearchContainer, { bottom: keyboardHeight + 16 }]}
+          style={[tabBarStyles.fullWidthSearchContainer, { bottom: keyboardHeight + 16 }]}
         >
           <Animated.View style={closingAnimatedStyle}>
-            <BlurView intensity={glassIntensity} tint={blurTint} experimentalBlurMethod="dimezisBlurView" style={[styles.fullWidthSearchGlass, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
-              <View style={styles.fullWidthSearchInner}>
-                <View style={styles.searchIconWrapper}>
-                  <Ionicons name="search" size={20} color={iconActiveColor} />
+            <BlurView
+              intensity={TAB_BAR_DIMENSIONS.GLASS_INTENSITY}
+              tint={colors.blurTint}
+              experimentalBlurMethod="dimezisBlurView"
+              style={[tabBarStyles.fullWidthSearchGlass, { backgroundColor: colors.glassBgColor, borderColor: colors.glassBorderColor }]}
+            >
+              <View style={tabBarStyles.fullWidthSearchInner}>
+                <View style={tabBarStyles.searchIconWrapper}>
+                  <Ionicons name="search" size={20} color={colors.iconActiveColor} />
                 </View>
-                <View style={styles.inputContainer}>
+                <View style={tabBarStyles.inputContainer}>
                   <TextInput
-                    style={[styles.fullWidthSearchInput, { color: '#FFFFFF' }]}
+                    style={[tabBarStyles.fullWidthSearchInput, { color: TAB_BAR_COLORS.INPUT_TEXT_COLOR }]}
                     placeholder="Buscar lote..."
-                    placeholderTextColor="rgba(255,255,255,0.7)"
+                    placeholderTextColor={isDark ? TAB_BAR_COLORS.INPUT_PLACEHOLDER_DARK : TAB_BAR_COLORS.INPUT_PLACEHOLDER_LIGHT}
                     value={searchText}
                     onChangeText={setSearchText}
                     autoFocus
-                    selectionColor={ACTIVE_COLOR}
+                    selectionColor={TAB_BAR_COLORS.ACTIVE_COLOR}
                   />
                 </View>
                 <TouchableOpacity
@@ -230,9 +264,9 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                       setCerrando(false);
                     }, 200);
                   }}
-                  style={styles.closeIconBtn}
+                  style={tabBarStyles.closeIconBtn}
                 >
-                  <Ionicons name="close-circle" size={22} color={iconInactiveColor} />
+                  <Ionicons name="close-circle" size={22} color={colors.iconInactiveColor} />
                 </TouchableOpacity>
               </View>
             </BlurView>
@@ -240,43 +274,68 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
         </Animated.View>
       )}
 
-      <Animated.View style={[
-        styles.tabBarWrapper,
-        {
-          bottom: tabBarBottom,
-          paddingHorizontal: SIDE_MARGIN,
-        }
-      ]}>
+      {/* --- TAB BAR WRAPPER --- */}
+      <Animated.View style={[tabBarStyles.tabBarWrapper, { bottom: tabBarBottom, paddingHorizontal: SIDE_MARGIN }]}>
+
+        {/* --- FAB (Create New) --- */}
         {(isLotesActive || pathname.toLowerCase().includes('proyecto')) && !isSearchOpen && !showFullWidthSearch && (
           <Animated.View
             entering={FadeInUp.springify().damping(18).stiffness(220)}
             exiting={FadeOutDown.springify().damping(18).stiffness(220)}
-            style={styles.fabContainer}
+            style={tabBarStyles.fabContainer}
           >
-            <TouchableOpacity activeOpacity={0.7} onPress={() => router.push(isLotesActive ? '/lotes/nuevo' : '/proyectos/nuevo')} style={styles.fabTouchable}>
-              <BlurView intensity={glassIntensity + 10} tint={blurTint} experimentalBlurMethod="dimezisBlurView" style={[styles.fabGlass, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
-                <Text style={styles.fabIconWhite}>+</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => router.push(isLotesActive ? '/lotes/nuevo' : '/proyectos/nuevo')}
+              style={tabBarStyles.fabTouchable}
+            >
+              <BlurView
+                intensity={TAB_BAR_DIMENSIONS.GLASS_INTENSITY + 10}
+                tint={colors.blurTint}
+                experimentalBlurMethod="dimezisBlurView"
+                style={[tabBarStyles.fabGlass, { backgroundColor: colors.glassBgColor, borderColor: colors.glassBorderColor }]}
+              >
+                <Text style={[tabBarStyles.fabIcon, { color: isDark ? TAB_BAR_COLORS.FAB_ICON_COLOR_DARK : TAB_BAR_COLORS.FAB_ICON_COLOR_LIGHT }]}>+</Text>
               </BlurView>
             </TouchableOpacity>
           </Animated.View>
         )}
 
+        {/* --- NAV CONTENT (Pill + Search) --- */}
         {!showFullWidthSearch && (
-          <View style={styles.navContent}>
-            <Animated.View style={[styles.mainPillContainer, animatedMainPillStyle]}>
-              <BlurView intensity={glassIntensity} tint={blurTint} experimentalBlurMethod="dimezisBlurView" style={[styles.glassContainer, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
+          <View style={tabBarStyles.navContent}>
 
+            {/* --- MAIN PILL (Glass Tabs) --- */}
+            <Animated.View style={[tabBarStyles.mainPillContainer, animatedMainPillStyle]}>
+              <BlurView
+                intensity={TAB_BAR_DIMENSIONS.GLASS_INTENSITY}
+                tint={colors.blurTint}
+                experimentalBlurMethod="dimezisBlurView"
+                style={[tabBarStyles.glassContainer, { backgroundColor: colors.glassBgColor, borderColor: colors.glassBorderColor }]}
+              >
+
+                {/* --- BUBBLE INDICATOR --- */}
                 {!isSearchOpen && (
                   <GestureDetector gesture={composedGesture}>
-                    <Animated.View style={[styles.activeBlobShadowWrapper, animatedIndicatorStyle, isDark ? null : styles.activeBlobShadowLight]}>
-                      <View style={styles.activeBlobBubble}>
+                    <Animated.View
+                      style={[
+                        tabBarStyles.activeBlobShadowWrapper,
+                        animatedIndicatorStyle,
+                        isDark ? null : tabBarStyles.activeBlobShadowLight,
+                      ]}
+                    >
+                      <View style={tabBarStyles.activeBlobBubble}>
                         <BlurView
-                          intensity={bubbleIntensity}
-                          tint={activeBubbleTint}
+                          intensity={TAB_BAR_DIMENSIONS.BUBBLE_INTENSITY}
+                          tint={colors.activeBubbleTint}
                           experimentalBlurMethod="dimezisBlurView"
                           style={[
-                            styles.activeBlobBlur,
-                            { backgroundColor: activeBubbleOverlay, borderColor: activeBubbleBorder, borderWidth: activeBubbleBorderWidth },
+                            tabBarStyles.activeBlobBlur,
+                            {
+                              backgroundColor: colors.activeBubbleOverlay,
+                              borderColor: colors.activeBubbleBorder,
+                              borderWidth: colors.activeBubbleBorderWidth,
+                            },
                           ]}
                         />
                       </View>
@@ -284,6 +343,7 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                   </GestureDetector>
                 )}
 
+                {/* --- TAB ITEMS --- */}
                 {state.routes.map((route, index) => {
                   const isFocused = state.index === index;
                   const routeNameLower = route.name.toLowerCase();
@@ -319,15 +379,15 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                     iconName = isFocused ? 'settings' : 'settings-outline';
                   }
 
-                  const iconColor = (isFocused && !isSearchOpen) ? iconActiveColor : iconInactiveColor;
-                  const textColor = labelColor;
+                  const iconColor = (isFocused && !isSearchOpen) ? colors.iconActiveColor : colors.iconInactiveColor;
+                  const textColor = colors.labelColor;
 
                   return (
-                    <TouchableOpacity key={index} onPress={onPress} activeOpacity={0.6} style={styles.tabItem}>
+                    <TouchableOpacity key={index} onPress={onPress} activeOpacity={0.6} style={tabBarStyles.tabItem}>
                       <Animated.View
                         style={[
                           { alignItems: 'center', justifyContent: 'center' },
-                          { transform: [{ scale: isFocused ? 1.05 : 1 }] }
+                          { transform: [{ scale: isFocused ? 1.05 : 1 }] },
                         ]}
                       >
                         <Ionicons
@@ -336,7 +396,7 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                           color={iconColor}
                           style={{ marginBottom: 2 }}
                         />
-                        <Text style={[styles.tabLabel, { color: textColor }]}>
+                        <Text style={[tabBarStyles.tabLabel, { color: textColor }]}>
                           {labelText}
                         </Text>
                       </Animated.View>
@@ -346,8 +406,14 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
               </BlurView>
             </Animated.View>
 
-            <Animated.View style={[styles.searchBtnWrapper, animatedSearchContainerStyle, { marginLeft: SEARCH_GAP }]}>
-              <BlurView intensity={glassIntensity} tint={blurTint} experimentalBlurMethod="dimezisBlurView" style={[styles.searchGlass, { backgroundColor: glassBgColor, borderColor: glassBorderColor }]}>
+            {/* --- SEARCH BUTTON --- */}
+            <Animated.View style={[tabBarStyles.searchBtnWrapper, animatedSearchContainerStyle, { marginLeft: SEARCH_GAP }]}>
+              <BlurView
+                intensity={TAB_BAR_DIMENSIONS.GLASS_INTENSITY}
+                tint={colors.blurTint}
+                experimentalBlurMethod="dimezisBlurView"
+                style={[tabBarStyles.searchGlass, { backgroundColor: colors.glassBgColor, borderColor: colors.glassBorderColor }]}
+              >
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => {
@@ -358,31 +424,32 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                       navigation.navigate('lotes');
                     }
                   }}
-                  style={styles.searchInnerRow}
+                  style={tabBarStyles.searchInnerRow}
                 >
-                  <View style={styles.searchBtnIconWrapper}>
+                  <View style={tabBarStyles.searchBtnIconWrapper}>
                     <Ionicons
                       name={isSearchOpen ? "search" : "search-outline"}
                       size={22}
-                      color={isSearchOpen ? iconActiveColor : iconInactiveColor}
+                      color={isSearchOpen ? colors.iconActiveColor : colors.iconInactiveColor}
                     />
                   </View>
 
+                  {/* --- SEARCH INPUT (inline expand) --- */}
                   {(isSearchOpen || cerrando) && (
                     <Animated.View
                       entering={FadeIn.duration(200)}
                       exiting={FadeOut.duration(150)}
-                      style={styles.inputWrapper}
+                      style={tabBarStyles.inputWrapper}
                     >
                       <Animated.View style={closingAnimatedStyle}>
                         <TextInput
-                          style={[styles.textInputStyle, { color: '#FFFFFF' }]}
+                          style={[tabBarStyles.textInputStyle, { color: TAB_BAR_COLORS.INPUT_TEXT_COLOR }]}
                           placeholder="Buscar lote..."
-                          placeholderTextColor="rgba(255,255,255,0.7)"
+                          placeholderTextColor={isDark ? TAB_BAR_COLORS.INPUT_PLACEHOLDER_DARK : TAB_BAR_COLORS.INPUT_PLACEHOLDER_LIGHT}
                           value={searchText}
                           onChangeText={setSearchText}
                           autoFocus
-                          selectionColor={ACTIVE_COLOR}
+                          selectionColor={TAB_BAR_COLORS.ACTIVE_COLOR}
                         />
                         <TouchableOpacity
                           onPress={() => {
@@ -394,9 +461,9 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                               router.push('/');
                             }, 200);
                           }}
-                          style={styles.closeIconBtn}
+                          style={tabBarStyles.closeIconBtn}
                         >
-                          <Ionicons name="close-circle" size={20} color={iconInactiveColor} />
+                          <Ionicons name="close-circle" size={20} color={colors.iconInactiveColor} />
                         </TouchableOpacity>
                       </Animated.View>
                     </Animated.View>
@@ -410,6 +477,10 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
     </View>
   );
 }
+
+// ============================================
+// LAYOUT PRINCIPAL
+// ============================================
 
 export default function TabLayout() {
   return (
@@ -439,193 +510,3 @@ export default function TabLayout() {
     </SafeAreaProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  outerContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    alignItems: 'center',
-    zIndex: 999,
-  },
-  tabBarWrapper: {
-    position: 'absolute',
-    width: '100%',
-    maxWidth: 420,
-    alignItems: 'center',
-  },
-  navContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mainPillContainer: {
-    height: 64,
-    borderRadius: 32,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 5,
-  },
-  glassContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 32,
-    padding: CONTAINER_PADDING,
-    borderWidth: 0.5,
-    overflow: 'hidden',
-  },
-  activeBlobShadowWrapper: {
-    position: 'absolute',
-    top: CONTAINER_PADDING,
-    bottom: CONTAINER_PADDING,
-    left: CONTAINER_PADDING,
-    width: TAB_WIDTH,
-    borderRadius: 28,
-  },
-  activeBlobShadowLight: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  activeBlobBubble: {
-    flex: 1,
-    borderRadius: 28,
-    overflow: 'hidden',
-  },
-  activeBlobBlur: {
-    flex: 1,
-    borderRadius: 28,
-  },
-  tabItem: {
-    width: TAB_WIDTH,
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  tabLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 0,
-  },
-  fabContainer: {
-    position: 'absolute',
-    bottom: 76,
-    alignSelf: 'center',
-    width: FAB_SIZE,
-    height: FAB_SIZE,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 6,
-    zIndex: 10,
-  },
-  fabTouchable: {
-    width: '100%',
-    height: '100%',
-    borderRadius: FAB_SIZE / 2,
-  },
-  fabGlass: {
-    flex: 1,
-    borderRadius: FAB_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 0.5,
-    overflow: 'hidden',
-  },
-  fabIconWhite: {
-    fontSize: 30,
-    fontWeight: '300',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.35)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  searchBtnWrapper: {
-    height: SEARCH_BTN_SIZE,
-    borderRadius: SEARCH_BTN_SIZE / 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 16,
-    elevation: 5,
-  },
-  searchGlass: {
-    width: '100%',
-    height: '100%',
-    borderRadius: SEARCH_BTN_SIZE / 2,
-    borderWidth: 0.5,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchInnerRow: {
-    width: '100%',
-    height: SEARCH_BTN_SIZE,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  inputWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingRight: 10,
-  },
-  textInputStyle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '400',
-    paddingVertical: 0,
-  },
-  closeIconBtn: {
-    padding: 6,
-  },
-  searchBtnIconWrapper: {
-    width: SEARCH_BTN_SIZE,
-    height: SEARCH_BTN_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchIconWrapper: {
-    width: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  fullWidthSearchContainer: {
-    position: 'absolute',
-    alignSelf: 'center',
-    left: SIDE_MARGIN,
-    right: SIDE_MARGIN,
-    zIndex: 1000,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-  },
-  fullWidthSearchGlass: {
-    borderRadius: 24,
-    borderWidth: 0.5,
-    overflow: 'hidden',
-  },
-  fullWidthSearchInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    height: 52,
-    paddingHorizontal: 12,
-  },
-  inputContainer: {
-    flex: 1,
-  },
-  fullWidthSearchInput: {
-    fontSize: 16,
-    fontWeight: '400',
-    paddingVertical: 0,
-  },
-});

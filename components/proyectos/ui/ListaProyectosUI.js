@@ -24,18 +24,37 @@ import Animated, {
 import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createProyectosStyles } from './proyectosStyles';
-import { useTheme } from '../../../services/ThemeContext';
+import { useTheme } from '../../../services/theme';
+import { SkeletonCard } from '../../../src/styles/global/SkeletonCard';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES'];
+const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'INACTIVOS'];
 
 const EstadoBadge = ({ estado, syncStatus, estilos }) => {
     const isPending = syncStatus === 'pending' || syncStatus === 'draft';
+    const isInactivo = estado === 'inactivo';
+
+    const getBadgeStyle = () => {
+        if (isInactivo) return [estilos.cardBadge, { backgroundColor: 'rgba(142, 142, 147, 0.2)' }];
+        if (isPending) return [estilos.cardBadge, estilos.cardBadgePending];
+        return estilos.cardBadge;
+    };
+
+    const getTextStyle = () => {
+        if (isInactivo) return [estilos.cardBadgeText, { color: '#8E8E93' }];
+        if (isPending) return [estilos.cardBadgeText, estilos.cardBadgeTextPending];
+        return estilos.cardBadgeText;
+    };
+
+    const getLabel = () => {
+        if (isInactivo) return 'Inactivo';
+        if (isPending) return 'Pendiente';
+        return estado || 'Activo';
+    };
+
     return (
-        <View style={[estilos.cardBadge, isPending && estilos.cardBadgePending]}>
-            <Text style={[estilos.cardBadgeText, isPending && estilos.cardBadgeTextPending]}>
-                {isPending ? 'Pendiente' : estado || 'Activo'}
-            </Text>
+        <View style={getBadgeStyle()}>
+            <Text style={getTextStyle()}>{getLabel()}</Text>
         </View>
     );
 };
@@ -105,34 +124,15 @@ const EmptyState = ({ estilos, filtroActivo }) => (
                 ? 'No hay proyectos registrados'
                 : filtroActivo === 'ACTIVOS'
                 ? 'No hay proyectos activos'
-                : 'No hay proyectos pendientes'}
+                : filtroActivo === 'PENDIENTES'
+                ? 'No hay proyectos pendientes'
+                : 'No hay proyectos inactivos'}
         </Text>
         <Text style={estilos.emptySubtext}>
             Presiona el botón + para crear tu primer proyecto
         </Text>
     </View>
 );
-
-const SkeletonCard = ({ isDark }) => {
-    const skeletonBg = isDark ? '#38383A' : '#E5E5EA';
-    return (
-        <View style={{
-            backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
-            marginHorizontal: 16,
-            marginVertical: 8,
-            padding: 20,
-            borderRadius: 36,
-            opacity: 0.6,
-        }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                <View style={{ width: '60%', height: 20, backgroundColor: skeletonBg, borderRadius: 4 }} />
-                <View style={{ width: 60, height: 20, backgroundColor: skeletonBg, borderRadius: 10 }} />
-            </View>
-            <View style={{ width: '80%', height: 14, backgroundColor: skeletonBg, borderRadius: 4, marginBottom: 8 }} />
-            <View style={{ width: '50%', height: 14, backgroundColor: skeletonBg, borderRadius: 4 }} />
-        </View>
-    );
-};
 
 export default function ListaProyectosUI({
     proyectos = [],
@@ -145,6 +145,7 @@ export default function ListaProyectosUI({
     const { isDark } = useTheme();
     const estilos = createProyectosStyles(isDark);
     const horizontalScrollRef = useRef(null);
+    const isProgrammaticRef = useRef(false);
     const scrollY = useSharedValue(0);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -210,6 +211,7 @@ export default function ListaProyectosUI({
         onFiltroChange(tab);
         revealHeaderForTabChange();
         if (horizontalScrollRef.current) {
+            isProgrammaticRef.current = true;
             horizontalScrollRef.current.scrollTo({ x: index * SCREEN_WIDTH, animated: false });
         }
     };
@@ -218,9 +220,10 @@ export default function ListaProyectosUI({
         const offsetX = e.nativeEvent.contentOffset.x;
         const index = Math.round(offsetX / SCREEN_WIDTH);
         const tab = TABS[index];
-        if (tab && tab !== filtroActivo) {
+        if (tab && tab !== filtroActivo && !isProgrammaticRef.current) {
             onFiltroChange(tab);
         }
+        isProgrammaticRef.current = false;
         revealHeaderForTabChange();
     };
 
@@ -239,8 +242,9 @@ export default function ListaProyectosUI({
 
     const getProyectosPorFiltro = (tab) => {
         if (tab === 'TODOS') return proyectos;
-        if (tab === 'ACTIVOS') return proyectos.filter(p => p.sync_status === 'synced' || p.estado === 'activo');
-        if (tab === 'PENDIENTES') return proyectos.filter(p => p.sync_status === 'pending' || p.sync_status === 'draft');
+        if (tab === 'ACTIVOS') return proyectos.filter(p => p.estado === 'activo' && p.sync_status !== 'pending' && p.sync_status !== 'draft');
+        if (tab === 'PENDIENTES') return proyectos.filter(p => p.estado === 'pendiente' || p.sync_status === 'pending' || p.sync_status === 'draft');
+        if (tab === 'INACTIVOS') return proyectos.filter(p => p.estado === 'inactivo');
         return proyectos;
     };
 
@@ -251,16 +255,14 @@ export default function ListaProyectosUI({
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
-            {/* Scrim de legibilidad para el status bar */}
-            <LinearGradient
-                pointerEvents="none"
-                colors={
-                    isDark
-                        ? ['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']
-                        : ['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0)']
-                }
-                style={[styles.statusBarScrim, { height: insets.top + 40 }]}
-            />
+            {/* Scrim de legibilidad para el status bar - solo en dark mode */}
+            {isDark && (
+                <LinearGradient
+                    pointerEvents="none"
+                    colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']}
+                    style={[styles.statusBarScrim, { height: insets.top + 40 }]}
+                />
+            )}
 
             {/* TÍTULO "Proyectos" + CONTADOR — se ocultan juntos al scrollear */}
             <View style={[styles.header, { paddingTop: insets.top + TITLE_ROW_MARGIN_TOP }]}>
@@ -334,6 +336,7 @@ export default function ListaProyectosUI({
                     showsHorizontalScrollIndicator={false}
                     onScrollBeginDrag={revealHeaderForTabChange}
                     onMomentumScrollEnd={handleScrollEnd}
+                    onScroll={handleScroll}
                     scrollEventThrottle={16}
                     style={{ flex: 1 }}
                     contentInsetAdjustmentBehavior="never"
@@ -345,7 +348,7 @@ export default function ListaProyectosUI({
                             <View key={tab} style={{ width: SCREEN_WIDTH, flex: 1 }}>
                                 <FlatList
                                     data={datos}
-                                    keyExtractor={(item) => item.uuid_movil || item.id?.toString() || Math.random().toString()}
+                                    keyExtractor={(item) => item.uuid_movil || item.id?.toString() || `proyecto-${item.titulo}-${item.estado}`}
                                     renderItem={({ item }) => <ProyectoCard proyecto={item} estilos={estilos} />}
                                     ListEmptyComponent={isLoading ? <SkeletonCard isDark={isDark} /> : <EmptyState estilos={estilos} filtroActivo={tab} />}
                                     contentContainerStyle={datos.length === 0
@@ -360,8 +363,6 @@ export default function ListaProyectosUI({
                                         />
                                     }
                                     showsVerticalScrollIndicator={false}
-                                    onScroll={handleScroll}
-                                    scrollEventThrottle={16}
                                     contentInsetAdjustmentBehavior="never"
                                     automaticallyAdjustContentInsets={false}
                                     automaticallyAdjustsScrollIndicatorInsets={false}
@@ -371,14 +372,6 @@ export default function ListaProyectosUI({
                     })}
                 </ScrollView>
             </View>
-            {/* BOTÓN + para crear un nuevo proyecto */}
-            <TouchableOpacity
-                style={estilos.fab}
-                onPress={() => router.push('/proyectos/nuevo')}
-                activeOpacity={0.8}
-            >
-                <Text style={estilos.fabText}>+</Text>
-            </TouchableOpacity>
         </View>
     );
 }

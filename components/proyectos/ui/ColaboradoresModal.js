@@ -26,7 +26,8 @@ import Animated, {
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
-import { useColaboradores } from '../hooks/useColaboradores';
+import { useColaboradores } from '../../../services/colaboradores';
+import { useLocalNotifications } from '../../notifications/hooks/useLocalNotifications';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -152,6 +153,9 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
     buscarUsuarios,
   } = useColaboradores(proyectoId);
 
+  // Notificaciones
+  const { notifyColaboradorAgregado } = useLocalNotifications();
+
   // --- Animación "genio": el panel nace del botón flotante y se expande ---
   const progreso = useSharedValue(0);
   const contenidoOpacidad = useSharedValue(0);
@@ -251,11 +255,15 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
     const resultado = await agregarColaboradores(userIds);
 
     if (resultado.success) {
+      // Notificar a cada colaborador agregado
+      seleccionados.forEach(colab => {
+        notifyColaboradorAgregado(colab.nombre || 'Colaborador');
+      });
       cerrarPanel();
     } else {
       Alert.alert('Error', resultado.message || 'No se pudieron agregar los colaboradores');
     }
-  }, [seleccionados, agregarColaboradores, cerrarPanel]);
+  }, [seleccionados, agregarColaboradores, cerrarPanel, notifyColaboradorAgregado]);
 
   const handleEliminar = useCallback(async (userId) => {
     Alert.alert(

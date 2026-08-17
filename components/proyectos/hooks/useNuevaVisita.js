@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
-import { proyectosLocalService } from '@/services/proyectosLocalService';
+import { proyectosLocalService } from '../../../services/proyectos';
 
-export const useNuevaVisita = (proyectoId) => {
+export const useNuevaVisita = (proyectoId, onVisitaSaved = null) => {
     const [formData, setFormData] = useState({
         tecnico_nombre: '',
         fecha_visita: new Date().toISOString().split('T')[0],
@@ -51,13 +51,17 @@ export const useNuevaVisita = (proyectoId) => {
                     observaciones: '',
                     recomendaciones: '',
                 });
+                // Notificar si hay callback
+                if (onVisitaSaved) {
+                    onVisitaSaved(formData.fecha_visita);
+                }
                 return { success: true, visita: resultado.visita };
             }
 
             setError(resultado.message || 'Error al guardar');
             return { success: false };
         } catch (err) {
-            console.error('Error guardando visita:', err);
+            // console removed
             setError('Error al guardar la visita');
             return { success: false };
         } finally {

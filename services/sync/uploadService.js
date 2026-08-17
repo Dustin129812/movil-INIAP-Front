@@ -5,19 +5,19 @@ import {
     lotes, ciclos_cultivo, visitas, hojas_datos, proyectos, configuracion, SYNC_STATUS
 } from '../../db/schema';
 import { eq, inArray } from 'drizzle-orm';
-import { fetchApi } from '../apiClient';
+import { fetchApi } from '../api/apiClient';
 
 /**
  * Construye el payload anidado de sincronización.
  * El backend espera: { lotes: [{ proyectos: [{ ciclos: [{ visitas: [{ hojas_datos: [] }] }] }] }] }
  */
 const construirPayloadSync = async () => {
-    // Obtener todos los pendientes
-    const [lotesPendientes] = await db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING));
-    const [proyectosPendientes] = await db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING));
-    const [ciclosPendientes] = await db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING));
-    const [visitasPendientes] = await db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING));
-    const [hojasPendientes] = await db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING));
+    // Obtener todos los pendientes (db.select devuelve un array completo, no destructuring)
+    const lotesPendientes = await db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING));
+    const proyectosPendientes = await db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING));
+    const ciclosPendientes = await db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING));
+    const visitasPendientes = await db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING));
+    const hojasPendientes = await db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING));
 
     const allLotes = Array.isArray(lotesPendientes) ? lotesPendientes : [];
     const allProyectos = Array.isArray(proyectosPendientes) ? proyectosPendientes : [];
@@ -112,6 +112,7 @@ const construirPayloadSync = async () => {
                 descripcion: proyecto.descripcion || '',
                 variedad: proyecto.variedad || 'Sin variedad',
                 fecha_siembra: proyecto.fecha_siembra || null,
+                estado: proyecto.estado || 'activo',
                 tipo_acolchado: proyecto.tipo_acolchado || null,
                 tipo_ensayo: proyecto.tipo_ensayo || null,
                 diseno_experimental: proyecto.diseno_experimental || null,
@@ -143,14 +144,21 @@ const construirPayloadSync = async () => {
 
 /**
  * Obtiene el conteo de registros pendientes por sincronizar.
+ *
+ * NOTA: `total` refleja únicamente las 3 categorías que se muestran en la
+ * bandeja de notificaciones (lotes, proyectos, visitas). `ciclos` y `hojas`
+ * se siguen contando por separado (útiles para depuración/otros usos),
+ * pero deliberadamente NO se suman a `total` para que el número del badge
+ * siempre coincida con la suma de lo que el usuario ve en pantalla.
  */
 export const obtenerConteoPendientes = async () => {
     try {
-        const [lotesP] = await db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING));
-        const [proyectosP] = await db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING));
-        const [ciclosP] = await db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING));
-        const [visitasP] = await db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING));
-        const [hojasP] = await db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING));
+        // db.select() devuelve un array completo, no un elemento individual
+        const lotesP = await db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING));
+        const proyectosP = await db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING));
+        const ciclosP = await db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING));
+        const visitasP = await db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING));
+        const hojasP = await db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING));
 
         const counts = {
             lotes: Array.isArray(lotesP) ? lotesP.length : 0,
@@ -159,10 +167,11 @@ export const obtenerConteoPendientes = async () => {
             visitas: Array.isArray(visitasP) ? visitasP.length : 0,
             hojas: Array.isArray(hojasP) ? hojasP.length : 0,
         };
-        counts.total = counts.lotes + counts.proyectos + counts.ciclos + counts.visitas + counts.hojas;
+        // Solo lotes + proyectos + visitas, para que coincida con la UI
+        counts.total = counts.lotes + counts.proyectos + counts.visitas;
         return counts;
     } catch (error) {
-        console.error('[Upload] Error contando pendientes:', error);
+        // console removed
         return { lotes: 0, proyectos: 0, ciclos: 0, visitas: 0, hojas: 0, total: 0 };
     }
 };
@@ -274,7 +283,7 @@ export const syncEngine = async () => {
         return { success: true, message: `Sincronizados ${totalLotes} lotes` };
 
     } catch (error) {
-        console.error('[SyncEngine] Error:', error);
+        // console removed
         return { success: false, message: error.message };
     }
 };

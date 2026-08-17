@@ -31,7 +31,6 @@ const cardBase = {
     overflow: 'hidden',
 };
 
-export const GlassCardDark = ({ children, style }) => children;
 export const createProyectosStyles = (isDark) => StyleSheet.create({
     container: {
         flex: 1,

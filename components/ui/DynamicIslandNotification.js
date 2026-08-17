@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Platform, StyleSheet, Text, View } from 'react-native';
-import { useDeviceInfo } from '../../services/useDeviceInfo';
+import { useDeviceInfo } from '../../services/device';
 
 const ICONOS = {
   bienvenida: '+',
@@ -23,20 +23,25 @@ export function DynamicIslandNotification({ tipo, mensaje, visible }) {
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let translateAnimation;
+    let progressAnimation;
+
     if (visible) {
       setShow(true);
-      Animated.spring(translateY, {
+      translateAnimation = Animated.spring(translateY, {
         toValue: 0,
         friction: 8,
         tension: 50,
         useNativeDriver: true,
-      }).start();
+      });
+      translateAnimation.start();
       progress.setValue(0);
-      Animated.timing(progress, {
+      progressAnimation = Animated.timing(progress, {
         toValue: 1,
         duration: 2800,
         useNativeDriver: false,
-      }).start();
+      });
+      progressAnimation.start();
     } else {
       Animated.timing(translateY, {
         toValue: -100,
@@ -44,6 +49,11 @@ export function DynamicIslandNotification({ tipo, mensaje, visible }) {
         useNativeDriver: true,
       }).start(() => setShow(false));
     }
+
+    return () => {
+      if (translateAnimation) translateAnimation.stop();
+      if (progressAnimation) progressAnimation.stop();
+    };
   }, [visible]);
 
   if (!show) return null;

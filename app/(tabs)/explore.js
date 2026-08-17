@@ -1,5 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, Switch, StatusBar } from 'react-native';
+// ============================================
+// EXPLORE - Pantalla de Ajustes
+// ============================================
+// Navegacion: Tab "Ajustes" - configuracion de usuario y app
+// Estructura: Perfil + Apariencia + Navegacion + Logout
+
+import React, { useState } from 'react';
+import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
@@ -12,39 +18,49 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIslandNotification } from '../../components/ui';
-import { useAuth } from '../../services';
-import { useDeviceInfo } from '../../services/useDeviceInfo';
-import { useTheme } from '../../services/ThemeContext';
-import * as LocalAuthentication from 'expo-local-authentication';
+import { useAuth } from '../../services/auth';
+import { useDeviceInfo } from '../../services/device';
+import { useTheme } from '../../services/theme';
 import { useRouter } from 'expo-router';
 
+// --- ESTILOS ---
+// Origen: app/styles/exploreStyles.js
+import { exploreStyles as styles } from '../../src/styles/exploreStyles';
+
+// --- CONSTANTES DE ANIMACION (Header hide/reveal) ---
+// Origen: extraido de explore.js para modularidad
+const HEADER_ANIMATION = {
+  TOP_REVEAL_THRESHOLD: 12,
+  HIDE_DURATION: 160,
+  REVEAL_DURATION: 260,
+  HEADER_ROW_HEIGHT: 42,
+  HEADER_ROW_MARGIN_TOP: 2,
+  HEADER_BOTTOM_GAP: 12,
+};
+
+// ============================================
+// COMPONENTE PRINCIPAL
+// ============================================
+
 export default function SettingsScreen() {
+  // --- HOOKS ---
   const { usuario, cerrarSesion, esInvitado } = useAuth();
   const { deviceInfo } = useDeviceInfo();
   const { nombreDispositivo } = deviceInfo;
   const { theme, isDark, setTheme, setSystemTheme, isSystemTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+
+  // --- ESTADO LOCAL ---
   const [mostrarNotificacion, setMostrarNotificacion] = useState(false);
   const [notificacion, setNotificacion] = useState({ tipo: 'despedida', mensaje: '' });
 
-  // Estados de preferencias interactivas
-  const [pushNotifications, setPushNotifications] = useState(true);
-  const [unlockFaceId, setUnlockFaceId] = useState(false);
-  const [hapticFeedback, setHapticFeedback] = useState(true);
-
-  // Estado para el nombre del sistema biometrico
-  const [biometricName, setBiometricName] = useState('Bloqueo Biométrico');
-
-  // --- Header estilo Apple (mismo patrón que Home y Lotes) ---
-  // "Ajustes" se oculta por completo apenas se empieza a scrollear y solo
-  // reaparece cuando el scroll vuelve arriba del todo. No es un fade
-  // continuo atado 1:1 al scroll, es una animación por ESTADO.
-  const TOP_REVEAL_THRESHOLD = 12;
-  const HIDE_DURATION = 160;
-  const REVEAL_DURATION = 260;
-
+  // ============================================
+  // ANIMACION DEL HEADER (Apple-style hide/reveal)
+  // El titulo "Ajustes" se oculta al scrollear y reaparece solo arriba
+  // ============================================
   const scrollY = useSharedValue(0);
+
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
@@ -55,19 +71,31 @@ export default function SettingsScreen() {
   const titleTranslateY = useSharedValue(0);
 
   useAnimatedReaction(
-    () => scrollY.value <= TOP_REVEAL_THRESHOLD,
+    () => scrollY.value <= HEADER_ANIMATION.TOP_REVEAL_THRESHOLD,
     (isAtTop, wasAtTop) => {
       if (isAtTop === wasAtTop) return;
 
       if (isAtTop) {
-        titleOpacity.value = withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
-        titleTranslateY.value = withTiming(0, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
+        titleOpacity.value = withTiming(1, {
+          duration: HEADER_ANIMATION.REVEAL_DURATION,
+          easing: Easing.out(Easing.cubic),
+        });
+        titleTranslateY.value = withTiming(0, {
+          duration: HEADER_ANIMATION.REVEAL_DURATION,
+          easing: Easing.out(Easing.cubic),
+        });
       } else {
-        titleOpacity.value = withTiming(0, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) });
-        titleTranslateY.value = withTiming(-6, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) });
+        titleOpacity.value = withTiming(0, {
+          duration: HEADER_ANIMATION.HIDE_DURATION,
+          easing: Easing.in(Easing.cubic),
+        });
+        titleTranslateY.value = withTiming(-6, {
+          duration: HEADER_ANIMATION.HIDE_DURATION,
+          easing: Easing.in(Easing.cubic),
+        });
       }
     },
-    [TOP_REVEAL_THRESHOLD]
+    [HEADER_ANIMATION.TOP_REVEAL_THRESHOLD]
   );
 
   const titleAnimatedStyle = useAnimatedStyle(() => ({
@@ -75,61 +103,16 @@ export default function SettingsScreen() {
     transform: [{ translateY: titleTranslateY.value }],
   }));
 
-  // Alto real del header, para reservar el espacio justo arriba del
-  // contenido SIN dejar un hueco fijo: este padding vive DENTRO del
-  // contentContainerStyle del ScrollView, así que se scrollea junto con el
-  // contenido en vez de quedar pegado como un tope permanente.
-  const HEADER_ROW_HEIGHT = 42;
-  const HEADER_ROW_MARGIN_TOP = 2;
-  const HEADER_BOTTOM_GAP = 12;
-  const scrollTopPadding = insets.top + HEADER_ROW_MARGIN_TOP + HEADER_ROW_HEIGHT + HEADER_BOTTOM_GAP;
+  // Padding para el contenido scrolleable (reserva espacio del header fijo)
+  const scrollTopPadding =
+    insets.top +
+    HEADER_ANIMATION.HEADER_ROW_MARGIN_TOP +
+    HEADER_ANIMATION.HEADER_ROW_HEIGHT +
+    HEADER_ANIMATION.HEADER_BOTTOM_GAP;
 
-
-  // Detectar el hardware biometrico disponible al cargar la pantalla
-  useEffect(() => {
-    (async () => {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      if (hasHardware) {
-        const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
-        if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
-          setBiometricName('Face ID');
-        } else if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
-          setBiometricName('Huella Dactilar');
-        }
-      }
-    })();
-  }, []);
-
-  const handleBiometricToggle = async (newValue) => {
-    if (newValue) {
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      if (!hasHardware) {
-        Alert.alert('No soportado', 'Tu dispositivo no cuenta con hardware biométrico.');
-        return;
-      }
-
-      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-      if (!isEnrolled) {
-        Alert.alert('No configurado', `No tienes ${biometricName} configurado en tu dispositivo.`);
-        return;
-      }
-
-      const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: `Autentícate para activar ${biometricName}`,
-        fallbackLabel: 'Usar contraseña',
-        cancelLabel: 'Cancelar',
-        disableDeviceFallback: false,
-      });
-
-      if (result.success) {
-        setUnlockFaceId(true);
-      } else {
-        setUnlockFaceId(false);
-      }
-    } else {
-      setUnlockFaceId(false);
-    }
-  };
+  // ============================================
+  // HANDLERS
+  // ============================================
 
   const ejecutarCierreSesion = () => {
     setNotificacion({ tipo: 'despedida', mensaje: '' });
@@ -162,6 +145,10 @@ export default function SettingsScreen() {
     }
   };
 
+  // ============================================
+  // HELPERS
+  // ============================================
+
   const getInitials = (name) => {
     if (!name) return 'U';
     const parts = name.trim().split(' ');
@@ -171,11 +158,19 @@ export default function SettingsScreen() {
     return name.slice(0, 2).toUpperCase();
   };
 
+  // ============================================
+  // RENDER
+  // ============================================
+
   return (
     <View style={[styles.container, isDark && styles.containerDark]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        translucent
+        backgroundColor="transparent"
+      />
 
-      {/* Scrim de legibilidad para el status bar: fijo, no se desvanece. */}
+      {/* Scrim de legibilidad para el status bar: fijo */}
       <LinearGradient
         pointerEvents="none"
         colors={
@@ -186,8 +181,8 @@ export default function SettingsScreen() {
         style={[styles.statusBarScrim, { height: insets.top + 40 }]}
       />
 
-      {/* Header: se oculta al scrollear y reaparece solo arriba del todo */}
-      <View style={[styles.header, { paddingTop: insets.top + HEADER_ROW_MARGIN_TOP }]}>
+      {/* Header: se oculta al scrollear y reaparece solo arriba */}
+      <View style={[styles.header, { paddingTop: insets.top + HEADER_ANIMATION.HEADER_ROW_MARGIN_TOP }]}>
         <Animated.View style={[styles.headerTopRow, titleAnimatedStyle]}>
           <View style={styles.headerLeft}>
             <Text style={[styles.headerTitle, isDark && styles.textWhite]}>Ajustes</Text>
@@ -195,6 +190,7 @@ export default function SettingsScreen() {
         </Animated.View>
       </View>
 
+      {/* Contenido scrolleable */}
       <Animated.ScrollView
         style={styles.scrollView}
         onScroll={scrollHandler}
@@ -206,7 +202,10 @@ export default function SettingsScreen() {
         automaticallyAdjustsScrollIndicatorInsets={false}
       >
 
-        {/* PERFIL - ESTILO "APPLE ACCOUNT" (sin tarjeta, avatar grande centrado) */}
+        {/* ============================================ */}
+        {/* PERFIL - ESTILO "APPLE ACCOUNT" */}
+        {/* Avatar grande centrado, sin tarjeta */}
+        {/* ============================================ */}
         <View style={styles.appleProfileSection}>
           <View style={styles.appleAvatarWrap}>
             {usuario?.FOTO_URL ? (
@@ -238,13 +237,21 @@ export default function SettingsScreen() {
           )}
         </View>
 
-        {/* SECCIÓN: APARIENCIA */}
+        {/* ============================================ */}
+        {/* SECCION: APARIENCIA */}
+        {/* Selector de tema: Daylight / Midnight / Sistema */}
+        {/* ============================================ */}
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Apariencia</Text>
           <View style={styles.appearanceRow}>
 
+            {/* Daylight - Tema Claro */}
             <TouchableOpacity
-              style={[styles.themeCard, isDark && styles.cardDark, !isSystemTheme && theme === 'light' && styles.themeCardActive]}
+              style={[
+                styles.themeCard,
+                isDark && styles.cardDark,
+                !isSystemTheme && theme === 'light' && styles.themeCardActive,
+              ]}
               onPress={() => { setTheme('light'); setSystemTheme(false); }}
               activeOpacity={0.8}
             >
@@ -257,7 +264,9 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.themeDetails}>
                 <View style={styles.themeTextContainer}>
-                  <Text style={[styles.themeTitle, isDark && styles.textWhite]} numberOfLines={1}>Daylight</Text>
+                  <Text style={[styles.themeTitle, isDark && styles.textWhite]} numberOfLines={1}>
+                    Daylight
+                  </Text>
                   <Text style={styles.themeSubtitle} numberOfLines={1}>Claro</Text>
                 </View>
                 <View style={[styles.radioOuter, theme === 'light' && styles.radioOuterActive]}>
@@ -266,8 +275,13 @@ export default function SettingsScreen() {
               </View>
             </TouchableOpacity>
 
+            {/* Midnight - Tema Oscuro */}
             <TouchableOpacity
-              style={[styles.themeCard, isDark && styles.cardDark, !isSystemTheme && theme === 'dark' && styles.themeCardActiveDark]}
+              style={[
+                styles.themeCard,
+                isDark && styles.cardDark,
+                !isSystemTheme && theme === 'dark' && styles.themeCardActiveDark,
+              ]}
               onPress={() => { setTheme('dark'); setSystemTheme(false); }}
               activeOpacity={0.8}
             >
@@ -280,17 +294,28 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.themeDetails}>
                 <View style={styles.themeTextContainer}>
-                  <Text style={[styles.themeTitle, isDark && styles.textWhite]} numberOfLines={1}>Midnight</Text>
+                  <Text style={[styles.themeTitle, isDark && styles.textWhite]} numberOfLines={1}>
+                    Midnight
+                  </Text>
                   <Text style={styles.themeSubtitle} numberOfLines={1}>Oscuro</Text>
                 </View>
-                <View style={[styles.radioOuter, isDark && styles.radioOuterDark, theme === 'dark' && styles.radioOuterActiveDark]}>
+                <View style={[
+                  styles.radioOuter,
+                  isDark && styles.radioOuterDark,
+                  theme === 'dark' && styles.radioOuterActiveDark,
+                ]}>
                   {theme === 'dark' && <View style={[styles.radioInner, { backgroundColor: '#34C759' }]} />}
                 </View>
               </View>
             </TouchableOpacity>
 
+            {/* Sistema - Auto */}
             <TouchableOpacity
-              style={[styles.themeCard, isDark && styles.cardDark, isSystemTheme && (isDark ? styles.themeCardActiveDark : styles.themeCardActive)]}
+              style={[
+                styles.themeCard,
+                isDark && styles.cardDark,
+                isSystemTheme && (isDark ? styles.themeCardActiveDark : styles.themeCardActive),
+              ]}
               onPress={() => setSystemTheme(true)}
               activeOpacity={0.8}
             >
@@ -304,10 +329,16 @@ export default function SettingsScreen() {
               </View>
               <View style={styles.themeDetails}>
                 <View style={styles.themeTextContainer}>
-                  <Text style={[styles.themeTitle, isDark && styles.textWhite]} numberOfLines={1}>Sistema</Text>
+                  <Text style={[styles.themeTitle, isDark && styles.textWhite]} numberOfLines={1}>
+                    Sistema
+                  </Text>
                   <Text style={styles.themeSubtitle} numberOfLines={1}>Automático</Text>
                 </View>
-                <View style={[styles.radioOuter, isDark && styles.radioOuterDark, isSystemTheme && (isDark ? styles.radioOuterActiveDark : styles.radioOuterActive)]}>
+                <View style={[
+                  styles.radioOuter,
+                  isDark && styles.radioOuterDark,
+                  isSystemTheme && (isDark ? styles.radioOuterActiveDark : styles.radioOuterActive),
+                ]}>
                   {isSystemTheme && <View style={[styles.radioInner, isDark && { backgroundColor: '#34C759' }]} />}
                 </View>
               </View>
@@ -316,71 +347,15 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        {/* SECCIÓN: PREFERENCIAS */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Preferencias</Text>
-          <View style={[styles.card, isDark && styles.cardDark]}>
-
-            <View style={styles.prefRow}>
-              <View style={styles.prefLeft}>
-                <View style={[styles.metricIconWrap, isDark && styles.metricIconWrapDark]}>
-                  <MaterialCommunityIcons name="bell-outline" size={16} color="#34C759" />
-                </View>
-                <Text style={[styles.prefText, isDark && styles.textWhite]}>Notificaciones</Text>
-              </View>
-              <Switch
-                value={pushNotifications}
-                onValueChange={setPushNotifications}
-                trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-                thumbColor={'#FFFFFF'}
-              />
-            </View>
-
-            <View style={[styles.prefDivider, isDark && styles.dividerDark]} />
-
-            <View style={styles.prefRow}>
-              <View style={styles.prefLeft}>
-                <View style={[styles.metricIconWrap, isDark && styles.metricIconWrapDark]}>
-                  <MaterialCommunityIcons
-                    name={biometricName === 'Face ID' ? "face-recognition" : "fingerprint"}
-                    size={16}
-                    color="#34C759"
-                  />
-                </View>
-                <Text style={[styles.prefText, isDark && styles.textWhite]}>{biometricName}</Text>
-              </View>
-              <Switch
-                value={unlockFaceId}
-                onValueChange={handleBiometricToggle}
-                trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-                thumbColor={'#FFFFFF'}
-              />
-            </View>
-
-            <View style={[styles.prefDivider, isDark && styles.dividerDark]} />
-
-            <View style={[styles.prefRow, styles.lastRow]}>
-              <View style={styles.prefLeft}>
-                <View style={[styles.metricIconWrap, isDark && styles.metricIconWrapDark]}>
-                  <MaterialCommunityIcons name="vibrate" size={16} color="#34C759" />
-                </View>
-                <Text style={[styles.prefText, isDark && styles.textWhite]}>Vibración</Text>
-              </View>
-              <Switch
-                value={hapticFeedback}
-                onValueChange={setHapticFeedback}
-                trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-                thumbColor={'#FFFFFF'}
-              />
-            </View>
-
-          </View>
-        </View>
-
-        {/* SECCIÓN: COLABORADORES DE PROYECTOS (fila única, estilo "Family" de Apple) */}
+        {/* ============================================ */}
+        {/* SECCION: COLABORADORES DE PROYECTOS */}
+        {/* Solo visible para usuarios no invitados */}
+        {/* ============================================ */}
         {!esInvitado && (
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Colaboradores de Proyectos</Text>
+            <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+              Colaboradores de Proyectos
+            </Text>
             <View style={[styles.card, isDark && styles.cardDark]}>
               <TouchableOpacity
                 style={[styles.row, styles.lastRow]}
@@ -399,9 +374,13 @@ export default function SettingsScreen() {
           </View>
         )}
 
-        {/* SECCIÓN: INFORMACIÓN DE DISPOSITIVO (fila única, estilo Apple Account) */}
+        {/* ============================================ */}
+        {/* SECCION: INFORMACION DEL DISPOSITIVO */}
+        {/* ============================================ */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>Información del Dispositivo</Text>
+          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+            Información del Dispositivo
+          </Text>
           <View style={[styles.card, isDark && styles.cardDark]}>
             <TouchableOpacity
               style={[styles.row, styles.lastRow]}
@@ -413,8 +392,12 @@ export default function SettingsScreen() {
                   <MaterialCommunityIcons name="cellphone-cog" size={16} color="#34C759" />
                 </View>
                 <View>
-                  <Text style={[styles.rowLabel, isDark && styles.textWhite]}>{nombreDispositivo || 'Este dispositivo'}</Text>
-                  <Text style={styles.navRowSub} numberOfLines={1}>UUID, modelo y sistema</Text>
+                  <Text style={[styles.rowLabel, isDark && styles.textWhite]}>
+                    {nombreDispositivo || 'Este dispositivo'}
+                  </Text>
+                  <Text style={styles.navRowSub} numberOfLines={1}>
+                    UUID, modelo y sistema
+                  </Text>
                 </View>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={20} color="#8E8E93" />
@@ -422,6 +405,9 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* ============================================ */}
+        {/* BOTON CERRAR SESION */}
+        {/* ============================================ */}
         <TouchableOpacity
           style={[styles.logoutButton, isDark && styles.logoutButtonDark]}
           onPress={handleCerrarSesion}
@@ -431,9 +417,12 @@ export default function SettingsScreen() {
           <Text style={styles.logoutText}>Cerrar Sesión</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.version, isDark && styles.versionDark]}>INIAP v1.0.0 • Gestión Agrícola</Text>
+        <Text style={[styles.version, isDark && styles.versionDark]}>
+          INIAP v1.0.0 • Gestión Agrícola
+        </Text>
       </Animated.ScrollView>
 
+      {/* Notificacion de despedida */}
       <DynamicIslandNotification
         tipo={notificacion.tipo}
         mensaje={notificacion.mensaje}
@@ -442,265 +431,3 @@ export default function SettingsScreen() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F2F2F7' },
-  containerDark: { backgroundColor: '#121212' },
-  scrollView: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingBottom: 120 },
-  textWhite: { color: '#FFFFFF' },
-
-  statusBarScrim: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 15,
-  },
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    paddingHorizontal: 16,
-  },
-  headerTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 42,
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 34, fontWeight: '700', color: '#000000', letterSpacing: -0.4 },
-  headerDividerVertical: { width: 1, height: 14, backgroundColor: '#D1D1D6' },
-  headerDividerDark: { backgroundColor: '#3A3A3C' },
-  headerSubtitle: { fontSize: 13, color: '#8E8E93', fontWeight: '500' },
-
-  /* PERFIL ESTILO "APPLE ACCOUNT" */
-  appleProfileSection: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 32,
-  },
-  appleAvatarWrap: {
-    marginBottom: 18,
-  },
-  appleAvatarImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden',
-  },
-  appleAvatarInitials: {
-    fontSize: 40,
-    fontWeight: '600',
-    color: '#8E8E93',
-    letterSpacing: 0.5,
-  },
-  appleAvatarInitialsDark: {
-    color: '#C7C7CC',
-  },
-  appleName: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#000000',
-    letterSpacing: -0.4,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  appleEmail: {
-    fontSize: 15,
-    color: '#8E8E93',
-    fontWeight: '400',
-    textAlign: 'center',
-  },
-  appleGuestBadge: {
-    marginTop: 10,
-    backgroundColor: 'rgba(255, 149, 0, 0.12)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  appleGuestBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#FF9500',
-    letterSpacing: 0.3,
-  },
-
-  /* NUEVOS ESTILOS DE PERFIL INVITADO (legado, ya no usados por appleProfileSection) */
-  profileHeroCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 26,
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  profileHeroCardDark: {
-    backgroundColor: '#1C1C1E',
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  profileWatermarkWrap: {
-    position: 'absolute',
-    top: 4,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileColumn: {
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    position: 'relative',
-    marginBottom: 14,
-  },
-  avatarRing: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: 'rgba(52, 199, 89, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#34C759',
-  },
-  avatarRingDark: {
-    backgroundColor: 'rgba(52, 199, 89, 0.15)',
-  },
-  avatarInitials: {
-    color: '#34C759',
-    fontSize: 26,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  guestStatusDot: {
-    position: 'absolute',
-    bottom: 4,
-    right: 2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#FF9500',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-  },
-  guestStatusDotDark: {
-    borderColor: '#1C1C1E',
-  },
-  profileDetailsCentered: {
-    alignItems: 'center',
-  },
-  roleAndBadgeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 2,
-    marginBottom: 8,
-  },
-  heroName: {
-    fontSize: 19,
-    fontWeight: '700',
-    color: '#000000',
-    letterSpacing: -0.3,
-    textAlign: 'center',
-  },
-  heroRole: {
-    fontSize: 12,
-    color: '#34C759',
-    fontWeight: '600',
-  },
-  heroRoleDark: {
-    color: '#34C759',
-  },
-  guestBadge: {
-    backgroundColor: 'rgba(255, 149, 0, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  guestBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#FF9500',
-  },
-  heroEmailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  heroEmail: {
-    fontSize: 13,
-    color: '#8E8E93',
-    fontWeight: '500',
-  },
-
-  /* RESTO DE ESTILOS */
-  section: { marginBottom: 20 },
-  sectionTitle: { fontSize: 13, fontWeight: '600', color: '#8E8E93', marginBottom: 8, marginLeft: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionTitleDark: { color: '#98989F' },
-
-  appearanceRow: { flexDirection: 'row', gap: 8 },
-  themeCard: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 14, padding: 10, borderWidth: 1.5, borderColor: 'transparent', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
-  themeCardActive: { borderColor: '#34C759' },
-  themeCardActiveDark: { borderColor: '#34C759', backgroundColor: '#1E1E24' },
-  themePreviewLight: { height: 50, borderRadius: 10, marginBottom: 8, padding: 8, justifyContent: 'space-between' },
-  themePreviewDark: { height: 50, borderRadius: 10, marginBottom: 8, padding: 8, justifyContent: 'space-between' },
-  themePreviewSystem: { height: 50, borderRadius: 10, marginBottom: 8, flexDirection: 'row', overflow: 'hidden' },
-  systemHalfLight: { flex: 1, backgroundColor: '#F2F2F7', padding: 6 },
-  systemHalfDark: { flex: 1, backgroundColor: '#2C2C2E', padding: 6, alignItems: 'flex-end', justifyContent: 'flex-end' },
-  previewLineSystemLight: { width: '80%', height: 4, borderRadius: 2, backgroundColor: '#D1D1D6' },
-  previewDotSystemDark: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34C759' },
-  previewLine: { width: '40%', height: 5, borderRadius: 3, backgroundColor: '#D1D1D6' },
-  previewDotRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  previewDot: { width: 6, height: 6, borderRadius: 3 },
-  themeDetails: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  themeTextContainer: { flex: 1, paddingRight: 4 },
-  themeTitle: { fontSize: 12, fontWeight: '600', color: '#000000' },
-  themeSubtitle: { fontSize: 10, color: '#8E8E93', marginTop: 1 },
-  radioOuter: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: '#C7C7CC', justifyContent: 'center', alignItems: 'center' },
-  radioOuterDark: { borderColor: '#48484A' },
-  radioOuterActive: { borderColor: '#34C759' },
-  radioOuterActiveDark: { borderColor: '#34C759' },
-  radioInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#34C759' },
-
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, paddingHorizontal: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1 },
-  cardDark: { backgroundColor: '#1E1E24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)' },
-  prefRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
-  prefLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  metricIconWrap: { width: 28, height: 28, borderRadius: 8, backgroundColor: 'rgba(52, 199, 89, 0.1)', justifyContent: 'center', alignItems: 'center' },
-  metricIconWrapDark: { backgroundColor: 'rgba(52, 199, 89, 0.15)' },
-  prefText: { fontSize: 14, fontWeight: '500', color: '#000000' },
-  prefDivider: { height: 1, backgroundColor: '#F2F2F7' },
-  divider: { height: 1, backgroundColor: '#F2F2F7' },
-  dividerDark: { backgroundColor: '#2C2C2E' },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: '#F2F2F7' },
-  rowDark: { borderBottomColor: '#2C2C2E' },
-  lastRow: { borderBottomWidth: 0 },
-  rowLabel: { fontSize: 14, color: '#000000', fontWeight: '500' },
-  rowValue: { fontSize: 14, color: '#8E8E93', maxWidth: '50%', textAlign: 'right' },
-  deviceId: { fontSize: 12, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' },
-
-  navRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  navIconWrap: { width: 34, height: 34, borderRadius: 10, backgroundColor: 'rgba(10, 132, 255, 0.1)', justifyContent: 'center', alignItems: 'center' },
-  navIconWrapDark: { backgroundColor: 'rgba(10, 132, 255, 0.15)' },
-  navRowSub: { fontSize: 12, color: '#8E8E93', marginTop: 1 },
-
-  logoutButton: { flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 16, paddingVertical: 14, alignItems: 'center', justifyContent: 'center', marginTop: 8, borderWidth: 1, borderColor: 'rgba(255, 59, 48, 0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6 },
-  logoutButtonDark: { backgroundColor: '#1E1E24', borderColor: 'rgba(255, 59, 48, 0.25)' },
-  logoutText: { color: '#FF3B30', fontSize: 15, fontWeight: '600' },
-  version: { textAlign: 'center', color: '#C7C7CC', fontSize: 12, marginTop: 24 },
-  versionDark: { color: '#48484A' },
-});

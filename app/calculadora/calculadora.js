@@ -15,7 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useTheme } from "../../services/ThemeContext";
+import { useTheme } from "../../services/theme";
 import { COLORS_CALC, getCalcColors } from "../../components/calculadora/colors";
 import { useCalculadora } from "../../components/calculadora/hooks/useCalculadora";
 import {

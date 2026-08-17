@@ -13,7 +13,7 @@ export const SYNC_STATUS = {
 export const lotes = sqliteTable('lotes', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     user_id: integer('user_id'),
-    uuid_movil: text('uuid_movil'),
+    uuid_movil: text('uuid_movil').unique(),
     nombre_lote: text('nombre_lote').notNull(),
     sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
     coordenadas: text('coordenadas'),
@@ -50,7 +50,7 @@ export const estaciones = sqliteTable('estaciones', {
 
 export const proyectos = sqliteTable('proyectos', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    uuid_movil: text('uuid_movil'),
+    uuid_movil: text('uuid_movil').unique(),
     lote_uuid: text('lote_uuid'),           // UUID del lote al que pertenece
     titulo: text('titulo').notNull(),
     descripcion: text('descripcion'),
@@ -71,7 +71,7 @@ export const proyectos = sqliteTable('proyectos', {
 
 export const ciclos_cultivo = sqliteTable('ciclos_cultivo', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    uuid_movil: text('uuid_movil'),
+    uuid_movil: text('uuid_movil').unique(),
     lote_uuid: text('lote_uuid'),            // UUID del lote
     proyecto_uuid: text('proyecto_uuid'),     // UUID del proyecto al que pertenece
     cultivo_variedad: text('cultivo_variedad').notNull(),
@@ -87,7 +87,7 @@ export const ciclos_cultivo = sqliteTable('ciclos_cultivo', {
 
 export const visitas = sqliteTable('visitas', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    uuid_movil: text('uuid_movil'),
+    uuid_movil: text('uuid_movil').unique(),
     lote_uuid: text('lote_uuid'),            // UUID del lote
     proyecto_uuid: text('proyecto_uuid'),     // UUID del proyecto
     ciclo_uuid: text('ciclo_uuid'),          // UUID del ciclo al que pertenece
@@ -102,7 +102,7 @@ export const visitas = sqliteTable('visitas', {
 
 export const hojas_datos = sqliteTable('hojas_datos', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    uuid_movil: text('uuid_movil'),
+    uuid_movil: text('uuid_movil').unique(),
     lote_uuid: text('lote_uuid'),            // UUID del lote
     proyecto_uuid: text('proyecto_uuid'),     // UUID del proyecto
     ciclo_uuid: text('ciclo_uuid'),          // UUID del ciclo

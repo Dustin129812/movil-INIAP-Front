@@ -1,38 +1,46 @@
+// ============================================
+// PROYECTO DETALLE - Pantalla de Edicion de Proyecto
+// ============================================
+// Navegacion: app/proyectos/[id]/index.js
+// Muestra formulario para editar el proyecto seleccionado
+
 import React from 'react';
-import { StyleSheet, View, StatusBar } from 'react-native';
+import { View, StatusBar } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/services/ThemeContext';
-import { ProyectoDetalleUI } from '@/components/proyectos/ui';
-import { useProyectoDetalle } from '../../../components/proyectos/hooks/useProyectoDetalle';
+import { useTheme } from '../../../services/theme';
+import EditarProyectoForm from '../../../components/proyectos/ui/EditarProyectoForm';
+import { useEditarProyecto } from '../../../components/proyectos/hooks/useEditarProyecto';
 
 export default function ProyectoDetalleScreen() {
     const { id } = useLocalSearchParams();
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
+
     const {
-        proyectoData,
-        visitas,
+        proyecto,
         isLoading,
-    } = useProyectoDetalle(id);
+        isSaving,
+        error,
+        guardarProyecto,
+        isNewProject,
+    } = useEditarProyecto(id);
 
     return (
-        <View style={[styles.container, { backgroundColor: '#000000' }]}>
-            <StatusBar barStyle="light-content" backgroundColor="#000000" />
-            <View style={{ paddingTop: insets.top }}>
-                <ProyectoDetalleUI
-                    proyecto={proyectoData}
-                    visitas={visitas}
-                    isLoading={isLoading}
-                />
-            </View>
+        <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7' }}>
+            <StatusBar
+                barStyle={isDark ? 'light-content' : 'dark-content'}
+                translucent
+                backgroundColor="transparent"
+            />
+            <EditarProyectoForm
+                proyecto={proyecto}
+                isLoading={isLoading}
+                isSaving={isSaving}
+                error={error}
+                onGuardar={guardarProyecto}
+                isNewProject={isNewProject}
+            />
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#000000',
-    },
-});

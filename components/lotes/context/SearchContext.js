@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { lotesService } from '../../../services/lotesService';
+import { lotesService } from '../../../services/lotes';
 
 const SearchContext = createContext({
     searchText: '',

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useTheme } from '../../services/ThemeContext';
+import { useTheme } from '../../services/theme';
 import LotesDashboardUI from '../../components/lotes/ui/LotesDashboardUI';
 
 export default function LotesScreen() {
