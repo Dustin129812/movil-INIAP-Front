@@ -8,7 +8,7 @@ const formatearNumero = (valor, decimales = 2) => {
   if (!Number.isFinite(valor)) return "0";
   return valor.toLocaleString("es-EC", {
     maximumFractionDigits: decimales,
-    minimumFractionDigits: decimales,
+    minimumFractionDigits: 0,
   });
 };
 
@@ -113,7 +113,7 @@ export function ResultadosCalculo({ resultadoCalculo, isDark }) {
           <View style={{ width: itemWidth }}>
             <Metrica
               icono="map-outline"
-              label="Área en hectáreas"
+              label="Hectáreas"
               value={`${formatearNumero(resultadoCalculo.areaHa, 4)} ha`}
               colors={colors}
             />
@@ -146,30 +146,11 @@ export function ResultadosCalculo({ resultadoCalculo, isDark }) {
         </Seccion>
 
         <Seccion titulo="Distribución en el terreno" color={colors.macroBorder} colors={colors}>
-          <View style={{ width: itemWidth }}>
-            <Metrica
-              icono="drag-vertical-variant"
-              label="Número de surcos"
-              value={formatearNumero(resultadoCalculo.numeroSurcos, 2)}
-              colors={colors}
-            />
-          </View>
-          <View style={{ width: itemWidth }}>
-            <Metrica
-              icono="sprout-outline"
-              label="Sitios por surco"
-              value={formatearNumero(resultadoCalculo.sitiosPorSurco, 2)}
-              colors={colors}
-            />
-          </View>
-          <View style={{ width: itemWidth }}>
-            <Metrica
-              icono="beaker-outline"
-              label="Kilogramos de mezcla por surco"
-              value={`${formatearNumero(resultadoCalculo.kgMezclaPorSurco, 2)} kg`}
-              colors={colors}
-            />
-          </View>
+          {resultadoCalculo.numeroSurcos != null ? <>
+            <View style={{ width: itemWidth }}><Metrica icono="drag-vertical-variant" label="Número estimado de surcos" value={formatearNumero(resultadoCalculo.numeroSurcos, 2)} colors={colors} /></View>
+            <View style={{ width: itemWidth }}><Metrica icono="sprout-outline" label="Sitios por surco" value={formatearNumero(resultadoCalculo.sitiosPorSurco, 2)} colors={colors} /></View>
+            <View style={{ width: itemWidth }}><Metrica icono="beaker-outline" label="Kilogramos de mezcla por surco" value={`${formatearNumero(resultadoCalculo.kgMezclaPorSurco, 2)} kg`} colors={colors} /></View>
+          </> : <View style={{ width: itemWidth }}><Metrica icono="sprout-outline" label="Total estimado de sitios de plantación" value={formatearNumero(resultadoCalculo.totalSitiosEstimados, 0)} colors={colors} /></View>}
         </Seccion>
       </View>
     </View>
