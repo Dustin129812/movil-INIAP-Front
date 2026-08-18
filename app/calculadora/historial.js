@@ -22,8 +22,8 @@ import {
   eliminarCalculoHistorial,
   obtenerHistorialCalculos,
 } from "../../services/calculadoraHistorialService";
-import { useTheme } from "../../services/ThemeContext";
-import { useAuth } from "../../services/useAuth";
+import { useTheme } from "../../services/theme";
+import { useAuth } from '../../services/auth';
 
 const RUTA_CALCULADORA =
   "/(tabs)/calculadora";

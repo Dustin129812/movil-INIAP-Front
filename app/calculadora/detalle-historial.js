@@ -28,8 +28,9 @@ import {
   ResultadosCalculo,
 } from "../../components/calculadora/ui";
 import { obtenerCalculoPorId } from "../../services/calculadoraHistorialService";
-import { useTheme } from "../../services/ThemeContext";
-import { useAuth } from "../../services/useAuth";
+// import { useTheme } from "../../services/ThemeContext";
+import { useTheme } from "../../services/theme";
+import { useAuth } from '../../services/auth';
 
 const formatearFecha = (fecha) => {
   if (!fecha) return "Fecha no disponible";
