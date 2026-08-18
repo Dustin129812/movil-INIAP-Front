@@ -171,6 +171,17 @@ function AuthNavigator() {
         <Stack.Screen name="proyectos/[id]/matriz/index" />
         <Stack.Screen name="configuracion/dispositivo" />
         <Stack.Screen name="configuracion/colaboradores" />
+        <Stack.Screen
+            name="catalogos/index"
+            options={{
+                headerShown: false,
+                presentation: "card",
+                animation: "slide_from_right",
+                contentStyle: {
+                    backgroundColor: "#F4F7F5",
+                },
+            }}
+        />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
       </Stack>
     );

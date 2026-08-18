@@ -1,2 +1,2 @@
 export { db, initDb, crearLoteLocal, obtenerLotesLocales, obtenerLotesPendientesSync, marcarLoteComoSincronizado, crearProyectoLocal, obtenerProyectosLocales, obtenerProyectoLocal, obtenerProyectosPorLote, marcarProyectoComoSincronizado, crearCicloLocal, crearVisitaLocal, crearHojaDatosLocal, obtenerCiclosPorProyecto, obtenerVisitasPorProyecto, obtenerHojaDatosPorVisita, SYNC_STATUS, proyectos } from './client';
-export { lotes, provincias, cantones, estaciones, configuracion } from './schema';
+export { lotes, provincias, cantones, estaciones, configuracion, cultivos,variedades, enfermedades, plagas, recomendaciones, cultivoEnfermedad, cultivoPlaga, enfermedadRecomendacion, plagaRecomendacion, catalogosSyncControl } from './schema';

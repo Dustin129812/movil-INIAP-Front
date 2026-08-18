@@ -1,7 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import localLotesService from './localLotesService';
+import {sincronizarCatalogos} from './catalogosSyncService';
 import { useApi, verificarTokenAlIniciar } from './useApi';
 import { useDeviceInfo } from './useDeviceInfo';
+
 
 const AuthContext = createContext(undefined);
 
@@ -46,7 +48,16 @@ export function AuthProvider({ children }) {
           // Inicializar base de datos local si hay usuario autenticado
           if (usuarioGuardado || tieneAuth) {
             await localLotesService.inicializarBaseDatosLocal();
-          }
+            
+            const resultadoCatalogos = await sincronizarCatalogos ();
+
+            if (
+              !resultadoCatalogos.success &&
+              !resultadoCatalogos.offline 
+            ) {
+              console.warn('[Auth] No se pudo sincronizar catálogos:', resultadoCatalogos.message);
+            }
+          } 
         }
       } catch (error) {
         if (mounted) {
@@ -103,6 +114,9 @@ export function AuthProvider({ children }) {
         setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
         setEsInvitado(false);
         await localLotesService.inicializarBaseDatosLocal();
+        const resultadoCatalogos =
+        await sincronizarCatalogos();
+          if (!resultadoCatalogos.success && !resultadoCatalogos.offline) {console.warn('[Login] No se sincronizaron los catálogos:',resultadoCatalogos.message);}
         await new Promise(resolve => setTimeout(resolve, 3000));//Tiempo de carga
         return { success: true };
       }
@@ -127,6 +141,18 @@ export function AuthProvider({ children }) {
         setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
         setEsInvitado(false);
         await localLotesService.inicializarBaseDatosLocal();
+         const resultadoCatalogos =
+          await sincronizarCatalogos();
+
+          if (
+              !resultadoCatalogos.success &&
+              !resultadoCatalogos.offline
+          ) {
+              console.warn(
+                  '[LoginMerge] No se sincronizaron los catálogos:',
+                  resultadoCatalogos.message
+              );
+          }
         await new Promise(resolve => setTimeout(resolve, 3000));
         // Retornar info de merge si la hay
         const datosReasignados = respuesta.datos_reasignados || 0;
@@ -152,6 +178,18 @@ export function AuthProvider({ children }) {
         });
         setEsInvitado(true);
         await localLotesService.inicializarBaseDatosLocal();
+        const resultadoCatalogos =
+        await sincronizarCatalogos();
+
+        if (
+        !resultadoCatalogos.success &&
+        !resultadoCatalogos.offline
+        ) {
+        console.warn(
+        '[LoginInvitado] No se sincronizaron los catálogos:',
+        resultadoCatalogos.message
+        );
+        }
         // Esperar un poco más para que se vea la animación
         await new Promise(resolve => setTimeout(resolve, 3000));
         return { success: true };
