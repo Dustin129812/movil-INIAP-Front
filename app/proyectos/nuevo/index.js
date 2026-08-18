@@ -1,3 +1,9 @@
+// ============================================
+// NUEVO PROYECTO - Formulario de Creacion
+// ============================================
+// Diseño: Apple-style con header animado, secciones, verde (#34C759)
+// Origen: app/proyectos/nuevo/index.js
+
 import React, { useState, useCallback, useEffect } from 'react';
 import {
     View,
@@ -11,35 +17,86 @@ import {
     Alert,
     Modal,
     FlatList,
+    StatusBar,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { proyectosStyles } from '@/components/proyectos/ui';
-import proyectosLocalService from '@/services/proyectosLocalService';
-import localLotesService from '@/services/localLotesService';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    useAnimatedScrollHandler,
+    useAnimatedReaction,
+    withTiming,
+    Easing,
+} from 'react-native-reanimated';
+import { proyectosStyles } from '../../../components/proyectos/ui';
+import { proyectosLocalService } from '../../../services/proyectos';
+import { localLotesService } from '../../../services/lotes';
+import { useTheme } from '../../../services/theme';
+import { crearProyectoStyles as styles } from '../../../src/styles/crearProyectoStyles';
+import DatePickerWheel from '../../../components/calendario/ui/DatePickerWheel';
+import { useLocalNotifications } from '../../../components/notifications/hooks/useLocalNotifications';
+
+const HEADER_ANIMATION = {
+    TOP_REVEAL_THRESHOLD: 12,
+    HIDE_DURATION: 160,
+    REVEAL_DURATION: 260,
+    HEADER_ROW_HEIGHT: 42,
+    HEADER_ROW_MARGIN_TOP: 2,
+};
 
 const TIPOS_ENSAAYO = [
     { value: 'investigacion', label: 'Investigación' },
     { value: 'validacion', label: 'Validación' },
-    { value: 'produccion_semillas', label: 'Producción de Semillas' },
-    { value: 'multiplicacion_semillas', label: 'Multiplicación de Semillas' },
+    { value: 'produccion_semillas', label: 'Producción Semillas' },
+    { value: 'multiplicacion_semillas', label: 'Multiplicación Semillas' },
     { value: 'refrescamiento', label: 'Refrescamiento' },
 ];
 
 const TIPOS_ACOLCHADO = [
     { value: 'con_acolchado', label: 'Con Acolchado' },
-    { value: 'parcialmente_acolchado', label: 'Parcialmente Acolchado' },
+    { value: 'parcialmente_acolchado', label: 'Parcial Acolchado' },
     { value: 'sin_acolchado', label: 'Sin Acolchado' },
 ];
+
+// ============================================
+// COMPONENTE: OptionChip
+// ============================================
+const OptionChip = ({ label, isActive, onPress, dark }) => (
+    <TouchableOpacity
+        style={[
+            styles.optionChip,
+            dark && styles.optionChipDark,
+            isActive && styles.optionChipActive,
+        ]}
+        onPress={onPress}
+        activeOpacity={0.7}
+    >
+        <Text
+            style={[
+                styles.optionChipText,
+                dark && { color: '#C7C7CC' },
+                isActive && styles.optionChipTextActive,
+            ]}
+        >
+            {label}
+        </Text>
+    </TouchableOpacity>
+);
 
 export default function NuevoProyectoScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { isDark } = useTheme();
+
     const [isSaving, setIsSaving] = useState(false);
     const [lotes, setLotes] = useState([]);
     const [mostrarSelectorLote, setMostrarSelectorLote] = useState(false);
+    const [mostrarSelectorFecha, setMostrarSelectorFecha] = useState(false);
     const [loteSeleccionado, setLoteSeleccionado] = useState(null);
+
     const [formData, setFormData] = useState({
         titulo: '',
         descripcion: '',
@@ -53,6 +110,42 @@ export default function NuevoProyectoScreen() {
         lote_id: null,
     });
 
+    // Notificaciones
+    const { notifyProyectoGuardado } = useLocalNotifications();
+
+    // Animacion del header
+    const scrollY = useSharedValue(0);
+    const titleOpacity = useSharedValue(1);
+    const titleTranslateY = useSharedValue(0);
+
+    const scrollHandler = useAnimatedScrollHandler({
+        onScroll: (event) => {
+            scrollY.value = event.contentOffset.y;
+        },
+    });
+
+    useAnimatedReaction(
+        () => scrollY.value <= HEADER_ANIMATION.TOP_REVEAL_THRESHOLD,
+        (isAtTop, wasAtTop) => {
+            if (isAtTop === wasAtTop) return;
+            if (isAtTop) {
+                titleOpacity.value = withTiming(1, { duration: HEADER_ANIMATION.REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
+                titleTranslateY.value = withTiming(0, { duration: HEADER_ANIMATION.REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
+            } else {
+                titleOpacity.value = withTiming(0, { duration: HEADER_ANIMATION.HIDE_DURATION, easing: Easing.in(Easing.cubic) });
+                titleTranslateY.value = withTiming(-6, { duration: HEADER_ANIMATION.HIDE_DURATION, easing: Easing.in(Easing.cubic) });
+            }
+        },
+        [HEADER_ANIMATION.TOP_REVEAL_THRESHOLD]
+    );
+
+    const titleAnimatedStyle = useAnimatedStyle(() => ({
+        opacity: titleOpacity.value,
+        transform: [{ translateY: titleTranslateY.value }],
+    }));
+
+    const scrollTopPadding = insets.top + HEADER_ANIMATION.HEADER_ROW_MARGIN_TOP + HEADER_ANIMATION.HEADER_ROW_HEIGHT + 20;
+
     useEffect(() => {
         cargarLotes();
     }, []);
@@ -63,7 +156,7 @@ export default function NuevoProyectoScreen() {
             const lotesData = await localLotesService.obtenerLotes();
             setLotes(lotesData || []);
         } catch (error) {
-            console.error('Error cargando lotes:', error);
+            // console removed
         }
     };
 
@@ -100,6 +193,7 @@ export default function NuevoProyectoScreen() {
         try {
             const resultado = await proyectosLocalService.crearProyectoLocal(formData);
             if (resultado.success) {
+                notifyProyectoGuardado(formData.titulo || 'Nuevo Proyecto');
                 router.back();
             } else {
                 Alert.alert('Error', resultado.message || 'No se pudo crear el proyecto');
@@ -111,202 +205,257 @@ export default function NuevoProyectoScreen() {
         }
     };
 
+    const formatDisplayDate = (dateStr) => {
+        if (!dateStr) return '';
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+        const month = months[parseInt(parts[1], 10) - 1];
+        return `${parts[2]} ${month} ${parts[0]}`;
+    };
+
     return (
         <KeyboardAvoidingView
-            style={styles.container}
+            style={[styles.container, isDark ? styles.containerDark : styles.containerLight]}
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-            <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-                <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-                    <MaterialCommunityIcons name="arrow-left" size={24} color="#FFFFFF" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Nuevo Proyecto</Text>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+
+            {/* Scrim de legibilidad */}
+            <LinearGradient
+                pointerEvents="none"
+                colors={
+                    isDark
+                        ? ['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']
+                        : ['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0)']
+                }
+                style={[styles.statusBarScrim, { height: insets.top + 40 }]}
+            />
+
+            {/* Header con titulo animado */}
+            <View style={[styles.header, { paddingTop: insets.top + HEADER_ANIMATION.HEADER_ROW_MARGIN_TOP }]}>
+                <Animated.View style={[styles.headerTopRow, titleAnimatedStyle]}>
+                    <TouchableOpacity
+                        style={[styles.backButton, isDark && styles.backButtonDark]}
+                        onPress={() => router.back()}
+                        activeOpacity={0.7}
+                    >
+                        <MaterialCommunityIcons name="chevron-left" size={22} color="#34C759" />
+                    </TouchableOpacity>
+
+                    <Text style={[styles.headerTitle, isDark && styles.textWhite]}>
+                        Nuevo Proyecto
+                    </Text>
+
+                    <View style={{ width: 36 }} />
+                </Animated.View>
             </View>
 
-            <ScrollView
+            {/* Contenido scrolleable */}
+            <Animated.ScrollView
                 style={styles.scrollView}
-                contentContainerStyle={styles.scrollContent}
+                onScroll={scrollHandler}
+                scrollEventThrottle={16}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: scrollTopPadding }]}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-                <View style={proyectosStyles.card}>
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Lote *</Text>
+                {/* ============================================ */}
+                {/* SECCION: LOTE */}
+                {/* ============================================ */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                        Lote *
+                    </Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
                         <TouchableOpacity
-                            style={proyectosStyles.input}
+                            style={styles.inputContainer}
                             onPress={() => setMostrarSelectorLote(true)}
                         >
-                            <Text style={loteSeleccionado ? styles.inputText : styles.inputPlaceholder}>
-                                {loteSeleccionado?.nombre_lote || 'Selecciona un lote'}
-                            </Text>
-                            <MaterialCommunityIcons name="chevron-down" size={20} color="#8E8E93" />
+                            <Text style={styles.inputLabel}>Seleccionar Lote</Text>
+                            <View style={[styles.dateInput, isDark && styles.dateInputDark]}>
+                                <Text style={[styles.dateText, !loteSeleccionado && styles.dateTextPlaceholder, isDark && styles.dateTextDark]}>
+                                    {loteSeleccionado?.nombre_lote || 'Toca para seleccionar'}
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-down" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                            </View>
                         </TouchableOpacity>
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Título del Proyecto *</Text>
-                        <TextInput
-                            style={proyectosStyles.input}
-                            placeholder="Ej: Ensayo de Maíz INIAP-2026"
-                            placeholderTextColor="#636366"
-                            value={formData.titulo}
-                            onChangeText={(v) => updateField('titulo', v)}
-                        />
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Descripción</Text>
-                        <TextInput
-                            style={[proyectosStyles.input, proyectosStyles.inputMultiline]}
-                            placeholder="Describe el objetivo del proyecto..."
-                            placeholderTextColor="#636366"
-                            multiline
-                            numberOfLines={3}
-                            textAlignVertical="top"
-                            value={formData.descripcion}
-                            onChangeText={(v) => updateField('descripcion', v)}
-                        />
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Variedad</Text>
-                        <TextInput
-                            style={proyectosStyles.input}
-                            placeholder="Ej: INIAP-123, Shelli"
-                            placeholderTextColor="#636366"
-                            value={formData.variedad}
-                            onChangeText={(v) => updateField('variedad', v)}
-                        />
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Fecha de Siembra</Text>
-                        <TextInput
-                            style={proyectosStyles.input}
-                            placeholder="YYYY-MM-DD"
-                            placeholderTextColor="#636366"
-                            value={formData.fecha_siembra}
-                            onChangeText={(v) => updateField('fecha_siembra', v)}
-                        />
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Tipo de Ensayo</Text>
-                        <View style={styles.optionsGrid}>
-                            {TIPOS_ENSAAYO.map((op) => (
-                                <TouchableOpacity
-                                    key={op.value}
-                                    style={[
-                                        styles.optionButton,
-                                        formData.tipo_ensayo === op.value && styles.optionButtonActive,
-                                    ]}
-                                    onPress={() => updateField('tipo_ensayo', op.value)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.optionButtonText,
-                                            formData.tipo_ensayo === op.value && styles.optionButtonTextActive,
-                                        ]}
-                                    >
-                                        {op.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Tipo de Acolchado</Text>
-                        <View style={styles.optionsGrid}>
-                            {TIPOS_ACOLCHADO.map((op) => (
-                                <TouchableOpacity
-                                    key={op.value}
-                                    style={[
-                                        styles.optionButton,
-                                        formData.tipo_acolchado === op.value && styles.optionButtonActive,
-                                    ]}
-                                    onPress={() => updateField('tipo_acolchado', op.value)}
-                                >
-                                    <Text
-                                        style={[
-                                            styles.optionButtonText,
-                                            formData.tipo_acolchado === op.value && styles.optionButtonTextActive,
-                                        ]}
-                                    >
-                                        {op.label}
-                                    </Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Financiamiento</Text>
-                        <TextInput
-                            style={proyectosStyles.input}
-                            placeholder="Ej: INIAP, MAG, Propio"
-                            placeholderTextColor="#636366"
-                            value={formData.financiamiento}
-                            onChangeText={(v) => updateField('financiamiento', v)}
-                        />
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Nombre del Colaborador</Text>
-                        <TextInput
-                            style={proyectosStyles.input}
-                            placeholder="Nombre completo"
-                            placeholderTextColor="#636366"
-                            value={formData.colaborador_nombre}
-                            onChangeText={(v) => updateField('colaborador_nombre', v)}
-                        />
-                    </View>
-
-                    <View style={proyectosStyles.inputContainer}>
-                        <Text style={proyectosStyles.inputLabel}>Celular del Colaborador</Text>
-                        <TextInput
-                            style={proyectosStyles.input}
-                            placeholder="Ej: 0991234567"
-                            placeholderTextColor="#636366"
-                            keyboardType="phone-pad"
-                            value={formData.colaborador_celular}
-                            onChangeText={(v) => updateField('colaborador_celular', v)}
-                        />
                     </View>
                 </View>
 
+                {/* ============================================ */}
+                {/* SECCION: DATOS BASICOS */}
+                {/* ============================================ */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                        Datos del Proyecto
+                    </Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Nombre *</Text>
+                            <TextInput
+                                style={[styles.input, isDark && styles.inputDark]}
+                                placeholder="Nombre del proyecto"
+                                placeholderTextColor={isDark ? '#636366' : '#999'}
+                                value={formData.titulo}
+                                onChangeText={(v) => updateField('titulo', v)}
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Descripción</Text>
+                            <TextInput
+                                style={[styles.input, styles.inputMultiline, isDark && styles.inputDark]}
+                                placeholder="Describe el objetivo del proyecto"
+                                placeholderTextColor={isDark ? '#636366' : '#999'}
+                                multiline
+                                numberOfLines={3}
+                                textAlignVertical="top"
+                                value={formData.descripcion}
+                                onChangeText={(v) => updateField('descripcion', v)}
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Variedad *</Text>
+                            <TextInput
+                                style={[styles.input, isDark && styles.inputDark]}
+                                placeholder="Ej: INIAP-123, Shelli"
+                                placeholderTextColor={isDark ? '#636366' : '#999'}
+                                value={formData.variedad}
+                                onChangeText={(v) => updateField('variedad', v)}
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Fecha de Siembra</Text>
+                            <TouchableOpacity
+                                style={[styles.dateInput, isDark && styles.dateInputDark]}
+                                onPress={() => setMostrarSelectorFecha(true)}
+                            >
+                                <Text style={[styles.dateText, !formData.fecha_siembra && styles.dateTextPlaceholder, isDark && styles.dateTextDark]}>
+                                    {formData.fecha_siembra ? formatDisplayDate(formData.fecha_siembra) : 'Seleccionar fecha'}
+                                </Text>
+                                <MaterialCommunityIcons name="calendar" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+
+                {/* ============================================ */}
+                {/* SECCION: TIPO DE ENSAYO */}
+                {/* ============================================ */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                        Tipo de Ensayo
+                    </Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <View style={styles.optionsRow}>
+                            {TIPOS_ENSAAYO.map((op) => (
+                                <OptionChip
+                                    key={op.value}
+                                    label={op.label}
+                                    isActive={formData.tipo_ensayo === op.value}
+                                    onPress={() => updateField('tipo_ensayo', op.value)}
+                                    dark={isDark}
+                                />
+                            ))}
+                        </View>
+                    </View>
+                </View>
+
+                {/* ============================================ */}
+                {/* SECCION: TIPO DE ACOLCHADO */}
+                {/* ============================================ */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                        Tipo de Acolchado
+                    </Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <View style={styles.optionsRow}>
+                            {TIPOS_ACOLCHADO.map((op) => (
+                                <OptionChip
+                                    key={op.value}
+                                    label={op.label}
+                                    isActive={formData.tipo_acolchado === op.value}
+                                    onPress={() => updateField('tipo_acolchado', op.value)}
+                                    dark={isDark}
+                                />
+                            ))}
+                        </View>
+                    </View>
+                </View>
+
+                {/* ============================================ */}
+                {/* SECCION: COLABORADOR */}
+                {/* ============================================ */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                        Información del Colaborador
+                    </Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Nombre</Text>
+                            <TextInput
+                                style={[styles.input, isDark && styles.inputDark]}
+                                placeholder="Nombre completo"
+                                placeholderTextColor={isDark ? '#636366' : '#999'}
+                                value={formData.colaborador_nombre}
+                                onChangeText={(v) => updateField('colaborador_nombre', v)}
+                            />
+                        </View>
+
+                        <View style={styles.inputContainer}>
+                            <Text style={styles.inputLabel}>Celular</Text>
+                            <TextInput
+                                style={[styles.input, isDark && styles.inputDark]}
+                                placeholder="Ej: 0991234567"
+                                placeholderTextColor={isDark ? '#636366' : '#999'}
+                                keyboardType="phone-pad"
+                                value={formData.colaborador_celular}
+                                onChangeText={(v) => updateField('colaborador_celular', v)}
+                            />
+                        </View>
+                    </View>
+                </View>
+
+                {/* ============================================ */}
+                {/* BOTON CREAR */}
+                {/* ============================================ */}
                 <View style={styles.buttonContainer}>
                     <TouchableOpacity
-                        style={[proyectosStyles.button, { backgroundColor: '#0A84FF' }]}
+                        style={[styles.button, isSaving && styles.buttonDisabled]}
                         onPress={handleGuardar}
                         disabled={isSaving}
+                        activeOpacity={0.8}
                     >
-                        <Text style={proyectosStyles.buttonText}>
+                        <Text style={styles.buttonText}>
                             {isSaving ? 'Guardando...' : 'Crear Proyecto'}
                         </Text>
                     </TouchableOpacity>
                 </View>
-            </ScrollView>
+            </Animated.ScrollView>
 
+            {/* Modal Selector de Lote */}
             <Modal
                 visible={mostrarSelectorLote}
                 transparent={true}
                 animationType="slide"
                 onRequestClose={() => setMostrarSelectorLote(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { paddingBottom: insets.bottom + 16 }]}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Seleccionar Lote</Text>
+                <View style={modalStyles.overlay}>
+                    <View style={[modalStyles.content, { paddingBottom: insets.bottom + 16 }]}>
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>Seleccionar Lote</Text>
                             <TouchableOpacity onPress={() => setMostrarSelectorLote(false)}>
-                                <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+                                <MaterialCommunityIcons name="close" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
                             </TouchableOpacity>
                         </View>
                         {lotes.length === 0 ? (
-                            <View style={styles.emptyState}>
+                            <View style={modalStyles.emptyState}>
                                 <MaterialCommunityIcons name="map-marker-off" size={48} color="#636366" />
-                                <Text style={styles.emptyText}>No hay lotes disponibles</Text>
-                                <Text style={styles.emptySubtext}>Crea un lote primero para poder asignar proyectos</Text>
+                                <Text style={modalStyles.emptyText}>No hay lotes disponibles</Text>
+                                <Text style={modalStyles.emptySubtext}>Crea un lote primero</Text>
                             </View>
                         ) : (
                             <FlatList
@@ -315,114 +464,59 @@ export default function NuevoProyectoScreen() {
                                 renderItem={({ item }) => (
                                     <TouchableOpacity
                                         style={[
-                                            styles.loteItem,
-                                            loteSeleccionado?.id === item.id && styles.loteItemSelected,
+                                            modalStyles.loteItem,
+                                            loteSeleccionado?.id === item.id && modalStyles.loteItemSelected,
                                         ]}
                                         onPress={() => seleccionarLote(item)}
                                     >
                                         <MaterialCommunityIcons
                                             name="map-marker-radius"
                                             size={22}
-                                            color={loteSeleccionado?.id === item.id ? '#0A84FF' : '#34C759'}
+                                            color={loteSeleccionado?.id === item.id ? '#34C759' : '#34C759'}
                                         />
-                                        <View style={styles.loteInfo}>
-                                            <Text style={styles.loteName}>{item.nombre_lote}</Text>
+                                        <View style={modalStyles.loteInfo}>
+                                            <Text style={modalStyles.loteName}>{item.nombre_lote}</Text>
                                             {item.ubicacion_manual && (
-                                                <Text style={styles.loteLocation}>{item.ubicacion_manual}</Text>
+                                                <Text style={modalStyles.loteLocation}>{item.ubicacion_manual}</Text>
                                             )}
                                         </View>
                                         {loteSeleccionado?.id === item.id && (
-                                            <MaterialCommunityIcons name="check-circle" size={22} color="#0A84FF" />
+                                            <MaterialCommunityIcons name="check-circle" size={22} color="#34C759" />
                                         )}
                                     </TouchableOpacity>
                                 )}
-                                ItemSeparatorComponent={() => <View style={styles.separator} />}
+                                ItemSeparatorComponent={() => <View style={modalStyles.separator} />}
                             />
                         )}
                     </View>
                 </View>
             </Modal>
+
+            {/* Date Picker */}
+            <DatePickerWheel
+                visible={mostrarSelectorFecha}
+                value={formData.fecha_siembra}
+                onChange={(date) => updateField('fecha_siembra', date)}
+                onClose={() => setMostrarSelectorFecha(false)}
+                isDark={isDark}
+            />
         </KeyboardAvoidingView>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
+const modalStyles = StyleSheet.create({
+    overlay: {
         flex: 1,
-        backgroundColor: '#000000',
-    },
-    header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingBottom: 16,
-        gap: 12,
-    },
-    backButton: {
-        padding: 4,
-    },
-    title: {
-        fontSize: 28,
-        fontWeight: '700',
-        color: '#FFFFFF',
-    },
-    scrollView: {
-        flex: 1,
-    },
-    scrollContent: {
-        paddingBottom: 40,
-    },
-    buttonContainer: {
-        paddingHorizontal: 16,
-        marginTop: 8,
-    },
-    optionsGrid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    optionButton: {
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.1)',
-    },
-    optionButtonActive: {
-        backgroundColor: 'rgba(10, 132, 255, 0.3)',
-        borderColor: '#0A84FF',
-    },
-    optionButtonText: {
-        fontSize: 14,
-        color: '#8E8E93',
-    },
-    optionButtonTextActive: {
-        color: '#FFFFFF',
-        fontWeight: '600',
-    },
-    inputText: {
-        color: '#FFFFFF',
-        fontSize: 16,
-        flex: 1,
-    },
-    inputPlaceholder: {
-        color: '#636366',
-        fontSize: 16,
-        flex: 1,
-    },
-    modalOverlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
         justifyContent: 'flex-end',
     },
-    modalContent: {
+    content: {
         backgroundColor: '#1C1C1E',
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         maxHeight: '70%',
     },
-    modalHeader: {
+    header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -432,7 +526,7 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#3A3A3C',
     },
-    modalTitle: {
+    title: {
         fontSize: 18,
         fontWeight: '600',
         color: '#FFFFFF',
@@ -462,7 +556,7 @@ const styles = StyleSheet.create({
         gap: 12,
     },
     loteItemSelected: {
-        backgroundColor: 'rgba(10, 132, 255, 0.1)',
+        backgroundColor: 'rgba(52, 199, 89, 0.1)',
     },
     loteInfo: {
         flex: 1,

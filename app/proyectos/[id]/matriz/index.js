@@ -2,9 +2,9 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, View, StatusBar, Alert } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MatrizBiometricaUI } from '@/components/proyectos/ui';
-import { useMatrizBiometrica } from '@/components/proyectos/hooks';
-import proyectosLocalService from '@/services/proyectosLocalService';
+import { MatrizBiometricaUI } from '../../../../components/proyectos/ui';
+import { useMatrizBiometrica } from '../../../../components/proyectos/hooks';
+import { proyectosLocalService } from '../../../../services/proyectos';
 
 export default function MatrizBiometricaScreen() {
     const { id, visita: visitaId } = useLocalSearchParams();

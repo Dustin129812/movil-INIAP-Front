@@ -1,6 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { fetchApi } from '../apiClient';
+import { fetchApi } from '../api/apiClient';
 import { db } from '../../db/client';
 import {
     lotes, proyectos, ciclos_cultivo, visitas, hojas_datos,
@@ -61,9 +61,9 @@ export const descargarCatalogos = async () => {
             await db.insert(variedades).values(varsLimpio);
         }
 
-        console.log('[Download] Catálogos descargados exitosamente');
+        // console.log removed
     } catch (error) {
-        console.error('[Download] Error descargando catálogos:', error);
+        // console removed
     }
 };
 
@@ -201,7 +201,7 @@ export const descargarMisDatos = async () => {
                         set: item
                     });
                 } catch (e) {
-                    console.log(`[Download] Error guardando:`, e.message);
+                    // console.log removed
                 }
             }
         };
@@ -212,15 +212,15 @@ export const descargarMisDatos = async () => {
         await upsertData(visitas, visitasFlat);
         await upsertData(hojas_datos, hojasFlat);
 
-        console.log('[Download] Datos descargados:', {
+        const conteo = {
             lotes: lotesFlat.length,
             proyectos: proyectosFlat.length,
             ciclos: ciclosFlat.length,
             visitas: visitasFlat.length,
             hojas: hojasFlat.length
-        });
+        };
 
     } catch (error) {
-        console.error('[Download] Error en descargarMisDatos:', error);
+        // console removed
     }
 };

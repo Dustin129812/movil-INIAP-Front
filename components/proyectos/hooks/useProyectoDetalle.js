@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { proyectosService } from '@/services/proyectosService';
-import  proyectosLocalService  from '@/services/proyectosLocalService';
+import { proyectosService } from '../../../services/proyectos';
+import { proyectosLocalService } from '../../../services/proyectos';
 
 export const useProyectoDetalle = (proyectoUuid) => {
     const [proyectoData, setProyectoData] = useState(null);
@@ -16,14 +16,12 @@ export const useProyectoDetalle = (proyectoUuid) => {
         setError(null);
 
         try {
-            // Intentar obtener del API
             let proyecto = await proyectosService.obtenerProyecto(proyectoUuid);
 
-            // Si no funciona, buscar en local
             if (!proyecto) {
-                const { db } = await import('@/db');
+                const { db } = await import('../../../db');
                 const { eq } = await import('drizzle-orm');
-                const { proyectos } = await import('@/db/schema');
+                const { proyectos } = await import('../../../db/schema');
                 const resultados = await db.select().from(proyectos).where(eq(proyectos.uuid_movil, proyectoUuid));
                 proyecto = resultados[0] || null;
             }
@@ -31,7 +29,6 @@ export const useProyectoDetalle = (proyectoUuid) => {
             setProyectoData(proyecto);
 
             if (proyecto) {
-                // Cargar ciclos y visitas
                 const ciclosData = await proyectosLocalService.obtenerCiclosDelProyecto(proyecto.id);
                 setCiclos(ciclosData || []);
 
@@ -39,7 +36,7 @@ export const useProyectoDetalle = (proyectoUuid) => {
                 setVisitas(visitasData || []);
             }
         } catch (err) {
-            console.error('Error al cargar detalle del proyecto:', err);
+            // console removed
             setError('Error al cargar los datos del proyecto');
         } finally {
             setIsLoading(false);

@@ -145,21 +145,6 @@ export default function ProyectoDetalleUI({
                 )}
             </View>
 
-            <View style={styles.card}>
-                <View style={styles.visitasSectionHeader}>
-                    <Text style={{ fontSize: 13, fontWeight: '600', color: '#8E8E93', textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                        Colaboradores
-                    </Text>
-                    <TouchableOpacity style={styles.addButton} onPress={handleColaboradores}>
-                        <MaterialCommunityIcons name="account-group" size={20} color="#FFFFFF" />
-                        <Text style={styles.addButtonText}>Gestionar</Text>
-                    </TouchableOpacity>
-                </View>
-                <Text style={{ fontSize: 14, color: '#8E8E93' }}>
-                    Agrega colaboradores para compartir este proyecto
-                </Text>
-            </View>
-
             <View style={styles.visitasSection}>
                 <View style={styles.visitasSectionHeader}>
                     <Text style={styles.sectionTitle}>Visitas de Seguimiento</Text>

@@ -2,9 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import * as Crypto from 'expo-crypto';
-import { lotesService } from '../../../services/lotesService';
+import { lotesService } from '../../../services/lotes';
+import { crearLoteLocal, crearProyectoLocal } from '../../../db';
 
-export const useCroquisMapa = (editLoteId = null) => {
+export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
     const mapRef = useRef(null);
 
     const [location, setLocation] = useState(null);
@@ -308,6 +309,9 @@ export const useCroquisMapa = (editLoteId = null) => {
                 if (resultado && resultado.data) {
                     Alert.alert('Éxito', 'Lote actualizado correctamente.');
                     setShowForm(false);
+                    if (onLoteSaved) {
+                        onLoteSaved(form.nombreLote, false);
+                    }
                 } else {
                     Alert.alert('Error', resultado?.message || resultado?.error || 'No se pudo actualizar el lote.');
                 }
@@ -316,8 +320,58 @@ export const useCroquisMapa = (editLoteId = null) => {
                 const uuidLote = Crypto.randomUUID();
                 const uuidProyecto = Crypto.randomUUID();
 
-                const datosLote = {
-                    uuid_movil: uuidLote,
+                // 1. Guardar lote LOCALMENTE primero (offline-first)
+                const datosLoteLocal = {
+                    nombre_lote: form.nombreLote.trim(),
+                    coordenadas: points,
+                    ubicacion_manual: form.cultivoAnterior.trim() || null,
+                    estado_verificacion: form.estadoVerificacion || 'pendiente',
+                    provincia_id: ubicacionSeleccionada.provincia.id,
+                    canton_id: ubicacionSeleccionada.canton.id,
+                    estacion_id: ubicacionSeleccionada.estacion?.id || null,
+                    altitud: null,
+                    imagen_url: imagenUrlLote,
+                    vertices_count: points.length,
+                };
+
+                let loteCreado;
+                try {
+                    loteCreado = await crearLoteLocal(datosLoteLocal);
+                } catch (loteError) {
+                    // console removed
+                    Alert.alert('Error', 'No se pudo guardar el lote localmente.');
+                    setIsSaving(false);
+                    return;
+                }
+
+                // 2. Guardar proyecto LOCALMENTE con referencia al lote
+                const datosProyectoLocal = {
+                    uuid_movil: uuidProyecto,
+                    titulo: `Proyecto - ${form.nombreLote.trim()}`,
+                    descripcion: form.cultivoAnterior.trim() || 'Sin descripción',
+                    variedad: 'Por definir',
+                    fecha_siembra: null,
+                    estado: 'pendiente',
+                    tipo_acolchado: null,
+                    tipo_ensayo: null,
+                    diseno_experimental: null,
+                    financiamiento: null,
+                    colaborador_nombre: null,
+                    colaborador_telefono: null,
+                    colaborador_celular: null,
+                };
+
+                let proyectoCreado;
+                try {
+                    proyectoCreado = await crearProyectoLocal(datosProyectoLocal, { loteUuid: loteCreado.uuid_movil });
+                } catch (proyError) {
+                    // console removed
+                    // El lote ya está creado, el proyecto es secundario
+                }
+
+                // 3. Sincronizar con API en segundo plano
+                const datosLoteApi = {
+                    uuid_movil: loteCreado.uuid_movil,
                     nombre_lote: form.nombreLote.trim(),
                     coordenadas: points,
                     ubicacion_manual: form.cultivoAnterior.trim() || null,
@@ -326,8 +380,8 @@ export const useCroquisMapa = (editLoteId = null) => {
                     canton_id: ubicacionSeleccionada.canton.id,
                     location_id: ubicacionSeleccionada.estacion?.id || null,
                     altitud: null,
-                    imagen_url: imagenUrlLote, // Imagen capturada del mapa
-                    vertices_count: points.length, // Cantidad de vértices
+                    imagen_url: imagenUrlLote,
+                    vertices_count: points.length,
                     proyectos: [
                         {
                             uuid_movil: uuidProyecto,
@@ -340,17 +394,20 @@ export const useCroquisMapa = (editLoteId = null) => {
                     ],
                 };
 
-                const resultado = await lotesService.crearLote(datosLote);
+                try {
+                    await lotesService.crearLote(datosLoteApi);
+                } catch (apiError) {
+                    // console.log removed
+                }
 
-                if (resultado.success !== false && resultado.data) {
-                    Alert.alert('Éxito', 'Lote guardado correctamente.');
-                    setShowForm(false);
-                    setPoints([]);
-                    setForm({ nombreLote: '', cultivoAnterior: '', tipoRiego: 'secano', topografia: 'Plana' });
-                    setUbicacionSeleccionada({ provincia: null, canton: null, estacion: null });
-                    setImagenUrlLote(null); // Limpiar imagen capturada
-                } else {
-                    Alert.alert('Error', resultado.message || resultado.error || 'No se pudo guardar el lote.');
+                Alert.alert('Éxito', 'Lote guardado correctamente.');
+                setShowForm(false);
+                setPoints([]);
+                setForm({ nombreLote: '', cultivoAnterior: '', tipoRiego: 'secano', topografia: 'Plana' });
+                setUbicacionSeleccionada({ provincia: null, canton: null, estacion: null });
+                setImagenUrlLote(null);
+                if (onLoteSaved) {
+                    onLoteSaved(form.nombreLote, true);
                 }
             }
 

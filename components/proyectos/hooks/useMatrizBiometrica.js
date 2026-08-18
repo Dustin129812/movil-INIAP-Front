@@ -50,23 +50,6 @@ export const useMatrizBiometrica = (hojaDatosInicial = null) => {
         }));
     }, []);
 
-    const agregarFila = useCallback((nombreVariable) => {
-        setVariables(prev => [...prev, nombreVariable]);
-        setDatos(prev => ({
-            ...prev,
-            [nombreVariable]: {},
-        }));
-    }, []);
-
-    const eliminarFila = useCallback((variable) => {
-        setVariables(prev => prev.filter(v => v !== variable));
-        setDatos(prev => {
-            const newDatos = { ...prev };
-            delete newDatos[variable];
-            return newDatos;
-        });
-    }, []);
-
     const agregarColumna = useCallback(() => {
         const nuevoNum = numMuestras + 1;
         setNumMuestras(nuevoNum);
@@ -144,8 +127,6 @@ export const useMatrizBiometrica = (hojaDatosInicial = null) => {
         promedios,
         totales,
         actualizarCelda,
-        agregarFila,
-        eliminarFila,
         agregarColumna,
         eliminarColumna,
         obtenerDatosParaGuardar,

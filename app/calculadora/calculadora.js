@@ -23,7 +23,8 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
-import { getCalcColors } from "../../components/calculadora/colors";
+import { useTheme } from "../../services/theme";
+import { COLORS_CALC, getCalcColors } from "../../components/calculadora/colors";
 import { useCalculadora } from "../../components/calculadora/hooks/useCalculadora";
 import {
   DetalleCalculo,

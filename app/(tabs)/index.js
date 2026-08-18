@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useTheme } from '../../services/ThemeContext';
+import { useTheme } from '../../services/theme';
 import HomeDashboard from '../../components/home/ui/HomeDashboard';
 
 export default function HomeScreen() {

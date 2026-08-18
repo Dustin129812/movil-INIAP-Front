@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
 import { Alert } from 'react-native';
-import { useAuth as useAuthService } from '../../../services';
+import { useAuth as useAuthService } from '../../../services/auth';
 
 export const useAuth = () => {
-  const { login, loginInvitado, usuario, cargando, cargandoLogin, cerrarSesion, dispositivoId } = useAuthService();
+  const { login, loginConMerge, loginInvitado, usuario, cargando, cargandoLogin, cerrarSesion, dispositivoId, esInvitado } = useAuthService();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,7 +53,7 @@ export const useAuth = () => {
       setEmail('');
       setPassword('');
     } catch (error) {
-      console.error('Error cerrando sesión:', error);
+      // console removed
     } finally {
       setIsLoading(false);
     }
@@ -68,8 +68,10 @@ export const useAuth = () => {
     cargandoLogin,
     usuario,
     dispositivoId,
+    esInvitado,
     handleLogin,
     handleLoginInvitado,
     handleLogout,
+    loginConMerge,
   };
 };

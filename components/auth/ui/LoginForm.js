@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
-import { useDeviceInfo } from '../../../services/useDeviceInfo';
+import { useDeviceInfo } from '../../../services/device';
 
 export default function LoginForm() {
   const {
@@ -23,11 +23,15 @@ export default function LoginForm() {
     isLoading,
     handleLogin,
     handleLoginInvitado,
+    loginConMerge,
+    esInvitado,
+    dispositivoId,
   } = useAuth();
 
   const { deviceInfo, isLoading: isLoadingDevice } = useDeviceInfo();
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargandoInvitado, setCargandoInvitado] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleInvitado = async () => {
     if (!deviceInfo.uuid) {
@@ -50,7 +54,42 @@ export default function LoginForm() {
     }
   };
 
-  const isAnyLoading = isLoading || isLoadingDevice || cargandoInvitado;
+  // Login con merge: si hay sesión invitado activa, reasigna sus datos al usuario
+  const handleLoginSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      Alert.alert('Campos requeridos', 'Por favor completa todos los campos');
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      let resultado;
+
+      // Si hay sesión de invitado activa, usar loginConMerge para reasignar datos
+      if (esInvitado && dispositivoId) {
+        resultado = await loginConMerge(email.trim(), password, dispositivoId);
+        if (resultado.success) {
+          const { datosReasignados } = resultado;
+          if (datosReasignados > 0) {
+            Alert.alert('Bienvenido', `Sesión iniciada. Se fusionaron ${datosReasignados} registros del usuario invitado.`);
+          } else {
+            Alert.alert('Bienvenido', 'Sesión iniciada correctamente');
+          }
+        } else {
+          Alert.alert('Error', resultado.message || 'Credenciales incorrectas');
+        }
+      } else {
+        // Login normal sin merge
+        resultado = await handleLogin(email.trim(), password);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Ocurrió un error inesperado');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isAnyLoading = isLoading || isLoadingDevice || cargandoInvitado || isSubmitting;
 
   return (
     <KeyboardAvoidingView
@@ -113,7 +152,7 @@ export default function LoginForm() {
 
           <TouchableOpacity
             style={[styles.button, isAnyLoading && styles.buttonDisabled]}
-            onPress={handleLogin}
+            onPress={handleLoginSubmit}
             disabled={isAnyLoading}
             activeOpacity={0.8}
           >

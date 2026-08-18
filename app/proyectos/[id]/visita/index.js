@@ -1,13 +1,18 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, View, StatusBar } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NuevaVisitaForm } from '@/components/proyectos/ui';
-import { useNuevaVisita } from '@/components/proyectos/hooks';
+import { NuevaVisitaForm } from '../../../../components/proyectos/ui';
+import { useNuevaVisita } from '../../../../components/proyectos/hooks';
+import { useLocalNotifications } from '../../../../components/notifications/hooks/useLocalNotifications';
 
 export default function NuevaVisitaScreen() {
     const { id } = useLocalSearchParams();
-    const insets = useSafeAreaInsets();
+
+    const { notifyVisitaGuardada } = useLocalNotifications();
+
+    const handleVisitaSaved = useCallback((fecha) => {
+        notifyVisitaGuardada(fecha);
+    }, [notifyVisitaGuardada]);
 
     const {
         formData,
@@ -16,7 +21,7 @@ export default function NuevaVisitaScreen() {
         limpiarFormulario,
         isSaving,
         error,
-    } = useNuevaVisita(id);
+    } = useNuevaVisita(id, handleVisitaSaved);
 
     return (
         <View style={[styles.container, { backgroundColor: '#000000' }]}>

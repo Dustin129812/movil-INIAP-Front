@@ -1,15 +1,15 @@
 import React from 'react';
 import { StyleSheet, View, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ListaProyectosUI } from '@/components/proyectos/ui';
-import { useListaProyectos } from '@/components/proyectos/hooks';
-import { useTheme } from '../../services/ThemeContext';
+import { ListaProyectosUI } from '../../components/proyectos/ui';
+import { useListaProyectos } from '../../components/proyectos/hooks';
+import { useTheme } from '../../services/theme';
 
 export default function ProyectosTabScreen() {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const {
-        proyectosFiltrados,
+        proyectos,
         isLoading,
         filtroActivo,
         setFiltroActivo,
@@ -17,10 +17,10 @@ export default function ProyectosTabScreen() {
     } = useListaProyectos();
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F2F2F7', paddingTop: insets.top }]}>
-            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={isDark ? '#000000' : '#F2F2F7'} />
+        <View style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+            <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
             <ListaProyectosUI
-                proyectos={proyectosFiltrados}
+                proyectos={proyectos}
                 isLoading={isLoading}
                 filtroActivo={filtroActivo}
                 onFiltroChange={setFiltroActivo}

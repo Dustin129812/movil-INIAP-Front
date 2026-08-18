@@ -263,12 +263,12 @@ export const marcarLoteComoSincronizado = async (uuid_movil) => {
 // ============================================
 
 export const crearProyectoLocal = async (proyectoData, { loteUuid }) => {
-    const uuid = Crypto.randomUUID();
+    const uuid = proyectoData.uuid_movil || Crypto.randomUUID();
     const now = new Date().toISOString();
 
     const nuevoProyecto = {
         uuid_movil: uuid,
-        lote_uuid: loteUuid || null,
+        lote_uuid: loteUuid || proyectoData.lote_uuid || null,
         titulo: proyectoData.titulo,
         descripcion: proyectoData.descripcion || null,
         variedad: proyectoData.variedad || null,
@@ -314,6 +314,7 @@ export const actualizarProyectoLocal = async (uuid_movil, datos) => {
         .update(schema.proyectos)
         .set({
             ...datos,
+            sync_status: SYNC_STATUS.PENDING,
             updated_at: new Date().toISOString(),
         })
         .where(eq(schema.proyectos.uuid_movil, uuid_movil));
@@ -376,8 +377,12 @@ export const obtenerCiclosPorProyectoUuid = async (proyectoUuid) => {
         .where(eq(schema.ciclos_cultivo.proyecto_uuid, proyectoUuid));
 };
 
-export const obtenerCiclosPorProyecto = async (proyectoId) => {
-    return await db.select().from(schema.ciclos_cultivo);
+export const obtenerCiclosPorProyecto = async (proyectoUuid) => {
+    if (!proyectoUuid) return [];
+    return await db
+        .select()
+        .from(schema.ciclos_cultivo)
+        .where(eq(schema.ciclos_cultivo.proyecto_uuid, proyectoUuid));
 };
 
 export const obtenerCicloLocal = async (uuid_movil) => {
@@ -428,8 +433,12 @@ export const obtenerVisitasPorCicloUuid = async (cicloUuid) => {
         .where(eq(schema.visitas.ciclo_uuid, cicloUuid));
 };
 
-export const obtenerVisitasPorProyecto = async (proyectoId) => {
-    return await db.select().from(schema.visitas);
+export const obtenerVisitasPorProyecto = async (proyectoUuid) => {
+    if (!proyectoUuid) return [];
+    return await db
+        .select()
+        .from(schema.visitas)
+        .where(eq(schema.visitas.proyecto_uuid, proyectoUuid));
 };
 
 export const obtenerVisitasPorCiclo = async (cicloId) => {
@@ -488,8 +497,12 @@ export const obtenerHojasPorVisitaUuid = async (visitaUuid) => {
         .where(eq(schema.hojas_datos.visita_uuid, visitaUuid));
 };
 
-export const obtenerHojaDatosPorVisita = async (visitaId) => {
-    return await db.select().from(schema.hojas_datos);
+export const obtenerHojaDatosPorVisita = async (visitaUuid) => {
+    if (!visitaUuid) return [];
+    return await db
+        .select()
+        .from(schema.hojas_datos)
+        .where(eq(schema.hojas_datos.visita_uuid, visitaUuid));
 };
 
 export const actualizarHojaDatosLocal = async (uuid_movil, datos) => {
