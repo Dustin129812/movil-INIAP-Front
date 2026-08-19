@@ -57,6 +57,17 @@ export default function CalculadoraLayout() {
           },
         }}
       />
+      <Stack.Screen
+            name="catalogos/index"
+            options={{
+                headerShown: false,
+                presentation: "card",
+                animation: "slide_from_right",
+                contentStyle: {
+                    backgroundColor: "#F4F7F5",
+                },
+            }}
+        />
     </Stack>
   );
 }

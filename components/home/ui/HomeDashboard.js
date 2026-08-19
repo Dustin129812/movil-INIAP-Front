@@ -68,6 +68,17 @@ const QUICK_CARDS = [
         bg: 'rgba(255, 149, 0, 0.1)',
         info: 'Calculadora de fertilizantes y nutrientes para tus cultivos.'
     },
+
+    {
+        id: 4,
+        title: 'Catálogos',
+        subtitle: 'Agrícolas',
+        route: '/catalogos',
+        icon: 'sprout-outline',
+        color: '#8B5CF6',
+        bg: 'rgba(139, 92, 246, 0.1)',
+        info: 'Consulta cultivos, enfermedades, plagas y recomendaciones relacionadas.'
+    }
 ];
 
 const AUTO_ROTATE_DURATION = 20000;
