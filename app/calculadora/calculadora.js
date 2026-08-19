@@ -1,9 +1,14 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useState } from "react";
 import {
-  Alert,
+  useLocalSearchParams,
+  useRouter,
+} from "expo-router";
+import {
+  useEffect,
+  useState,
+} from "react";
+import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -13,358 +18,1083 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
 import { useTheme } from "../../services/theme";
-import { COLORS_CALC, getCalcColors } from "../../components/calculadora/colors";
+import { getCalcColors } from "../../components/calculadora/colors";
 import { useCalculadora } from "../../components/calculadora/hooks/useCalculadora";
 import {
   DetalleCalculo,
   DimensionesParcela,
+  GuardarCalculo,
   ListaFertilizantes,
   NivelNutrientes,
   ResultadosCalculo,
 } from "../../components/calculadora/ui";
+import {
+  guardarCalculoHistorial,
+  obtenerCalculoPorId,
+} from "../../services/calculadoraHistorialService";
+// import { useTheme } from "../../services/theme";
+import { useAuth } from '../../services/auth';
 
-function BotonAccion({
-  label,
-  icono,
-  onPress,
-  tipo = "secundario",
-  deshabilitado = false,
+const PASOS = [
+  {
+    titulo: "Parcela",
+    icono: "map-outline",
+  },
+  {
+    titulo: "Nutrientes",
+    icono: "flask-outline",
+  },
+  {
+    titulo: "Fertilizantes",
+    icono: "sack-outline",
+  },
+  {
+    titulo: "Resultados",
+    icono: "chart-box-outline",
+  },
+];
+
+function NavegacionPasos({
+  paso,
+  setPaso,
   colors,
 }) {
-  const esPrimario = tipo === "primario";
-
-  if (esPrimario) {
-    return (
-      <TouchableOpacity
-        style={styles.actionButtonWrap}
-        onPress={onPress}
-        activeOpacity={0.86}
-        disabled={deshabilitado}
-      >
-        <LinearGradient
-          colors={[colors.dimGradientStart, colors.dimGradientEnd]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={[styles.actionButton, deshabilitado && styles.actionDisabled]}
-        >
-          <MaterialCommunityIcons name={icono} size={20} color="#fff" />
-          <Text style={styles.actionPrimaryText}>{label}</Text>
-        </LinearGradient>
-      </TouchableOpacity>
-    );
-  }
-
   return (
-    <TouchableOpacity
+    <View
       style={[
-        styles.actionButton,
-        styles.actionButtonSecondary,
-        { backgroundColor: colors.macroTint },
-        deshabilitado && styles.actionDisabled,
+        styles.pasos,
+        {
+          backgroundColor: colors.cardBg,
+          borderColor: colors.dividerColor,
+        },
       ]}
-      onPress={onPress}
-      activeOpacity={0.82}
-      disabled={deshabilitado}
     >
-      <MaterialCommunityIcons name={icono} size={19} color={colors.macroBorder} />
-      <Text style={[styles.actionSecondaryText, { color: colors.macroBorder }]}>{label}</Text>
-    </TouchableOpacity>
+      {PASOS.map((item, index) => {
+        const activo = index === paso;
+        const completo = index < paso;
+
+        const fondo = activo
+          ? colors.macroBorder
+          : completo
+            ? colors.macroTint
+            : colors.inputBg;
+
+        return (
+          <TouchableOpacity
+            key={item.titulo}
+            style={styles.paso}
+            onPress={() => setPaso(index)}
+            activeOpacity={0.8}
+          >
+            <View
+              style={[
+                styles.pasoIcono,
+                {
+                  backgroundColor: fondo,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={
+                  completo
+                    ? "check"
+                    : item.icono
+                }
+                size={18}
+                color={
+                  activo
+                    ? "#ffffff"
+                    : colors.macroBorder
+                }
+              />
+            </View>
+
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.pasoTexto,
+                {
+                  color: activo
+                    ? colors.textPrimary
+                    : colors.textSecondary,
+                },
+              ]}
+            >
+              {item.titulo}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </View>
   );
 }
 
 export default function CalculadoraScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const [mostrarDetalle, setMostrarDetalle] = useState(false);
-  const { isDark } = useTheme();
-  const colors = getCalcColors(isDark);
 
-  const calculadora = useCalculadora();
   const {
-    largoMetros,
-    setLargoMetros,
-    anchoMetros,
-    setAnchoMetros,
-    distanciaEntreSurcos,
-    setDistanciaEntreSurcos,
-    distanciaEntrePlantas,
-    setDistanciaEntrePlantas,
-    sacosPorHectarea,
-    cambiarSacosPorHectarea,
-    nivelRecomendado,
-    cambiarNivelRecomendado,
-    areaPreview,
-    resultadoCalculo,
-    mensajeError,
-    hayDatosEscritos,
-    calcular,
-    limpiarFormulario,
-    limpiarCantidades,
-    restaurarEjemploExcel,
-  } = calculadora;
+    calculoId,
+    modo,
+  } = useLocalSearchParams();
 
-  const contentMaxWidth = width >= 900 ? 1080 : 760;
+  const { isDark } = useTheme();
 
-  const ejecutarCalculo = () => {
-    const respuesta = calcular();
+  const {
+    usuario,
+    esInvitado,
+    dispositivoId,
+  } = useAuth();
 
-    if (!respuesta.ok) {
-      Alert.alert("Revise los datos", respuesta.mensaje);
-      return;
-    }
+  const colors = getCalcColors(isDark);
+  const calculadora = useCalculadora();
 
-    setMostrarDetalle(false);
+  const [paso, setPaso] = useState(0);
+
+  const [
+    mostrarDetalle,
+    setMostrarDetalle,
+  ] = useState(false);
+
+  const [
+    tituloCalculo,
+    setTituloCalculo,
+  ] = useState("");
+
+  const [
+    guardandoCalculo,
+    setGuardandoCalculo,
+  ] = useState(false);
+
+  const [
+    mensajeGuardado,
+    setMensajeGuardado,
+  ] = useState("");
+
+  const [
+    tipoMensajeGuardado,
+    setTipoMensajeGuardado,
+  ] = useState("");
+
+  const [
+    calculoEditandoId,
+    setCalculoEditandoId,
+  ] = useState(null);
+
+  const propietarioId = esInvitado
+    ? dispositivoId
+      ? `device:${dispositivoId}`
+      : null
+    : usuario?.ID
+      ? `user:${usuario.ID}`
+      : null;
+
+  const estaEditando =
+    !!calculoEditandoId;
+
+  useEffect(() => {
+    let componenteActivo = true;
+
+    const cargarCalculoParaEditar =
+      async () => {
+        if (
+          modo !== "editar" ||
+          !calculoId ||
+          !propietarioId
+        ) {
+          return;
+        }
+
+        try {
+          const calculoGuardado =
+            await obtenerCalculoPorId(
+              propietarioId,
+              String(calculoId),
+            );
+
+          if (
+            !componenteActivo ||
+            !calculoGuardado
+          ) {
+            return;
+          }
+
+          const respuesta =
+            calculadora
+              .cargarCalculoGuardado(
+                calculoGuardado,
+              );
+
+          if (!respuesta.success) {
+            setTipoMensajeGuardado(
+              "error",
+            );
+
+            setMensajeGuardado(
+              respuesta.message ||
+                "No se pudo cargar el cálculo.",
+            );
+
+            return;
+          }
+
+          setCalculoEditandoId(
+            String(calculoGuardado.id),
+          );
+
+          setTituloCalculo(
+            calculoGuardado.titulo || "",
+          );
+
+          setPaso(3);
+          setMostrarDetalle(false);
+
+          setTipoMensajeGuardado(
+            "success",
+          );
+
+          setMensajeGuardado(
+            "Cálculo cargado. Puede modificar los datos y actualizar el resultado.",
+          );
+        } catch (error) {
+          console.error(
+            "[Calculadora] Error cargando cálculo:",
+            error,
+          );
+
+          if (componenteActivo) {
+            setTipoMensajeGuardado(
+              "error",
+            );
+
+            setMensajeGuardado(
+              "No se pudo cargar el cálculo para editar.",
+            );
+          }
+        }
+      };
+
+    cargarCalculoParaEditar();
+
+    return () => {
+      componenteActivo = false;
+    };
+  }, [
+    modo,
+    calculoId,
+    propietarioId,
+    calculadora
+      .cargarCalculoGuardado,
+  ]);
+
+  const limpiarMensajes = () => {
+    setMensajeGuardado("");
+    setTipoMensajeGuardado("");
   };
 
-  const confirmarLimpieza = () => {
-    if (!hayDatosEscritos) {
-      limpiarFormulario();
-      setMostrarDetalle(false);
-      return;
-    }
+  const ejecutarCalculo = () => {
+    limpiarMensajes();
 
-    Alert.alert(
-      "Limpiar calculadora",
-      "Se borrarán dimensiones, cantidades, niveles recomendados y resultados.",
-      [
-        { text: "Cancelar", style: "cancel" },
-        {
-          text: "Limpiar",
-          style: "destructive",
-          onPress: () => {
-            limpiarFormulario();
-            setMostrarDetalle(false);
-          },
-        },
-      ],
+    const respuesta =
+      calculadora.calcular();
+
+    if (respuesta.ok) {
+      setPaso(3);
+      setMostrarDetalle(false);
+    }
+  };
+
+  const limpiar = () => {
+    calculadora.limpiarFormulario();
+
+    setPaso(0);
+    setMostrarDetalle(false);
+    setTituloCalculo("");
+    setCalculoEditandoId(null);
+    limpiarMensajes();
+
+    router.setParams({
+      calculoId: "",
+      modo: "",
+    });
+  };
+
+  const cambiarTitulo = (valor) => {
+    setTituloCalculo(valor);
+
+    if (mensajeGuardado) {
+      limpiarMensajes();
+    }
+  };
+
+  const guardarEnHistorial =
+    async () => {
+      const tituloLimpio =
+        tituloCalculo.trim();
+
+      if (!tituloLimpio) {
+        setTipoMensajeGuardado(
+          "error",
+        );
+
+        setMensajeGuardado(
+          "Ingrese un título para guardar el cálculo.",
+        );
+
+        return;
+      }
+
+      if (
+        !calculadora.resultadoCalculo
+      ) {
+        setTipoMensajeGuardado(
+          "error",
+        );
+
+        setMensajeGuardado(
+          "Primero debe realizar el cálculo.",
+        );
+
+        return;
+      }
+
+      if (!propietarioId) {
+        setTipoMensajeGuardado(
+          "error",
+        );
+
+        setMensajeGuardado(
+          "No se pudo identificar al usuario o dispositivo.",
+        );
+
+        return;
+      }
+
+      setGuardandoCalculo(true);
+      limpiarMensajes();
+
+      try {
+        const respuesta =
+          await guardarCalculoHistorial({
+            propietarioId,
+
+            calculoId: estaEditando
+              ? calculoEditandoId
+              : null,
+
+            titulo: tituloLimpio,
+
+            datosEntrada:
+              calculadora.datosEntrada,
+
+            resultado:
+              calculadora
+                .resultadoCalculo,
+          });
+
+        if (!respuesta.success) {
+          setTipoMensajeGuardado(
+            "error",
+          );
+
+          setMensajeGuardado(
+            respuesta.message ||
+              "No se pudo guardar el cálculo.",
+          );
+
+          return;
+        }
+
+        setTipoMensajeGuardado(
+          "success",
+        );
+
+        setMensajeGuardado(
+          respuesta.actualizado
+            ? "El cálculo se actualizó correctamente."
+            : "El cálculo se guardó correctamente.",
+        );
+
+        if (respuesta.actualizado) {
+          const idActualizado =
+            String(
+              respuesta.calculo?.id ||
+                calculoEditandoId,
+            );
+
+          setTimeout(() => {
+            router.push({
+              pathname:
+                "/calculadora/detalle-historial",
+              params: {
+                calculoId:
+                  idActualizado,
+              },
+            });
+          }, 700);
+
+          return;
+        }
+
+        setTituloCalculo("");
+      } catch (error) {
+        console.error(
+          "[Calculadora] Error guardando historial:",
+          error,
+        );
+
+        setTipoMensajeGuardado(
+          "error",
+        );
+
+        setMensajeGuardado(
+          "Ocurrió un error al guardar el cálculo.",
+        );
+      } finally {
+        setGuardandoCalculo(false);
+      }
+    };
+
+  const abrirHistorial = () => {
+    router.navigate(
+      "/calculadora/historial",
     );
   };
 
-  const restaurarEjemplo = () => {
-    restaurarEjemploExcel();
-    setMostrarDetalle(false);
-  };
-
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.dimGradientEnd }]}>
+    <SafeAreaView
+      style={[
+        styles.safe,
+        {
+          backgroundColor:
+            colors.dimGradientEnd,
+        },
+      ]}
+    >
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: colors.bg }]}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.bg,
+          },
+        ]}
+        behavior={
+          Platform.OS === "ios"
+            ? "padding"
+            : undefined
+        }
       >
         <LinearGradient
-          colors={[colors.dimGradientStart, colors.dimGradientEnd]}
+          colors={[
+            colors.dimGradientStart,
+            colors.dimGradientEnd,
+          ]}
           style={styles.header}
         >
           <TouchableOpacity
+            style={styles.back}
             onPress={() => router.back()}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            style={styles.backButton}
             activeOpacity={0.8}
           >
-            <MaterialCommunityIcons name="chevron-left" size={32} color="#fff" />
+            <MaterialCommunityIcons
+              name="chevron-left"
+              size={30}
+              color="#ffffff"
+            />
           </TouchableOpacity>
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.headerEyebrow}>INIAP · GESTIÓN AGRÍCOLA</Text>
-            <Text style={styles.headerTitle}>Calculadora de Fertilizantes</Text>
+
+          <View style={styles.headerTexto}>
+            <Text style={styles.eyebrow}>
+              INIAP · GESTIÓN AGRÍCOLA
+            </Text>
+
+            <Text style={styles.headerTitulo}>
+              Calculadora de fertilización
+            </Text>
           </View>
+
+          <TouchableOpacity
+            style={styles.headerAccion}
+            onPress={abrirHistorial}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name="history"
+              size={22}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.headerAccion}
+            onPress={limpiar}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons
+              name="broom"
+              size={21}
+              color="#ffffff"
+            />
+          </TouchableOpacity>
         </LinearGradient>
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <View
+          style={[
+            styles.shell,
+            {
+              maxWidth:
+                width >= 900
+                  ? 980
+                  : 720,
+
+              marginBottom:
+                Platform.OS === "web"
+                  ? 0
+                  : 92 + insets.bottom,
+            },
+          ]}
         >
-          <View style={[styles.contentShell, { maxWidth: contentMaxWidth }]}>
-            <NivelNutrientes
-              nivelRecomendado={nivelRecomendado}
-              cambiarNivelRecomendado={cambiarNivelRecomendado}
-              resultadoCalculo={resultadoCalculo}
-              isDark={isDark}
-            />
+          <NavegacionPasos
+            paso={paso}
+            setPaso={(nuevoPaso) => {
+              setPaso(nuevoPaso);
+              limpiarMensajes();
+            }}
+            colors={colors}
+          />
 
-            <DimensionesParcela
-              largoMetros={largoMetros}
-              setLargoMetros={setLargoMetros}
-              anchoMetros={anchoMetros}
-              setAnchoMetros={setAnchoMetros}
-              distanciaEntreSurcos={distanciaEntreSurcos}
-              setDistanciaEntreSurcos={setDistanciaEntreSurcos}
-              distanciaEntrePlantas={distanciaEntrePlantas}
-              setDistanciaEntrePlantas={setDistanciaEntrePlantas}
-              areaPreview={areaPreview}
-              isDark={isDark}
-            />
+          <ScrollView
+            style={[
+              styles.scroll,
+              {
+                backgroundColor:
+                  colors.bg,
+              },
+            ]}
+            contentContainerStyle={
+              styles.contenido
+            }
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={
+              false
+            }
+          >
+            {paso === 0 && (
+              <DimensionesParcela
+                {...calculadora}
+                isDark={isDark}
+              />
+            )}
 
-            <ListaFertilizantes
-              sacosPorHectarea={sacosPorHectarea}
-              cambiarSacosPorHectarea={cambiarSacosPorHectarea}
-              limpiarCantidades={limpiarCantidades}
-              isDark={isDark}
-            />
+            {paso === 1 && (
+              <NivelNutrientes
+                nivelRecomendado={
+                  calculadora
+                    .nivelRecomendado
+                }
+                cambiarNivelRecomendado={
+                  calculadora
+                    .cambiarNivelRecomendado
+                }
+                resultadoCalculo={
+                  calculadora
+                    .resultadoCalculo
+                }
+                isDark={isDark}
+              />
+            )}
 
-            <View style={[styles.actionsCard, {
-              backgroundColor: colors.cardBg,
-              borderColor: colors.dividerColor,
-            }]}>
-              <BotonAccion
-                label="Calcular"
-                icono="calculator-variant-outline"
-                onPress={ejecutarCalculo}
-                tipo="primario"
-                colors={colors}
+            {paso === 2 && (
+              <ListaFertilizantes
+                sacosPorHectarea={
+                  calculadora
+                    .sacosPorHectarea
+                }
+                cambiarSacosPorHectarea={
+                  calculadora
+                    .cambiarSacosPorHectarea
+                }
+                limpiarCantidades={
+                  calculadora
+                    .limpiarCantidades
+                }
+                isDark={isDark}
               />
-              <BotonAccion
-                label="Limpiar"
-                icono="broom"
-                onPress={confirmarLimpieza}
-                colors={colors}
-              />
-              <BotonAccion
-                label="Restaurar ejemplo del Excel"
-                icono="restore"
-                onPress={restaurarEjemplo}
-                colors={colors}
-              />
-              <BotonAccion
-                label={mostrarDetalle ? "Ocultar detalle" : "Ver detalle"}
-                icono={mostrarDetalle ? "eye-off-outline" : "eye-outline"}
-                onPress={() => setMostrarDetalle((prev) => !prev)}
-                deshabilitado={!resultadoCalculo}
-                colors={colors}
-              />
-            </View>
+            )}
 
-            {!!mensajeError && (
-              <View style={[styles.errorBox, {
-                backgroundColor: colors.dangerSoft,
-                borderColor: colors.danger,
-              }]}>
+            {paso === 3 && (
+              <>
+                {!calculadora
+                  .resultadoCalculo && (
+                  <View
+                    style={[
+                      styles.vacio,
+                      {
+                        backgroundColor:
+                          colors.cardBg,
+                        borderColor:
+                          colors.dividerColor,
+                      },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="calculator-variant-outline"
+                      size={38}
+                      color={
+                        colors.macroBorder
+                      }
+                    />
+
+                    <Text
+                      style={[
+                        styles.vacioTitulo,
+                        {
+                          color:
+                            colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      Todo listo para calcular
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.vacioTexto,
+                        {
+                          color:
+                            colors.textSecondary,
+                        },
+                      ]}
+                    >
+                      Revisa los pasos
+                      anteriores y genera la
+                      recomendación para tu
+                      parcela.
+                    </Text>
+                  </View>
+                )}
+
+                <ResultadosCalculo
+                  resultadoCalculo={
+                    calculadora
+                      .resultadoCalculo
+                  }
+                  isDark={isDark}
+                />
+
+                <GuardarCalculo
+                  titulo={tituloCalculo}
+                  setTitulo={
+                    cambiarTitulo
+                  }
+                  onGuardar={
+                    guardarEnHistorial
+                  }
+                  guardando={
+                    guardandoCalculo
+                  }
+                  mensaje={
+                    mensajeGuardado
+                  }
+                  tipoMensaje={
+                    tipoMensajeGuardado
+                  }
+                  deshabilitado={
+                    !calculadora
+                      .resultadoCalculo
+                  }
+                  isDark={isDark}
+                />
+
+                {calculadora
+                  .resultadoCalculo && (
+                  <TouchableOpacity
+                    style={[
+                      styles.detalleBtn,
+                      {
+                        backgroundColor:
+                          colors.cardBg,
+                        borderColor:
+                          colors.dividerColor,
+                      },
+                    ]}
+                    onPress={() =>
+                      setMostrarDetalle(
+                        (valor) =>
+                          !valor,
+                      )
+                    }
+                    activeOpacity={0.8}
+                  >
+                    <MaterialCommunityIcons
+                      name={
+                        mostrarDetalle
+                          ? "chevron-up"
+                          : "clipboard-text-outline"
+                      }
+                      size={20}
+                      color={
+                        colors.macroBorder
+                      }
+                    />
+
+                    <Text
+                      style={[
+                        styles.detalleTexto,
+                        {
+                          color:
+                            colors.textPrimary,
+                        },
+                      ]}
+                    >
+                      {mostrarDetalle
+                        ? "Ocultar detalle"
+                        : "Ver detalle por fertilizante"}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {mostrarDetalle &&
+                  calculadora
+                    .resultadoCalculo && (
+                    <DetalleCalculo
+                      detalles={
+                        calculadora
+                          .resultadoCalculo
+                          ?.detallePorFertilizante
+                      }
+                      isDark={isDark}
+                    />
+                  )}
+              </>
+            )}
+
+            {!!calculadora
+              .mensajeError && (
+              <View
+                style={[
+                  styles.error,
+                  {
+                    backgroundColor:
+                      colors.dangerSoft,
+                    borderColor:
+                      colors.danger,
+                  },
+                ]}
+              >
                 <MaterialCommunityIcons
                   name="alert-circle-outline"
                   size={18}
                   color={colors.danger}
                 />
-                <Text style={[styles.errorText, { color: colors.danger }]}>{mensajeError}</Text>
+
+                <Text
+                  style={[
+                    styles.errorTexto,
+                    {
+                      color:
+                        colors.danger,
+                    },
+                  ]}
+                >
+                  {
+                    calculadora
+                      .mensajeError
+                  }
+                </Text>
               </View>
             )}
+          </ScrollView>
 
-            <ResultadosCalculo resultadoCalculo={resultadoCalculo} isDark={isDark} />
+          <View
+            style={[
+              styles.footer,
+              {
+                backgroundColor:
+                  colors.cardBg,
+                borderColor:
+                  colors.dividerColor,
+              },
+            ]}
+          >
+            {paso > 0 && (
+              <TouchableOpacity
+                style={[
+                  styles.secundario,
+                  {
+                    borderColor:
+                      colors.inputBorder,
+                  },
+                ]}
+                onPress={() => {
+                  setPaso(
+                    (pasoActual) =>
+                      pasoActual - 1,
+                  );
 
-            {resultadoCalculo && mostrarDetalle && (
-              <DetalleCalculo
-                detalles={resultadoCalculo.detallePorFertilizante}
-                isDark={isDark}
-              />
+                  limpiarMensajes();
+                }}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="chevron-left"
+                  size={21}
+                  color={
+                    colors.textPrimary
+                  }
+                />
+
+                <Text
+                  style={[
+                    styles.secundarioTexto,
+                    {
+                      color:
+                        colors.textPrimary,
+                    },
+                  ]}
+                >
+                  Anterior
+                </Text>
+              </TouchableOpacity>
             )}
+
+            <TouchableOpacity
+              style={[
+                styles.primario,
+                {
+                  backgroundColor:
+                    colors.macroBorder,
+                },
+              ]}
+              onPress={
+                paso < 2
+                  ? () => {
+                      setPaso(
+                        (pasoActual) =>
+                          pasoActual + 1,
+                      );
+
+                      limpiarMensajes();
+                    }
+                  : ejecutarCalculo
+              }
+              activeOpacity={0.82}
+            >
+              <Text
+                style={styles.primarioTexto}
+              >
+                {paso < 2
+                  ? "Continuar"
+                  : paso === 2
+                    ? "Calcular"
+                    : "Recalcular"}
+              </Text>
+
+              <MaterialCommunityIcons
+                name={
+                  paso < 2
+                    ? "chevron-right"
+                    : "calculator-variant-outline"
+                }
+                size={20}
+                color="#ffffff"
+              />
+            </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
+  safe: {
     flex: 1,
+    opacity: 1,
   },
+
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: Platform.OS === "ios" ? 12 : 36,
-    paddingBottom: 18,
-    paddingHorizontal: 16,
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  headerTextWrap: {
+
+  scroll: {
     flex: 1,
-    marginLeft: 8,
   },
-  headerEyebrow: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#4ade80",
-    letterSpacing: 1.2,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: "900",
-    color: "#fff",
-    marginTop: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  contentShell: {
-    width: "100%",
-    alignSelf: "center",
-  },
-  actionsCard: {
-    borderRadius: 20,
-    padding: 14,
-    marginBottom: 16,
-    borderWidth: 1,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  actionButtonWrap: {
-    width: "100%",
-    marginBottom: 10,
-  },
-  actionButton: {
-    minHeight: 44,
-    borderRadius: 14,
-    paddingHorizontal: 14,
+
+  header: {
+    paddingHorizontal: 12,
     paddingVertical: 12,
     flexDirection: "row",
     alignItems: "center",
+  },
+
+  back: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
     justifyContent: "center",
   },
-  actionButtonSecondary: {
-    width: "100%",
-    marginBottom: 10,
-  },
-  actionPrimaryText: {
-    color: "#fff",
-    fontWeight: "900",
-    letterSpacing: 0.5,
-    fontSize: 14,
-    marginLeft: 8,
-  },
-  actionSecondaryText: {
-    fontWeight: "900",
-    fontSize: 13,
-    marginLeft: 8,
-    textAlign: "center",
-  },
-  actionDisabled: {
-    opacity: 0.5,
-  },
-  errorBox: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  errorText: {
+
+  headerTexto: {
     flex: 1,
+  },
+
+  eyebrow: {
+    color: "#4ade80",
+    fontSize: 9,
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+
+  headerTitulo: {
+    color: "#ffffff",
+    fontSize: 18,
+    fontWeight: "900",
+    marginTop: 2,
+  },
+
+  headerAccion: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 7,
+    backgroundColor:
+      "rgba(255,255,255,0.12)",
+  },
+
+  shell: {
+    flex: 1,
+    width: "100%",
+    alignSelf: "center",
+  },
+
+  pasos: {
+    flexDirection: "row",
+    margin: 12,
+    marginBottom: 0,
+    padding: 8,
+    borderWidth: 1,
+    borderRadius: 18,
+  },
+
+  paso: {
+    flex: 1,
+    alignItems: "center",
+  },
+
+  pasoIcono: {
+    width: 34,
+    height: 34,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  pasoTexto: {
+    fontSize: 9,
     fontWeight: "800",
+    marginTop: 4,
+    maxWidth: "100%",
+  },
+
+  contenido: {
+    padding: 12,
+    paddingBottom: 18,
+  },
+
+  footer: {
+    borderTopWidth: 1,
+    padding: 10,
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  primario: {
+    flex: 1,
+    minHeight: 48,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  primarioTexto: {
+    color: "#ffffff",
+    fontWeight: "900",
+    marginRight: 5,
+  },
+
+  secundario: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  secundarioTexto: {
+    fontWeight: "800",
+  },
+
+  vacio: {
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 20,
+    padding: 28,
+    marginBottom: 14,
+  },
+
+  vacioTitulo: {
+    fontSize: 18,
+    fontWeight: "900",
+    marginTop: 10,
+  },
+
+  vacioTexto: {
+    textAlign: "center",
     fontSize: 12,
-    lineHeight: 17,
-    marginLeft: 8,
+    lineHeight: 18,
+    marginTop: 5,
+  },
+
+  error: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderRadius: 13,
+    padding: 11,
+    marginTop: 12,
+  },
+
+  errorTexto: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "800",
+    marginLeft: 7,
+  },
+
+  detalleBtn: {
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 13,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+
+  detalleTexto: {
+    fontWeight: "900",
+    marginLeft: 7,
   },
 });
