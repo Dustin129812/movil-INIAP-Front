@@ -1406,8 +1406,7 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         padding: 16,
         overflow: 'hidden',
-        justifyContent: 'space-between',
-        overflow: 'hidden',
+        justifyContent: 'space-between'
     },
     figmaImageStyle: { borderRadius: 28 },
     verticesMapFill: {

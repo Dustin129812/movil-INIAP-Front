@@ -24,7 +24,7 @@ import {
 } from "react-native-safe-area-context";
 
 import { useTheme } from "../../services/theme";
-import { COLORS_CALC, getCalcColors } from "../../components/calculadora/colors";
+import { getCalcColors } from "../../components/calculadora/colors";
 import { useCalculadora } from "../../components/calculadora/hooks/useCalculadora";
 import {
   DetalleCalculo,
@@ -38,8 +38,8 @@ import {
   guardarCalculoHistorial,
   obtenerCalculoPorId,
 } from "../../services/calculadoraHistorialService";
-import { useTheme } from "../../services/ThemeContext";
-import { useAuth } from "../../services/useAuth";
+//import { useTheme } from "../../services/ThemeContext";
+import { useAuth } from '../../services/auth';
 
 const PASOS = [
   {

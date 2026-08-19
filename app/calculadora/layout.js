@@ -1,7 +1,7 @@
 import { Stack } from "expo-router";
 
 import { getCalcColors } from "../../components/calculadora/colors";
-import { useTheme } from "../../services/ThemeContext";
+import { useTheme } from "../../services/theme";
 
 export default function CalculadoraLayout() {
   const { isDark } = useTheme();
