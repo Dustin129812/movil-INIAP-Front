@@ -446,9 +446,11 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
 // ============================================
 // COMPONENTE: Tarjeta Animada de Lote
 // ============================================
-function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusChange }) {
+function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusChange, onDelete }) {
     const colores = getColores(isDark);
     const statusConfig = getStatusConfig(item.estado_verificacion);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Parsear vertices desde el campo correcto del backend
     // Backend AgroDecide devuelve:
@@ -539,6 +541,8 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 onPress={onEdit}
+                onLongPress={() => setShowDeleteModal(true)}
+                delayLongPress={500}
                 style={[styles.figmaCardContainer, { backgroundColor: colores.cardBg }]}
             >
                 {/* Si tiene vértices, mostrar VerticesMap directamente como fondo */}
@@ -714,6 +718,61 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                     )}
                 </View>
             </TouchableOpacity>
+
+            {/* Modal de confirmación para eliminar */}
+            <Modal
+                visible={showDeleteModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowDeleteModal(false)}
+            >
+                <Pressable style={styles.deleteModalOverlay} onPress={() => setShowDeleteModal(false)}>
+                    <Pressable style={[styles.deleteModalContainer, { backgroundColor: isDark ? 'rgba(30,30,32,0.95)' : 'rgba(255,255,255,0.95)' }]} onPress={(e) => e.stopPropagation()}>
+                        <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+                        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(30,30,32,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+
+                        <View style={styles.deleteModalContent}>
+                            <View style={[styles.deleteIconCircle, { backgroundColor: 'rgba(255,59,48,0.15)' }]}>
+                                <MaterialCommunityIcons name="trash-can-outline" size={32} color="#FF3B30" />
+                            </View>
+
+                            <Text style={[styles.deleteModalTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                ¿Eliminar lote?
+                            </Text>
+
+                            <Text style={[styles.deleteModalSubtitle, { color: '#FF3B30', fontWeight: '600' }]}>
+                                Esta acci&#243;n eliminar&#225; &quot;{item.nombre_lote}&quot; de forma permanente.
+                            </Text>
+
+                            <View style={styles.deleteModalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.deleteModalCancelBtn, { borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }]}
+                                    onPress={() => setShowDeleteModal(false)}
+                                >
+                                    <Text style={[styles.deleteModalCancelText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        Cancelar
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.deleteModalDeleteBtn, { backgroundColor: '#FF3B30' }]}
+                                    onPress={() => {
+                                        setShowDeleteModal(false);
+                                        onDelete(item);
+                                    }}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? (
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                    ) : (
+                                        <Text style={styles.deleteModalDeleteText}>Eliminar</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Pressable>
+                </Pressable>
+            </Modal>
         </Animated.View>
     );
 }
@@ -868,6 +927,28 @@ export default function LotesDashboardUI() {
     const handleStatusChange = (lote) => {
         setLoteSeleccionado(lote);
         setStatusPickerVisible(true);
+    };
+
+    const handleDelete = async (lote) => {
+        // Verificar que tenemos el UUID del lote
+        if (!lote || (!lote.uuid_movil && !lote.id)) {
+            Alert.alert('Error', 'No se encontró el ID del lote');
+            return;
+        }
+
+        const uuid = lote.uuid_movil || lote.id;
+
+        // Llamar al API del backend para eliminar (soft delete en backend)
+        try {
+            const result = await lotesService.eliminarLote(uuid);
+            if (result && result.success) {
+                recargar();
+            } else {
+                Alert.alert('Error', result?.message || 'No se pudo eliminar el lote');
+            }
+        } catch (err) {
+            Alert.alert('Error', 'No se pudo eliminar el lote');
+        }
     };
 
     const handleSelectStatus = async (nuevoEstado) => {
@@ -1116,7 +1197,7 @@ export default function LotesDashboardUI() {
                                 ) : (
                                     <FlatList
                                         data={lotesFiltrados}
-                                        keyExtractor={(item) => item.id?.toString() || item.uuid_movil?.toString()}
+                                        keyExtractor={(item, index) => item.uuid_movil || item.id?.toString() || `lote-${index}-${item.nombre_lote}`}
                                         renderItem={({ item, index }) => (
                                             <AnimatedCard
                                                 item={item}
@@ -1125,6 +1206,7 @@ export default function LotesDashboardUI() {
                                                 isDark={isDark}
                                                 onEdit={() => handleOpenEdit(item)}
                                                 onStatusChange={handleStatusChange}
+                                                onDelete={handleDelete}
                                             />
                                         )}
                                         ListEmptyComponent={() => (refreshing ? renderLoadingSkeletons() : renderEmptyState(tab))}
@@ -1407,7 +1489,6 @@ const styles = StyleSheet.create({
         padding: 16,
         overflow: 'hidden',
         justifyContent: 'space-between',
-        overflow: 'hidden',
     },
     figmaImageStyle: { borderRadius: 28 },
     verticesMapFill: {
@@ -1535,4 +1616,77 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
+
+    // ============================================
+    // DELETE MODAL STYLES
+    // ============================================
+    deleteModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    deleteModalContainer: {
+        width: '100%',
+        maxWidth: 340,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 0.5,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    deleteModalContent: {
+        padding: 28,
+        alignItems: 'center',
+    },
+    deleteIconCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    deleteModalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    deleteModalSubtitle: {
+        fontSize: 14,
+        fontWeight: '400',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 28,
+    },
+    deleteModalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    deleteModalCancelBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    deleteModalCancelText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    deleteModalDeleteBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    deleteModalDeleteText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
 });

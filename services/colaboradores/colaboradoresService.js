@@ -91,9 +91,15 @@ export const colaboradoresService = {
   async buscarUsuarios(termino) {
     try {
       const token = await obtenerToken();
-      const respuesta = await fetch(`${URL_API}/agrodecide/colaboradores/buscar?termino=${encodeURIComponent(termino)}`, {
+      // Si hay término, incluirlo en la URL; si no, no enviar parametro (devuelve todos)
+      const url = termino
+        ? `${URL_API}/agrodecide/colaboradores/buscar?termino=${encodeURIComponent(termino)}`
+        : `${URL_API}/agrodecide/colaboradores/buscar`;
+
+      const respuesta = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
+          'Accept': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
         },
       });

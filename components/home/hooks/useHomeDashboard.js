@@ -7,7 +7,7 @@ import { useNotifications, TIPO_NOTIFICACION } from '../../notifications/context
 import NetInfo from '@react-native-community/netinfo';
 
 export const useHomeDashboard = () => {
-    const { usuario } = useAuth();
+    const { usuario, esInvitado } = useAuth();
     const { listaLotes } = useSearch();
     const {
         pendingCount,
@@ -123,6 +123,7 @@ export const useHomeDashboard = () => {
 
     return {
         usuario,
+        esInvitado,
         weatherExpanded,
         toggleWeatherDetails,
         isSyncing,

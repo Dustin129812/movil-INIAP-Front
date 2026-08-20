@@ -38,6 +38,7 @@ import { useTheme } from '../../../services/theme';
 import { crearProyectoStyles as styles } from '../../../src/styles/crearProyectoStyles';
 import DatePickerWheel from '../../../components/calendario/ui/DatePickerWheel';
 import { useLocalNotifications } from '../../../components/notifications/hooks/useLocalNotifications';
+import ColaboradoresModal from '../../../components/proyectos/ui/ColaboradoresModal';
 
 const HEADER_ANIMATION = {
     TOP_REVEAL_THRESHOLD: 12,
@@ -59,6 +60,12 @@ const TIPOS_ACOLCHADO = [
     { value: 'con_acolchado', label: 'Con Acolchado' },
     { value: 'parcialmente_acolchado', label: 'Parcial Acolchado' },
     { value: 'sin_acolchado', label: 'Sin Acolchado' },
+];
+
+const ESTADOS = [
+    { value: 'activo', label: 'Activo' },
+    { value: 'pendiente', label: 'Pendiente' },
+    { value: 'inactivo', label: 'Inactivo' },
 ];
 
 // ============================================
@@ -96,12 +103,17 @@ export default function NuevoProyectoScreen() {
     const [mostrarSelectorLote, setMostrarSelectorLote] = useState(false);
     const [mostrarSelectorFecha, setMostrarSelectorFecha] = useState(false);
     const [loteSeleccionado, setLoteSeleccionado] = useState(null);
+    const [mostrarSelectorTipoEnsayo, setMostrarSelectorTipoEnsayo] = useState(false);
+    const [mostrarSelectorTipoAcolchado, setMostrarSelectorTipoAcolchado] = useState(false);
+    const [mostrarSelectorEstado, setMostrarSelectorEstado] = useState(false);
+    const [mostrarColaboradoresModal, setMostrarColaboradoresModal] = useState(false);
 
     const [formData, setFormData] = useState({
         titulo: '',
         descripcion: '',
         variedad: '',
         fecha_siembra: '',
+        estado: 'pendiente',
         tipo_ensayo: '',
         tipo_acolchado: '',
         financiamiento: '',
@@ -343,6 +355,29 @@ export default function NuevoProyectoScreen() {
                 </View>
 
                 {/* ============================================ */}
+                {/* SECCION: ESTADO */}
+                {/* ============================================ */}
+                <View style={styles.section}>
+                    <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+                        Estado
+                    </Text>
+                    <View style={[styles.card, isDark && styles.cardDark]}>
+                        <TouchableOpacity
+                            style={styles.inputContainer}
+                            onPress={() => setMostrarSelectorEstado(true)}
+                        >
+                            <Text style={styles.inputLabel}>Seleccionar Estado</Text>
+                            <View style={[styles.dateInput, isDark && styles.dateInputDark]}>
+                                <Text style={[styles.dateText, !formData.estado && styles.dateTextPlaceholder, isDark && styles.dateTextDark]}>
+                                    {ESTADOS.find(e => e.value === formData.estado)?.label || 'Toca para seleccionar'}
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-down" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                            </View>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* ============================================ */}
                 {/* SECCION: TIPO DE ENSAYO */}
                 {/* ============================================ */}
                 <View style={styles.section}>
@@ -350,17 +385,18 @@ export default function NuevoProyectoScreen() {
                         Tipo de Ensayo
                     </Text>
                     <View style={[styles.card, isDark && styles.cardDark]}>
-                        <View style={styles.optionsRow}>
-                            {TIPOS_ENSAAYO.map((op) => (
-                                <OptionChip
-                                    key={op.value}
-                                    label={op.label}
-                                    isActive={formData.tipo_ensayo === op.value}
-                                    onPress={() => updateField('tipo_ensayo', op.value)}
-                                    dark={isDark}
-                                />
-                            ))}
-                        </View>
+                        <TouchableOpacity
+                            style={styles.inputContainer}
+                            onPress={() => setMostrarSelectorTipoEnsayo(true)}
+                        >
+                            <Text style={styles.inputLabel}>Seleccionar Tipo</Text>
+                            <View style={[styles.dateInput, isDark && styles.dateInputDark]}>
+                                <Text style={[styles.dateText, !formData.tipo_ensayo && styles.dateTextPlaceholder, isDark && styles.dateTextDark]}>
+                                    {TIPOS_ENSAAYO.find(t => t.value === formData.tipo_ensayo)?.label || 'Toca para seleccionar'}
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-down" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                            </View>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -372,17 +408,18 @@ export default function NuevoProyectoScreen() {
                         Tipo de Acolchado
                     </Text>
                     <View style={[styles.card, isDark && styles.cardDark]}>
-                        <View style={styles.optionsRow}>
-                            {TIPOS_ACOLCHADO.map((op) => (
-                                <OptionChip
-                                    key={op.value}
-                                    label={op.label}
-                                    isActive={formData.tipo_acolchado === op.value}
-                                    onPress={() => updateField('tipo_acolchado', op.value)}
-                                    dark={isDark}
-                                />
-                            ))}
-                        </View>
+                        <TouchableOpacity
+                            style={styles.inputContainer}
+                            onPress={() => setMostrarSelectorTipoAcolchado(true)}
+                        >
+                            <Text style={styles.inputLabel}>Seleccionar Tipo</Text>
+                            <View style={[styles.dateInput, isDark && styles.dateInputDark]}>
+                                <Text style={[styles.dateText, !formData.tipo_acolchado && styles.dateTextPlaceholder, isDark && styles.dateTextDark]}>
+                                    {TIPOS_ACOLCHADO.find(t => t.value === formData.tipo_acolchado)?.label || 'Toca para seleccionar'}
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-down" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                            </View>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -394,28 +431,21 @@ export default function NuevoProyectoScreen() {
                         Información del Colaborador
                     </Text>
                     <View style={[styles.card, isDark && styles.cardDark]}>
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Nombre</Text>
-                            <TextInput
-                                style={[styles.input, isDark && styles.inputDark]}
-                                placeholder="Nombre completo"
-                                placeholderTextColor={isDark ? '#636366' : '#999'}
-                                value={formData.colaborador_nombre}
-                                onChangeText={(v) => updateField('colaborador_nombre', v)}
-                            />
-                        </View>
-
-                        <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Celular</Text>
-                            <TextInput
-                                style={[styles.input, isDark && styles.inputDark]}
-                                placeholder="Ej: 0991234567"
-                                placeholderTextColor={isDark ? '#636366' : '#999'}
-                                keyboardType="phone-pad"
-                                value={formData.colaborador_celular}
-                                onChangeText={(v) => updateField('colaborador_celular', v)}
-                            />
-                        </View>
+                        <TouchableOpacity
+                            style={styles.inputContainer}
+                            onPress={() => setMostrarColaboradoresModal(true)}
+                        >
+                            <Text style={styles.inputLabel}>Colaborador</Text>
+                            <View style={[styles.dateInput, isDark && styles.dateInputDark]}>
+                                <View style={styles.colaboradorRow}>
+                                    <MaterialCommunityIcons name="account-multiple" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                                    <Text style={[styles.dateText, !formData.colaborador_nombre && styles.dateTextPlaceholder, isDark && styles.dateTextDark, { marginLeft: 8 }]}>
+                                        {formData.colaborador_nombre || 'Toca para agregar'}
+                                    </Text>
+                                </View>
+                                <MaterialCommunityIcons name="chevron-right" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                            </View>
+                        </TouchableOpacity>
                     </View>
                 </View>
 
@@ -499,6 +529,132 @@ export default function NuevoProyectoScreen() {
                 onChange={(date) => updateField('fecha_siembra', date)}
                 onClose={() => setMostrarSelectorFecha(false)}
                 isDark={isDark}
+            />
+
+            {/* Modal Selector Tipo Ensayo */}
+            <Modal
+                visible={mostrarSelectorTipoEnsayo}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setMostrarSelectorTipoEnsayo(false)}
+            >
+                <View style={modalStyles.overlay}>
+                    <View style={[modalStyles.content, { paddingBottom: insets.bottom + 16 }]}>
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>Tipo de Ensayo</Text>
+                            <TouchableOpacity onPress={() => setMostrarSelectorTipoEnsayo(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={TIPOS_ENSAAYO}
+                            keyExtractor={(item) => item.value}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[modalStyles.loteItem, formData.tipo_ensayo === item.value && modalStyles.loteItemSelected]}
+                                    onPress={() => {
+                                        updateField('tipo_ensayo', item.value);
+                                        setMostrarSelectorTipoEnsayo(false);
+                                    }}
+                                >
+                                    <Text style={modalStyles.loteName}>{item.label}</Text>
+                                    {formData.tipo_ensayo === item.value && (
+                                        <MaterialCommunityIcons name="check-circle" size={22} color="#34C759" />
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                            ItemSeparatorComponent={() => <View style={modalStyles.separator} />}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal Selector Tipo Acolchado */}
+            <Modal
+                visible={mostrarSelectorTipoAcolchado}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setMostrarSelectorTipoAcolchado(false)}
+            >
+                <View style={modalStyles.overlay}>
+                    <View style={[modalStyles.content, { paddingBottom: insets.bottom + 16 }]}>
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>Tipo de Acolchado</Text>
+                            <TouchableOpacity onPress={() => setMostrarSelectorTipoAcolchado(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={TIPOS_ACOLCHADO}
+                            keyExtractor={(item) => item.value}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[modalStyles.loteItem, formData.tipo_acolchado === item.value && modalStyles.loteItemSelected]}
+                                    onPress={() => {
+                                        updateField('tipo_acolchado', item.value);
+                                        setMostrarSelectorTipoAcolchado(false);
+                                    }}
+                                >
+                                    <Text style={modalStyles.loteName}>{item.label}</Text>
+                                    {formData.tipo_acolchado === item.value && (
+                                        <MaterialCommunityIcons name="check-circle" size={22} color="#34C759" />
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                            ItemSeparatorComponent={() => <View style={modalStyles.separator} />}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal Selector Estado */}
+            <Modal
+                visible={mostrarSelectorEstado}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setMostrarSelectorEstado(false)}
+            >
+                <View style={modalStyles.overlay}>
+                    <View style={[modalStyles.content, { paddingBottom: insets.bottom + 16 }]}>
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>Estado del Proyecto</Text>
+                            <TouchableOpacity onPress={() => setMostrarSelectorEstado(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+                            </TouchableOpacity>
+                        </View>
+                        <FlatList
+                            data={ESTADOS}
+                            keyExtractor={(item) => item.value}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[modalStyles.loteItem, formData.estado === item.value && modalStyles.loteItemSelected]}
+                                    onPress={() => {
+                                        updateField('estado', item.value);
+                                        setMostrarSelectorEstado(false);
+                                    }}
+                                >
+                                    <Text style={modalStyles.loteName}>{item.label}</Text>
+                                    {formData.estado === item.value && (
+                                        <MaterialCommunityIcons name="check-circle" size={22} color="#34C759" />
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                            ItemSeparatorComponent={() => <View style={modalStyles.separator} />}
+                        />
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Modal Colaboradores */}
+            <ColaboradoresModal
+                visible={mostrarColaboradoresModal}
+                onClose={() => setMostrarColaboradoresModal(false)}
+                proyectoId={null}
+                onSelectSingle={(colaborador) => {
+                    updateField('colaborador_nombre', colaborador.nombre || '');
+                    updateField('colaborador_celular', colaborador.celular || '');
+                    setMostrarColaboradoresModal(false);
+                }}
             />
         </KeyboardAvoidingView>
     );

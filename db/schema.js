@@ -23,8 +23,10 @@ export const lotes = sqliteTable('lotes', {
     estacion_id: integer('estacion_id'),
     imagen_url: text('imagen_url'),
     vertices_count: integer('vertices_count').default(0),
+    estado_verificacion: text('estado_verificacion').default('pendiente'),
     created_at: text('created_at'),
     updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
 });
 
 export const provincias = sqliteTable('provincias', {
@@ -67,6 +69,16 @@ export const proyectos = sqliteTable('proyectos', {
     sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
     created_at: text('created_at'),
     updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
+});
+
+// Tabla intermedia para relacion N:M proyectos-lotes
+export const proyecto_lotes = sqliteTable('proyecto_lotes', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    proyecto_uuid: text('proyecto_uuid').notNull(),
+    lote_uuid: text('lote_uuid').notNull(),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
 });
 
 export const ciclos_cultivo = sqliteTable('ciclos_cultivo', {

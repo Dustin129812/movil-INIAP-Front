@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import * as Location from 'expo-location';
 import * as Crypto from 'expo-crypto';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lotesService } from '../../../services/lotes';
 import { crearLoteLocal, crearProyectoLocal } from '../../../db';
 
@@ -53,6 +54,24 @@ export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
             cargarLoteParaEdicion(editLoteId);
         }
     }, [editLoteId]);
+
+    // Obtener el user_id del usuario actual desde AsyncStorage
+    const obtenerUserIdActual = async () => {
+        try {
+            // Intentar obtener el ID del usuario guardado
+            const usuarioJson = await AsyncStorage.getItem('datos_usuario');
+            if (usuarioJson) {
+                const usuario = JSON.parse(usuarioJson);
+                if (usuario?.ID) return usuario.ID;
+            }
+            // Para invitado, usar el dispositivo ID
+            const dispositivoId = await AsyncStorage.getItem('dispositivo_id');
+            if (dispositivoId) return dispositivoId;
+            return null;
+        } catch {
+            return null;
+        }
+    };
 
     const cargarLoteParaEdicion = async (id) => {
         try {
@@ -320,8 +339,12 @@ export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
                 const uuidLote = Crypto.randomUUID();
                 const uuidProyecto = Crypto.randomUUID();
 
+                // Obtener el user_id del usuario actual
+                const userIdActual = await obtenerUserIdActual();
+
                 // 1. Guardar lote LOCALMENTE primero (offline-first)
                 const datosLoteLocal = {
+                    user_id: userIdActual,
                     nombre_lote: form.nombreLote.trim(),
                     coordenadas: points,
                     ubicacion_manual: form.cultivoAnterior.trim() || null,
@@ -344,32 +367,7 @@ export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
                     return;
                 }
 
-                // 2. Guardar proyecto LOCALMENTE con referencia al lote
-                const datosProyectoLocal = {
-                    uuid_movil: uuidProyecto,
-                    titulo: `Proyecto - ${form.nombreLote.trim()}`,
-                    descripcion: form.cultivoAnterior.trim() || 'Sin descripción',
-                    variedad: 'Por definir',
-                    fecha_siembra: null,
-                    estado: 'pendiente',
-                    tipo_acolchado: null,
-                    tipo_ensayo: null,
-                    diseno_experimental: null,
-                    financiamiento: null,
-                    colaborador_nombre: null,
-                    colaborador_telefono: null,
-                    colaborador_celular: null,
-                };
-
-                let proyectoCreado;
-                try {
-                    proyectoCreado = await crearProyectoLocal(datosProyectoLocal, { loteUuid: loteCreado.uuid_movil });
-                } catch (proyError) {
-                    // console removed
-                    // El lote ya está creado, el proyecto es secundario
-                }
-
-                // 3. Sincronizar con API en segundo plano
+                // 2. Sincronizar con API en segundo plano (sin proyecto)
                 const datosLoteApi = {
                     uuid_movil: loteCreado.uuid_movil,
                     nombre_lote: form.nombreLote.trim(),
@@ -382,28 +380,22 @@ export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
                     altitud: null,
                     imagen_url: imagenUrlLote,
                     vertices_count: points.length,
-                    proyectos: [
-                        {
-                            uuid_movil: uuidProyecto,
-                            titulo: `Proyecto - ${form.nombreLote.trim()}`,
-                            descripcion: form.cultivoAnterior.trim() || 'Sin descripción',
-                            variedad: 'Por definir',
-                            tipo_riego: form.tipoRiego,
-                            topografia: form.topografia,
-                        }
-                    ],
                 };
 
                 try {
-                    await lotesService.crearLote(datosLoteApi);
+                    const result = await lotesService.crearLote(datosLoteApi);
+                    console.log('Resultado crear lote API:', result);
+                    if (!result || !result.success) {
+                        Alert.alert('Error API', result?.message || 'No se pudo sincronizar con el servidor');
+                    }
                 } catch (apiError) {
-                    // console.log removed
+                    console.log('Error al sincronizar lote:', apiError);
                 }
 
                 Alert.alert('Éxito', 'Lote guardado correctamente.');
                 setShowForm(false);
                 setPoints([]);
-                setForm({ nombreLote: '', cultivoAnterior: '', tipoRiego: 'secano', topografia: 'Plana' });
+                setForm({ nombreLote: '', cultivoAnterior: '', tipoRiego: 'secano', topografia: 'Plana', estadoVerificacion: 'pendiente' });
                 setUbicacionSeleccionada({ provincia: null, canton: null, estacion: null });
                 setImagenUrlLote(null);
                 if (onLoteSaved) {

@@ -218,4 +218,37 @@ export const sharedProyectoStyles = StyleSheet.create({
     fontSize: 16,
     marginTop: 20,
   },
+
+  // --- DATE INPUT ---
+  dateInput: {
+    backgroundColor: COLORS.light.input,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateInputDark: {
+    backgroundColor: COLORS.dark.input,
+    borderColor: COLORS.dark.border,
+  },
+  dateText: {
+    fontSize: 16,
+    color: COLORS.text.primary,
+    flex: 1,
+  },
+  dateTextPlaceholder: {
+    color: '#999',
+  },
+  dateTextDark: {
+    color: '#FFFFFF',
+  },
+
+  // --- COLABORADOR ROW ---
+  colaboradorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
 });

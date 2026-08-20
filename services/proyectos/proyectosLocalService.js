@@ -12,6 +12,9 @@ import {
     obtenerCiclosPorProyecto,
     obtenerHojaDatosPorVisita,
     actualizarProyectoLocal,
+    actualizarLotesDelProyecto,
+    crearProyectoLoteRelacion,
+    obtenerLotesPorProyecto,
     SYNC_STATUS,
     proyectos,
 } from '../../db';
@@ -36,37 +39,78 @@ export const inicializarBaseDatosProyectos = async () => {
     }
 };
 
-// Obtener proyectos - primero intenta API, si falla usa local
+// Obtener proyectos - siempre priorizar datos locales con cambios pendientes
 export const obtenerProyectos = async () => {
     try {
+        // Siempre obtener datos locales primero (son la fuente de verdad offline)
+        const proyectosLocales = await obtenerProyectosLocales();
+
+        // Crear mapa de proyectos locales por uuid para fácil acceso
+        const localesMap = new Map(
+            proyectosLocales.map(p => [p.uuid_movil, p])
+        );
+
+        // Si no hay token, retornar locales
         const token = await obtenerToken();
         if (!token) {
-            const proyectosLocales = await obtenerProyectosLocales();
             return proyectosLocales;
         }
 
-        const respuesta = await fetch(`${URL_API}/agrodecide/proyectos`, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-            },
-        });
+        // Intentar obtener datos de API
+        let datosApi = [];
+        try {
+            const respuesta = await fetch(`${URL_API}/agrodecide/proyectos`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
 
-        if (!respuesta.ok) {
-            const proyectosLocales = await obtenerProyectosLocales();
+            if (respuesta.ok) {
+                const datos = await respuesta.json();
+                if (datos.success && datos.data && datos.data.length > 0) {
+                    datosApi = datos.data;
+                }
+            }
+        } catch (apiErr) {
+            // Ignorar errores de API
+        }
+
+        // Si no hay datos de API, retornar locales
+        if (datosApi.length === 0) {
             return proyectosLocales;
         }
 
-        const datos = await respuesta.json();
+        // UNIÓN de ambas fuentes:
+        // 1. Empezar con mapa vacío
+        // 2. Agregar todos los de API
+        // 3. Para cada local, si existe en API → sobrescribir con versión combinada (API + estado local)
+        //    si NO existe en API → agregar tal cual (proyecto local pendiente de sync)
+        const mergedMap = new Map();
 
-        if (datos.success && datos.data && datos.data.length > 0) {
-            return datos.data;
+        // Primero, agregar todos los de API
+        for (const proyApi of datosApi) {
+            mergedMap.set(proyApi.uuid_movil, proyApi);
         }
-        // Si el API no tiene datos, usar locales
-        const proyectosLocales = await obtenerProyectosLocales();
-        return proyectosLocales;
+
+        // Luego, agregar/sobrescribir con datos locales
+        for (const [uuid, proyLocal] of localesMap) {
+            if (mergedMap.has(uuid)) {
+                // Existe en API: combinar API + estado local preservado
+                const proyApi = mergedMap.get(uuid);
+                mergedMap.set(uuid, {
+                    ...proyApi,
+                    estado: proyLocal.estado || proyApi.estado || 'activo',
+                });
+            } else {
+                // NO existe en API: proyecto local pendiente de sync, agregar tal cual
+                mergedMap.set(uuid, proyLocal);
+            }
+        }
+
+        return Array.from(mergedMap.values());
     } catch (error) {
-        // console removed
+        // En caso de error, siempre retornar datos locales
         const proyectosLocales = await obtenerProyectosLocales();
         return proyectosLocales;
     }
@@ -82,6 +126,13 @@ export const crearProyectoLocal = async (datosProyecto) => {
 
         // Primero guardar localmente
         const proyectoLocal = await crearProyectoLocalDb(datosProyecto, { loteUuid: datosProyecto.lote_uuid || null });
+
+        // Crear relaciones N:M con lotes si hay múltiples lotes
+        if (datosProyecto.lotes_uuids && Array.isArray(datosProyecto.lotes_uuids)) {
+            for (const loteUuid of datosProyecto.lotes_uuids) {
+                await crearProyectoLoteRelacion(proyectoLocal.uuid_movil, loteUuid);
+            }
+        }
 
         // Intentar guardar en servidor
         try {
@@ -241,6 +292,29 @@ export const obtenerProyectoLocal = async (uuid_movil) => {
     }
 };
 
+// Eliminar proyecto (llama al API - soft delete en backend)
+export const eliminarProyecto = async (uuid_movil) => {
+    try {
+        const token = await obtenerToken();
+        const respuesta = await fetch(`${URL_API}/agrodecide/proyectos/${uuid_movil}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': token ? `Bearer ${token}` : '',
+            },
+        });
+
+        if (respuesta.ok) {
+            return { success: true, message: 'Proyecto eliminado' };
+        } else {
+            return { success: false, message: 'No se pudo eliminar el proyecto' };
+        }
+    } catch (error) {
+        // console removed
+        return { success: false, message: 'Error de red al eliminar proyecto' };
+    }
+};
+
 export const proyectosLocalService = {
     inicializarBaseDatosProyectos,
     obtenerProyectos,
@@ -254,6 +328,7 @@ export const proyectosLocalService = {
     sincronizarProyectosPendientes,
     obtenerProyectoLocal,
     actualizarProyectoLocal,
+    eliminarProyecto,
 };
 
 export default proyectosLocalService;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../hooks/useAuth';
@@ -97,12 +98,18 @@ export default function LoginForm() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <View style={styles.content}>
+
+        {/* Logo y título de la app */}
         <View style={styles.header}>
-          <Text style={styles.logo}>INIAP</Text>
-          <Text style={styles.subtitle}>Gestión Agrícola</Text>
+          <Image
+            source={require('../../../assets/images/Logo.jpg')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
         </View>
 
-        <View style={styles.form}>
+        {/* Aquí se aplica el diseño de "Card" */}
+        <View style={styles.cardForm}>
           <Text style={styles.title}>Iniciar Sesión</Text>
 
           <View style={styles.inputContainer}>
@@ -173,7 +180,7 @@ export default function LoginForm() {
             <View style={styles.dividerLine} />
           </View>
 
-          {/* Botón Invitado - entra automáticamente */}
+          {/* Botón Invitado */}
           <TouchableOpacity
             style={[styles.invitadoButton, isAnyLoading && styles.buttonDisabled]}
             onPress={handleInvitado}
@@ -189,6 +196,16 @@ export default function LoginForm() {
               </>
             )}
           </TouchableOpacity>
+
+          {/* Logo INIAP y derechos de autor */}
+          <View style={styles.iniapLogoContainer}>
+            <Image
+              source={require('../../../assets/images/INIAP.png')}
+              style={styles.iniapLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.derechosTexto}>© 2025 Derechos de autor</Text>
+          </View>
         </View>
       </View>
     </KeyboardAvoidingView>
@@ -203,12 +220,18 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 20,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: 5,
   },
+  logoImage: {
+    width: 160,
+    height: 160,
+    marginBottom: 8,
+  },
+  
   logo: {
     fontSize: 44,
     fontWeight: '700',
@@ -221,15 +244,24 @@ const styles = StyleSheet.create({
     marginTop: 4,
     letterSpacing: 0.5,
   },
-  form: {
+  // Card form original
+  cardForm: {
     width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 6,
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
     color: '#000',
     textAlign: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
   inputContainer: {
     marginBottom: 20,
@@ -244,7 +276,7 @@ const styles = StyleSheet.create({
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#FAFAFA', // Fondo un poco más grisáceo para hacer contraste con la card blanca
     borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E5E5EA',
@@ -285,7 +317,7 @@ const styles = StyleSheet.create({
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 28,
     marginBottom: 24,
   },
   dividerLine: {
@@ -315,5 +347,20 @@ const styles = StyleSheet.create({
     color: '#34C759',
     fontSize: 17,
     fontWeight: '600',
+  },
+  iniapLogoContainer: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  iniapLogo: {
+    width: 80,
+    height: 50,
+  },
+  derechosTexto: {
+    fontSize: 11,
+    color: '#8E8E93',
+    marginTop: 6,
+    fontWeight: '500',
   },
 });

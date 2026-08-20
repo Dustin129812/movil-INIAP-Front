@@ -11,6 +11,7 @@ export default function ProyectosTabScreen() {
     const {
         proyectos,
         isLoading,
+        isRefreshing,
         filtroActivo,
         setFiltroActivo,
         recargar,
@@ -22,6 +23,7 @@ export default function ProyectosTabScreen() {
             <ListaProyectosUI
                 proyectos={proyectos}
                 isLoading={isLoading}
+                isRefreshing={isRefreshing}
                 filtroActivo={filtroActivo}
                 onFiltroChange={setFiltroActivo}
                 onRefresh={recargar}

@@ -112,7 +112,6 @@ const construirPayloadSync = async () => {
                 descripcion: proyecto.descripcion || '',
                 variedad: proyecto.variedad || 'Sin variedad',
                 fecha_siembra: proyecto.fecha_siembra || null,
-                estado: proyecto.estado || 'activo',
                 tipo_acolchado: proyecto.tipo_acolchado || null,
                 tipo_ensayo: proyecto.tipo_ensayo || null,
                 diseno_experimental: proyecto.diseno_experimental || null,

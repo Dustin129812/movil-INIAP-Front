@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { eq } from 'drizzle-orm';
+import { eq, isNull } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 import * as schema from './schema';
 
@@ -32,8 +32,10 @@ export const initDb = async () => {
                 estacion_id INTEGER,
                 imagen_url TEXT,
                 vertices_count INTEGER DEFAULT 0,
+                estado_verificacion TEXT DEFAULT 'pendiente',
                 created_at TEXT,
-                updated_at TEXT
+                updated_at TEXT,
+                deleted_at TEXT
             );
 
             CREATE TABLE IF NOT EXISTS provincias (
@@ -81,7 +83,8 @@ export const initDb = async () => {
                 colaborador_celular TEXT,
                 sync_status TEXT DEFAULT 'draft',
                 created_at TEXT,
-                updated_at TEXT
+                updated_at TEXT,
+                deleted_at TEXT
             );
 
             CREATE TABLE IF NOT EXISTS ciclos_cultivo (
@@ -140,6 +143,14 @@ export const initDb = async () => {
                 cultivo_id INTEGER,
                 nombre TEXT NOT NULL,
                 caracteristicas_base TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS proyecto_lotes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                proyecto_uuid TEXT NOT NULL,
+                lote_uuid TEXT NOT NULL,
+                sync_status TEXT DEFAULT 'draft',
+                created_at TEXT
             );
         `);
 
@@ -205,6 +216,24 @@ export const initDb = async () => {
                     ALTER TABLE hojas_datos ADD COLUMN visita_uuid TEXT;
                 `);
             } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE lotes ADD COLUMN estado_verificacion TEXT DEFAULT 'pendiente';
+                `);
+            } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE lotes ADD COLUMN deleted_at TEXT;
+                `);
+            } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE proyectos ADD COLUMN deleted_at TEXT;
+                `);
+            } catch (e) { /* columna ya existe */ }
         };
 
         await migrarColumnas();
@@ -228,6 +257,7 @@ export const crearLoteLocal = async (loteData) => {
         estacion_id: loteData.estacion_id || null,
         imagen_url: loteData.imagen_url || null,
         vertices_count: loteData.vertices_count || 0,
+        estado_verificacion: loteData.estado_verificacion || 'pendiente',
         sync_status: SYNC_STATUS.DRAFT,
         created_at: now,
         updated_at: now,
@@ -238,7 +268,20 @@ export const crearLoteLocal = async (loteData) => {
 };
 
 export const obtenerLotesLocales = async () => {
-    return await db.select().from(schema.lotes);
+    return await db
+        .select()
+        .from(schema.lotes)
+        .where(isNull(schema.lotes.deleted_at));
+};
+
+export const softDeleteLote = async (uuid_movil) => {
+    await db
+        .update(schema.lotes)
+        .set({
+            deleted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        })
+        .where(eq(schema.lotes.uuid_movil, uuid_movil));
 };
 
 export const obtenerLotesPendientesSync = async () => {
@@ -291,14 +334,18 @@ export const crearProyectoLocal = async (proyectoData, { loteUuid }) => {
 };
 
 export const obtenerProyectosLocales = async () => {
-    return await db.select().from(schema.proyectos);
+    return await db
+        .select()
+        .from(schema.proyectos)
+        .where(isNull(schema.proyectos.deleted_at));
 };
 
 export const obtenerProyectoLocal = async (uuid_movil) => {
     const resultados = await db
         .select()
         .from(schema.proyectos)
-        .where(eq(schema.proyectos.uuid_movil, uuid_movil));
+        .where(eq(schema.proyectos.uuid_movil, uuid_movil))
+        .where(isNull(schema.proyectos.deleted_at));
     return resultados[0] || null;
 };
 
@@ -306,7 +353,19 @@ export const obtenerProyectosPorLote = async (loteUuid) => {
     return await db
         .select()
         .from(schema.proyectos)
-        .where(eq(schema.proyectos.lote_uuid, loteUuid));
+        .where(eq(schema.proyectos.lote_uuid, loteUuid))
+        .where(isNull(schema.proyectos.deleted_at));
+};
+
+export const softDeleteProyecto = async (uuid_movil) => {
+    await db
+        .update(schema.proyectos)
+        .set({
+            deleted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            sync_status: SYNC_STATUS.PENDING,
+        })
+        .where(eq(schema.proyectos.uuid_movil, uuid_movil));
 };
 
 export const actualizarProyectoLocal = async (uuid_movil, datos) => {
@@ -317,12 +376,6 @@ export const actualizarProyectoLocal = async (uuid_movil, datos) => {
             sync_status: SYNC_STATUS.PENDING,
             updated_at: new Date().toISOString(),
         })
-        .where(eq(schema.proyectos.uuid_movil, uuid_movil));
-};
-
-export const eliminarProyectoLocal = async (uuid_movil) => {
-    await db
-        .delete(schema.proyectos)
         .where(eq(schema.proyectos.uuid_movil, uuid_movil));
 };
 
@@ -341,6 +394,38 @@ export const marcarProyectoComoSincronizado = async (uuid_movil) => {
             updated_at: new Date().toISOString(),
         })
         .where(eq(schema.proyectos.uuid_movil, uuid_movil));
+};
+
+// ============================================
+// PROYECTO-LOTES (RELACION N:M)
+// ============================================
+
+export const crearProyectoLoteRelacion = async (proyectoUuid, loteUuid) => {
+    const now = new Date().toISOString();
+    await db.insert(schema.proyecto_lotes).values({
+        proyecto_uuid: proyectoUuid,
+        lote_uuid: loteUuid,
+        sync_status: SYNC_STATUS.DRAFT,
+        created_at: now,
+    });
+};
+
+export const obtenerLotesPorProyecto = async (proyectoUuid) => {
+    const resultados = await db
+        .select()
+        .from(schema.proyecto_lotes)
+        .where(eq(schema.proyecto_lotes.proyecto_uuid, proyectoUuid));
+    return resultados.map(r => r.lote_uuid);
+};
+
+export const actualizarLotesDelProyecto = async (proyectoUuid, loteUuids) => {
+    // Eliminar relaciones existentes
+    await db.delete(schema.proyecto_lotes)
+        .where(eq(schema.proyecto_lotes.proyecto_uuid, proyectoUuid));
+    // Crear nuevas relaciones
+    for (const loteUuid of loteUuids) {
+        await crearProyectoLoteRelacion(proyectoUuid, loteUuid);
+    }
 };
 
 // ============================================

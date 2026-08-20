@@ -6,11 +6,16 @@ import { proyectosLocalService } from '../../../services/proyectos';
 export const useListaProyectos = () => {
     const [proyectos, setProyectos] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState(null);
     const [filtroActivo, setFiltroActivo] = useState('TODOS');
 
-    const recargar = useCallback(async () => {
-        setIsLoading(true);
+    const recargar = useCallback(async (isBackgroundRefresh = false) => {
+        if (isBackgroundRefresh) {
+            setIsRefreshing(true);
+        } else {
+            setIsLoading(true);
+        }
         setError(null);
         try {
             // Siempre obtener de local primero para tener datos actualizados
@@ -31,6 +36,7 @@ export const useListaProyectos = () => {
             setError('Error al cargar los proyectos');
         } finally {
             setIsLoading(false);
+            setIsRefreshing(false);
         }
     }, []);
 
@@ -42,8 +48,8 @@ export const useListaProyectos = () => {
 
     const proyectosFiltrados = useMemo(() => {
         if (filtroActivo === 'TODOS') return proyectos;
-        if (filtroActivo === 'ACTIVOS') return proyectos.filter(p => p.estado === 'activo' && p.sync_status !== 'pending' && p.sync_status !== 'draft');
-        if (filtroActivo === 'PENDIENTES') return proyectos.filter(p => p.estado === 'pendiente' || p.sync_status === 'pending' || p.sync_status === 'draft');
+        if (filtroActivo === 'ACTIVOS') return proyectos.filter(p => p.estado === 'activo');
+        if (filtroActivo === 'PENDIENTES') return proyectos.filter(p => p.estado === 'pendiente');
         if (filtroActivo === 'INACTIVOS') return proyectos.filter(p => p.estado === 'inactivo');
         return proyectos;
     }, [proyectos, filtroActivo]);
@@ -57,6 +63,7 @@ export const useListaProyectos = () => {
         proyectos,
         proyectosFiltrados,
         isLoading,
+        isRefreshing,
         error,
         filtroActivo,
         setFiltroActivo,

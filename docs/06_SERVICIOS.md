@@ -39,7 +39,7 @@ services/
 │   └── uploadService.js
 └── theme/
     ├── index.js
-    ├── ThemeContext.js
+    ├── theme.js
     └── tabBarTheme.js
 ```
 
@@ -298,7 +298,7 @@ Helper para descargar catálogos.
 
 ## 7. SERVICES/THEME
 
-### 7.1 services/theme/ThemeContext.js
+### 7.1 services/theme/theme.js
 
 Provider de tema (claro/oscuro).
 
@@ -309,9 +309,9 @@ export const ThemeProvider = ({ children }) => {
     const toggleTheme = () => setIsDark(!isDark);
 
     return (
-        <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+        <theme.Provider value={{ isDark, toggleTheme }}>
             {children}
-        </ThemeContext.Provider>
+        </theme.Provider>
     );
 };
 ```

@@ -164,7 +164,7 @@ export function useApi() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          correo_institucional: credenciales.email,
+          email: credenciales.email,
           password: credenciales.password,
           device_uuid: uuid || null,
         }),
@@ -178,15 +178,16 @@ export function useApi() {
         const datosReasignados = datos.data.datos_reasignados || 0;
         const guardado = await guardarSesion(token, {
           ID: user.id,
-          NOMBRE: user.nombre,
-          CORREO: user.correo_institucional,
+          NOMBRE: user.name,
+          CORREO: user.email,
+          DNI: user.dni,
         });
         if (!guardado) {
           setCargando(false);
           return { success: false, message: 'Error al guardar sesión' };
         }
         setCargando(false);
-        return { success: true, ID: user.id, NOMBRE: user.nombre, CORREO: user.correo_institucional, datos_reasignados: datosReasignados };
+        return { success: true, ID: user.id, NOMBRE: user.name, CORREO: user.email, DNI: user.dni, datos_reasignados: datosReasignados };
       }
 
       setCargando(false);

@@ -136,7 +136,7 @@ const UsuarioSeleccionable = ({ usuario, onSeleccionar, yaEsColaborador, selecci
   </TouchableOpacity>
 );
 
-export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
+export default function ColaboradoresModal({ visible, onClose, proyectoId, onSelectSingle }) {
   const insets = useSafeAreaInsets();
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
@@ -171,6 +171,8 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
       progreso.value = 0;
       contenidoOpacidad.value = 0;
       arrastreY.value = 0;
+      // Cargar todos los usuarios al abrir el panel
+      buscarUsuarios('').then(setResultadosBusqueda);
     }
   }, [visible, cargarColaboradores]);
 
@@ -224,13 +226,10 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
 
   const handleBuscar = useCallback(async (texto) => {
     setTerminoBusqueda(texto);
-    if (texto.length < 2) {
-      setResultadosBusqueda([]);
-      return;
-    }
 
     setBuscando(true);
     try {
+      // Si hay texto (>= 2 chars) busca, si no muestra todos
       const resultados = await buscarUsuarios(texto);
       setResultadosBusqueda(resultados);
     } finally {
@@ -239,6 +238,11 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
   }, [buscarUsuarios]);
 
   const handleSeleccionarUsuario = useCallback((usuario) => {
+    if (onSelectSingle) {
+      onSelectSingle(usuario);
+      cerrarPanel();
+      return;
+    }
     setSeleccionados((prev) => {
       const yaExiste = prev.find((u) => u.id === usuario.id);
       if (yaExiste) {
@@ -246,7 +250,7 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
       }
       return [...prev, usuario];
     });
-  }, []);
+  }, [onSelectSingle, cerrarPanel]);
 
   const handleAgregarSeleccionados = useCallback(async () => {
     if (!seleccionados.length) return;
@@ -432,12 +436,12 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
                   <View style={{ flex: 1 }}>
                     {buscando ? (
                       <ActivityIndicator size="large" color="#0A84FF" style={{ marginTop: 60 }} />
-                    ) : resultadosBusqueda.length === 0 && terminoBusqueda.length >= 2 ? (
+                    ) : resultadosBusqueda.length === 0 ? (
                       <View style={styles.emptyStatePanel}>
                         <MaterialCommunityIcons name="account-search-outline" size={36} color="#8E8E93" />
                         <Text style={styles.emptyText}>No se encontraron usuarios</Text>
                       </View>
-                    ) : resultadosBusqueda.length > 0 ? (
+                    ) : (
                       <FlatList
                         data={resultadosBusqueda}
                         keyExtractor={(item) => String(item.id)}
@@ -446,12 +450,6 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId }) {
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
                       />
-                    ) : (
-                      <View style={styles.emptyStatePanel}>
-                        <MaterialCommunityIcons name="account-search-outline" size={36} color="#8E8E93" />
-                        <Text style={styles.emptyText}>Busca usuarios para agregar</Text>
-                        <Text style={styles.emptySubtext}>Ingresa al menos 2 caracteres</Text>
-                      </View>
                     )}
                   </View>
                 </View>

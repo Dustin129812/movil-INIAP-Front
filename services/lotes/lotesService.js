@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { obtenerLotesLocales } from '../../db/client';
 
 const URL_API = process.env.EXPO_PUBLIC_API_URL;
 
@@ -19,30 +20,86 @@ const obtenerToken = async () => {
 export const lotesService = {
   async obtenerLotes() {
     try {
-      const token = await obtenerToken();
-      const respuesta = await fetch(`${URL_API}/agrodecide/lotes`, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
-      });
+      // Obtener datos locales primero (fuente de verdad offline)
+      const lotesLocales = await obtenerLotesLocales();
+      const localesMap = new Map(
+        lotesLocales.map(l => [l.uuid_movil, l])
+      );
 
-      if (!respuesta.ok) {
-        // console removed
-        return [];
+      const token = await obtenerToken();
+
+      // Si no hay token, retornar locales
+      if (!token) {
+        return lotesLocales;
       }
 
-      const datos = await respuesta.json();
+      let datosApi = [];
+      try {
+        const respuesta = await fetch(`${URL_API}/agrodecide/lotes`, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+        });
 
-      // Manejar varios formatos de respuesta
-      if (Array.isArray(datos)) return datos;
-      if (datos.data) return datos.data;
-      if (datos.lotes) return datos.lotes;
-      if (datos.result) return datos.result;
-      return datos;
+        if (respuesta.ok) {
+          const datos = await respuesta.json();
+          if (datos.data && datos.data.length > 0) {
+            datosApi = datos.data;
+          } else if (datos.lotes && datos.lotes.length > 0) {
+            datosApi = datos.lotes;
+          } else if (datos.result && datos.result.length > 0) {
+            datosApi = datos.result;
+          }
+        }
+      } catch (apiErr) {
+        // Ignorar errores de API
+      }
+
+      // Si no hay datos de API, retornar locales
+      if (datosApi.length === 0) {
+        return lotesLocales;
+      }
+
+      // UNIÓN de ambas fuentes:
+      // 1. Empezar con mapa vacío
+      // 2. Agregar todos los de API
+      // 3. Para cada local, si existe en API → sobrescribir con versión combinada
+      //    si NO existe en API → agregar tal cual (lote local pendiente de sync)
+      const mergedMap = new Map();
+
+      // Primero, agregar todos los de API (solo si tienen uuid_movil válido)
+      for (const loteApi of datosApi) {
+        if (loteApi.uuid_movil) {
+          mergedMap.set(loteApi.uuid_movil, loteApi);
+        }
+      }
+
+      // Luego, agregar/sobrescribir con datos locales
+      for (const [uuid, loteLocal] of localesMap) {
+        if (uuid) {
+          if (mergedMap.has(uuid)) {
+            // Existe en API: combinar API + estado local preservado
+            const loteApi = mergedMap.get(uuid);
+            mergedMap.set(uuid, {
+              ...loteApi,
+              estado_verificacion: loteLocal.estado_verificacion || loteApi.estado_verificacion || 'pendiente',
+            });
+          } else {
+            // NO existe en API: lote local pendiente de sync, agregar tal cual
+            mergedMap.set(uuid, loteLocal);
+          }
+        }
+      }
+
+      // Filtrar cualquier entrada con key inválida y convertir a array
+      const result = Array.from(mergedMap.values()).filter(l => l && (l.uuid_movil || l.id));
+
+      return result;
     } catch (error) {
-      // console removed
-      return [];
+      // En caso de error, retornar datos locales
+      const lotesLocales = await obtenerLotesLocales();
+      return lotesLocales;
     }
   },
 
@@ -132,20 +189,25 @@ export const lotesService = {
     return this.actualizarLote(id, { estado_verificacion: nuevoEstado });
   },
 
-  async eliminarLote(id) {
+  async eliminarLote(uuid_movil) {
     try {
       const token = await obtenerToken();
-      const respuesta = await fetch(`${URL_API}/agrodecide/lotes/${id}`, {
+      const respuesta = await fetch(`${URL_API}/agrodecide/lotes/${uuid_movil}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': token ? `Bearer ${token}` : '',
         },
       });
-      return await respuesta.json();
+
+      if (respuesta.ok) {
+        return { success: true, message: 'Lote eliminado' };
+      } else {
+        return { success: false, message: 'No se pudo eliminar el lote' };
+      }
     } catch (error) {
       // console removed
-      return { success: false, message: 'Error de red' };
+      return { success: false, message: 'Error de red al eliminar lote' };
     }
   },
 

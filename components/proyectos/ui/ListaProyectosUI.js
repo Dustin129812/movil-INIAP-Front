@@ -8,6 +8,10 @@ import {
     RefreshControl,
     Dimensions,
     ScrollView,
+    Alert,
+    ActivityIndicator,
+    Modal,
+    Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
@@ -26,29 +30,31 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { createProyectosStyles } from './proyectosStyles';
 import { useTheme } from '../../../services/theme';
 import { SkeletonCard } from '../../../src/styles/global/SkeletonCard';
+import { proyectosLocalService } from '../../../services/proyectos/proyectosLocalService';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'INACTIVOS'];
 
-const EstadoBadge = ({ estado, syncStatus, estilos }) => {
-    const isPending = syncStatus === 'pending' || syncStatus === 'draft';
+const EstadoBadge = ({ estado, estilos }) => {
+    const isActivo = estado === 'activo';
+    const isPendiente = estado === 'pendiente';
     const isInactivo = estado === 'inactivo';
 
     const getBadgeStyle = () => {
         if (isInactivo) return [estilos.cardBadge, { backgroundColor: 'rgba(142, 142, 147, 0.2)' }];
-        if (isPending) return [estilos.cardBadge, estilos.cardBadgePending];
-        return estilos.cardBadge;
+        if (isPendiente) return [estilos.cardBadge, estilos.cardBadgePending];
+        return estilos.cardBadge; // Verde para activo
     };
 
     const getTextStyle = () => {
         if (isInactivo) return [estilos.cardBadgeText, { color: '#8E8E93' }];
-        if (isPending) return [estilos.cardBadgeText, estilos.cardBadgeTextPending];
+        if (isPendiente) return [estilos.cardBadgeText, estilos.cardBadgeTextPending];
         return estilos.cardBadgeText;
     };
 
     const getLabel = () => {
         if (isInactivo) return 'Inactivo';
-        if (isPending) return 'Pendiente';
+        if (isPendiente) return 'Pendiente';
         return estado || 'Activo';
     };
 
@@ -59,60 +65,141 @@ const EstadoBadge = ({ estado, syncStatus, estilos }) => {
     );
 };
 
-const ProyectoCard = ({ proyecto, estilos }) => {
+const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
+    const { isDark } = useTheme();
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+
     const handlePress = useCallback(() => {
         router.push(`/proyectos/${proyecto.uuid_movil || proyecto.id}`);
     }, [proyecto]);
 
+    const handleDelete = async () => {
+        const uuid = proyecto.uuid_movil || proyecto.id;
+        if (!uuid) {
+            Alert.alert('Error', 'No se encontró el ID del proyecto');
+            setShowDeleteModal(false);
+            return;
+        }
+
+        setIsDeleting(true);
+        try {
+            const result = await proyectosLocalService.eliminarProyecto(uuid);
+            if (result && result.success) {
+                if (onDelete) onDelete();
+            } else {
+                Alert.alert('Error', result?.message || 'No se pudo eliminar el proyecto');
+            }
+        } catch (err) {
+            Alert.alert('Error', 'No se pudo eliminar el proyecto');
+        }
+        setShowDeleteModal(false);
+        setIsDeleting(false);
+    };
+
     return (
-        <TouchableOpacity onPress={handlePress} activeOpacity={0.8}>
-            <View style={estilos.card}>
-                <View style={estilos.cardHeader}>
-                    <Text style={estilos.cardTitle} numberOfLines={2}>
-                        {proyecto.titulo}
-                    </Text>
-                    <EstadoBadge estado={proyecto.estado} syncStatus={proyecto.sync_status} estilos={estilos} />
-                </View>
-
-                {proyecto.descripcion && (
-                    <Text style={estilos.cardDescription} numberOfLines={2}>
-                        {proyecto.descripcion}
-                    </Text>
-                )}
-
-                <View style={estilos.cardInfoRow}>
-                    {proyecto.variedad && (
-                        <View style={estilos.cardInfoItem}>
-                            <MaterialCommunityIcons name="seed" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
-                            <Text style={estilos.cardInfoValue}>{proyecto.variedad}</Text>
-                        </View>
-                    )}
-                    {proyecto.fecha_siembra && (
-                        <View style={estilos.cardInfoItem}>
-                            <MaterialCommunityIcons name="calendar" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
-                            <Text style={estilos.cardInfoValue}>
-                                {new Date(proyecto.fecha_siembra).toLocaleDateString('es-EC')}
-                            </Text>
-                        </View>
-                    )}
-                    {proyecto.tipo_ensayo && (
-                        <View style={estilos.cardInfoItem}>
-                            <MaterialCommunityIcons name="test-tube" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
-                            <Text style={estilos.cardInfoValue}>{proyecto.tipo_ensayo}</Text>
-                        </View>
-                    )}
-                </View>
-
-                {proyecto.financiamiento && (
-                    <View style={[estilos.cardInfoRow, { marginTop: 8 }]}>
-                        <View style={estilos.cardInfoItem}>
-                            <MaterialCommunityIcons name="cash" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
-                            <Text style={estilos.cardInfoValue}>{proyecto.financiamiento}</Text>
-                        </View>
+        <>
+            <TouchableOpacity onPress={handlePress} onLongPress={() => setShowDeleteModal(true)} delayLongPress={500} activeOpacity={0.8}>
+                <View style={estilos.card}>
+                    <View style={estilos.cardHeader}>
+                        <Text style={estilos.cardTitle} numberOfLines={2}>
+                            {proyecto.titulo}
+                        </Text>
+                        <EstadoBadge estado={proyecto.estado} estilos={estilos} />
                     </View>
-                )}
-            </View>
-        </TouchableOpacity>
+
+                    {proyecto.descripcion && (
+                        <Text style={estilos.cardDescription} numberOfLines={2}>
+                            {proyecto.descripcion}
+                        </Text>
+                    )}
+
+                    <View style={estilos.cardInfoRow}>
+                        {proyecto.variedad && (
+                            <View style={estilos.cardInfoItem}>
+                                <MaterialCommunityIcons name="seed" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
+                                <Text style={estilos.cardInfoValue}>{proyecto.variedad}</Text>
+                            </View>
+                        )}
+                        {proyecto.fecha_siembra && (
+                            <View style={estilos.cardInfoItem}>
+                                <MaterialCommunityIcons name="calendar" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
+                                <Text style={estilos.cardInfoValue}>
+                                    {new Date(proyecto.fecha_siembra).toLocaleDateString('es-EC')}
+                                </Text>
+                            </View>
+                        )}
+                        {proyecto.tipo_ensayo && (
+                            <View style={estilos.cardInfoItem}>
+                                <MaterialCommunityIcons name="test-tube" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
+                                <Text style={estilos.cardInfoValue}>{proyecto.tipo_ensayo}</Text>
+                            </View>
+                        )}
+                    </View>
+
+                    {proyecto.financiamiento && (
+                        <View style={[estilos.cardInfoRow, { marginTop: 8 }]}>
+                            <View style={estilos.cardInfoItem}>
+                                <MaterialCommunityIcons name="cash" size={14} color={estilos.cardInfoIcon?.color || '#8E8E93'} />
+                                <Text style={estilos.cardInfoValue}>{proyecto.financiamiento}</Text>
+                            </View>
+                        </View>
+                    )}
+                </View>
+            </TouchableOpacity>
+
+            {/* Modal de confirmación para eliminar */}
+            <Modal
+                visible={showDeleteModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowDeleteModal(false)}
+            >
+                <Pressable style={deleteStyles.deleteModalOverlay} onPress={() => setShowDeleteModal(false)}>
+                    <Pressable style={[deleteStyles.deleteModalContainer, { backgroundColor: isDark ? 'rgba(30,30,32,0.95)' : 'rgba(255,255,255,0.95)' }]} onPress={(e) => e.stopPropagation()}>
+                        <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+                        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(30,30,32,0.7)' : 'rgba(255,255,255,0.7)' }]} />
+
+                        <View style={deleteStyles.deleteModalContent}>
+                            <View style={deleteStyles.deleteIconCircle}>
+                                <MaterialCommunityIcons name="trash-can-outline" size={32} color="#FF3B30" />
+                            </View>
+
+                            <Text style={[deleteStyles.deleteModalTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                ¿Eliminar proyecto?
+                            </Text>
+
+                            <Text style={[deleteStyles.deleteModalSubtitle, { color: '#FF3B30', fontWeight: '600' }]}>
+                                Esta acci&#243;n eliminar&#225; &quot;{proyecto.titulo}&quot; de forma permanente.
+                            </Text>
+
+                            <View style={deleteStyles.deleteModalButtons}>
+                                <TouchableOpacity
+                                    style={[deleteStyles.deleteModalCancelBtn, { borderColor: isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)' }]}
+                                    onPress={() => setShowDeleteModal(false)}
+                                >
+                                    <Text style={[deleteStyles.deleteModalCancelText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+                                        Cancelar
+                                    </Text>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[deleteStyles.deleteModalDeleteBtn, { backgroundColor: '#FF3B30' }]}
+                                    onPress={handleDelete}
+                                    disabled={isDeleting}
+                                >
+                                    {isDeleting ? (
+                                        <ActivityIndicator color="#FFFFFF" size="small" />
+                                    ) : (
+                                        <Text style={deleteStyles.deleteModalDeleteText}>Eliminar</Text>
+                                    )}
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </Pressable>
+                </Pressable>
+            </Modal>
+        </>
     );
 };
 
@@ -137,6 +224,7 @@ const EmptyState = ({ estilos, filtroActivo }) => (
 export default function ListaProyectosUI({
     proyectos = [],
     isLoading = false,
+    isRefreshing = false,
     filtroActivo = 'TODOS',
     onFiltroChange,
     onRefresh,
@@ -147,7 +235,6 @@ export default function ListaProyectosUI({
     const horizontalScrollRef = useRef(null);
     const isProgrammaticRef = useRef(false);
     const scrollY = useSharedValue(0);
-    const [refreshing, setRefreshing] = useState(false);
 
     const TOP_REVEAL_THRESHOLD = 12;
     const HIDE_DURATION = 160;
@@ -228,9 +315,7 @@ export default function ListaProyectosUI({
     };
 
     const handleRefresh = async () => {
-        setRefreshing(true);
         await onRefresh();
-        setRefreshing(false);
     };
 
     const TITLE_ROW_HEIGHT = 40;
@@ -242,8 +327,8 @@ export default function ListaProyectosUI({
 
     const getProyectosPorFiltro = (tab) => {
         if (tab === 'TODOS') return proyectos;
-        if (tab === 'ACTIVOS') return proyectos.filter(p => p.estado === 'activo' && p.sync_status !== 'pending' && p.sync_status !== 'draft');
-        if (tab === 'PENDIENTES') return proyectos.filter(p => p.estado === 'pendiente' || p.sync_status === 'pending' || p.sync_status === 'draft');
+        if (tab === 'ACTIVOS') return proyectos.filter(p => p.estado === 'activo');
+        if (tab === 'PENDIENTES') return proyectos.filter(p => p.estado === 'pendiente');
         if (tab === 'INACTIVOS') return proyectos.filter(p => p.estado === 'inactivo');
         return proyectos;
     };
@@ -349,15 +434,15 @@ export default function ListaProyectosUI({
                                 <FlatList
                                     data={datos}
                                     keyExtractor={(item) => item.uuid_movil || item.id?.toString() || `proyecto-${item.titulo}-${item.estado}`}
-                                    renderItem={({ item }) => <ProyectoCard proyecto={item} estilos={estilos} />}
-                                    ListEmptyComponent={isLoading ? <SkeletonCard isDark={isDark} /> : <EmptyState estilos={estilos} filtroActivo={tab} />}
+                                    renderItem={({ item }) => <ProyectoCard proyecto={item} estilos={estilos} onDelete={onRefresh} />}
+                                    ListEmptyComponent={isLoading && datos.length === 0 ? <SkeletonCard isDark={isDark} /> : <EmptyState estilos={estilos} filtroActivo={tab} />}
                                     contentContainerStyle={datos.length === 0
                                         ? [estilos.emptyList, { paddingTop: pinnedTabsHeight }]
                                         : [estilos.list, { paddingTop: pinnedTabsHeight }]
                                     }
                                     refreshControl={
                                         <RefreshControl
-                                            refreshing={refreshing}
+                                            refreshing={isRefreshing}
                                             onRefresh={handleRefresh}
                                             tintColor="#0A84FF"
                                         />
@@ -477,4 +562,80 @@ const styles = StyleSheet.create({
     },
     filterTabText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
     contentWrapper: { flex: 1 },
+});
+
+// ============================================
+// DELETE MODAL STYLES
+// ============================================
+const deleteStyles = StyleSheet.create({
+    deleteModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    deleteModalContainer: {
+        width: '100%',
+        maxWidth: 340,
+        borderRadius: 24,
+        overflow: 'hidden',
+        borderWidth: 0.5,
+        borderColor: 'rgba(255,255,255,0.2)',
+    },
+    deleteModalContent: {
+        padding: 28,
+        alignItems: 'center',
+    },
+    deleteIconCircle: {
+        width: 72,
+        height: 72,
+        borderRadius: 36,
+        backgroundColor: 'rgba(255,59,48,0.15)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    deleteModalTitle: {
+        fontSize: 22,
+        fontWeight: '700',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    deleteModalSubtitle: {
+        fontSize: 14,
+        fontWeight: '400',
+        textAlign: 'center',
+        lineHeight: 20,
+        marginBottom: 28,
+    },
+    deleteModalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+        width: '100%',
+    },
+    deleteModalCancelBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 14,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    deleteModalCancelText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    deleteModalDeleteBtn: {
+        flex: 1,
+        paddingVertical: 14,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    deleteModalDeleteText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+    },
 });

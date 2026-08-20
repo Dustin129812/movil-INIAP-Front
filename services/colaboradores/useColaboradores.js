@@ -45,7 +45,6 @@ export const useColaboradores = (proyectoId) => {
     }, [proyectoId, cargarColaboradores]);
 
     const buscarUsuarios = useCallback(async (termino) => {
-        if (termino.length < 2) return [];
         try {
             return await colaboradoresService.buscarUsuarios(termino);
         } catch (err) {

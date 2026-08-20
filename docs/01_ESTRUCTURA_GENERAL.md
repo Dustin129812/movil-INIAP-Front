@@ -104,7 +104,7 @@ ThemeProvider
 | services/sync/downloadService.js | descargarCatalogos, descargarMisDatos |
 | services/sync/uploadService.js | syncEngine, obtenerConteoPendientes |
 | services/sync/syncService.js | Procesa datos baixados |
-| services/theme/ThemeContext.js | ThemeProvider + useTheme |
+| services/theme/theme.js | ThemeProvider + useTheme |
 | services/theme/tabBarTheme.js | TAB_BAR_COLORS, TAB_BAR_DIMENSIONS |
 
 ---

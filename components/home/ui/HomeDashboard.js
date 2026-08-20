@@ -1,22 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { StyleSheet, Text, View, Platform, TouchableOpacity, StatusBar, Pressable, Modal } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View, Platform, TouchableOpacity, StatusBar, Modal, ScrollView, Dimensions, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
     useAnimatedScrollHandler,
-    withSpring,
     withTiming,
     withRepeat,
     withDelay,
     cancelAnimation,
     Easing,
     interpolate,
-    Extrapolation,
     useAnimatedReaction,
 } from 'react-native-reanimated';
 import Svg, { Path } from 'react-native-svg';
@@ -27,158 +24,58 @@ import NotificationsCenter from '../../notifications/ui/NotificationsCenter';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
-const QUICK_CARDS = [
-    {
-        id: 0,
-        title: 'Ensayos',
-        subtitle: 'Proyectos',
-        route: '/(tabs)/proyectos',
-        icon: 'flask-outline',
-        color: '#2563eb',
-        bg: 'rgba(37, 99, 235, 0.1)',
-        info: 'Gestión de proyectos y catálogos de ensayos agrícolas.'
-    },
-    {
-        id: 1,
-        title: 'Evaluaciones',
-        subtitle: 'Campo',
-        route: '/(tabs)/proyectos',
-        icon: 'clipboard-check-outline',
-        color: '#a855f7',
-        bg: 'rgba(168, 85, 247, 0.1)',
-        info: 'Registra y analiza las evaluaciones de campo.'
-    },
-    {
-        id: 2,
-        title: 'Lotes',
-        subtitle: 'Dashboard',
-        route: '/(tabs)/lotes',
-        icon: 'vector-polygon',
-        color: '#34C759',
-        bg: 'rgba(52, 199, 89, 0.1)',
-        info: 'Administración de geometría y delimitación de lotes.'
-    },
-    {
-        id: 3,
-        title: 'Calculadora',
-        subtitle: 'Fertilizantes',
-        route: '/calculadora/calculadora',
-        icon: 'calculator',
-        color: '#FF9500',
-        bg: 'rgba(255, 149, 0, 0.1)',
-        info: 'Calculadora de fertilizantes y nutrientes para tus cultivos.'
-    },
-];
+const CALC_ROUTE = '/calculadora/calculadora';
 
-const AUTO_ROTATE_DURATION = 20000;
-const SELECT_ANIM_DURATION = 280;
-const SELECT_ANIM_EASING = Easing.out(Easing.cubic);
-const getShortestTarget = (current, targetLogical) => {
-    const currentMod = current % 360;
-    let delta = (targetLogical - currentMod) % 360;
-    if (delta > 180) delta -= 360;
-    if (delta < -180) delta += 360;
-    return current + delta;
-};
+const REVEAL_DURATION = 260;
+const HIDE_DURATION = 160;
+const STAGGER = 70;
+const TOP_REVEAL_THRESHOLD = 12;
 
-function QuickAccessCard({ item, index, carouselRotation, isExpanded, anyExpanded, cardBg, textPrimary, textSecondary, onPress, router }) {
-    const contentOpacity = useSharedValue(0);
-
-    useEffect(() => {
-        if (isExpanded) {
-            contentOpacity.value = withDelay(SELECT_ANIM_DURATION - 60, withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) }));
-        } else {
-            contentOpacity.value = withTiming(0, { duration: 120, easing: Easing.in(Easing.ease) });
-        }
-    }, [isExpanded, contentOpacity]);
-
-    const cardAnimatedStyle = useAnimatedStyle(() => {
-        const angleDeg = carouselRotation.value + index * 90;
-        const angleRad = (angleDeg * Math.PI) / 180;
-        const radius = 120;
-
-        const tx = Math.sin(angleRad) * radius;
-        const cos = Math.cos(angleRad);
-
-        const scale = interpolate(cos, [-1, 1], [0.75, 1], 'clamp');
-        const opacity = interpolate(cos, [-1, 1], [0.35, 1], 'clamp');
-        const zIndex = isExpanded ? 50 : Math.round(cos * 10);
-        const sizeConfig = { duration: SELECT_ANIM_DURATION, easing: SELECT_ANIM_EASING };
-
-        return {
-            transform: [
-                { translateX: tx },
-                { scale: isExpanded ? withTiming(1.12, sizeConfig) : scale }
-            ],
-            opacity: isExpanded ? 1 : opacity,
-            zIndex,
-            elevation: isExpanded ? 50 : 1,
-            height: withTiming(isExpanded ? 175 : 120, sizeConfig),
-            width: withTiming(isExpanded ? 160 : 130, sizeConfig),
-        };
-    });
-
-    const contentAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: contentOpacity.value,
-        transform: [{ translateY: interpolate(contentOpacity.value, [0, 1], [8, 0]) }]
-    }));
-
-    const subtitleAnimatedStyle = useAnimatedStyle(() => ({
-        opacity: isExpanded ? 0 : 1,
-    }));
-
-    const combinedStyle = [
-        styles.quickCarouselCard,
-        { backgroundColor: cardBg },
-        cardAnimatedStyle
+function Calculator3D() {
+    const keys = [
+        ['7', '8', '9'],
+        ['4', '5', '6'],
+        ['1', '2', '3'],
+        ['·', '0', '='],
     ];
-
-    if (isExpanded) {
-        return (
-            <Animated.View style={combinedStyle}>
-                <TouchableOpacity
-                    style={styles.closeBtn}
-                    onPress={onPress}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    activeOpacity={0.7}
-                >
-                    <MaterialCommunityIcons name="close" size={16} color={textSecondary} />
-                </TouchableOpacity>
-
-                <View style={[styles.metricIconWrap, { backgroundColor: item.bg, marginBottom: 4 }]}>
-                    <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
-                </View>
-                <Text style={[styles.quickCardTitle, { color: textPrimary, marginTop: 2 }]}>{item.title}</Text>
-
-                <Animated.View style={[styles.expandedContentBox, contentAnimatedStyle]}>
-                    <Text style={[styles.quickCardInfo, { color: textSecondary }]} numberOfLines={2}>{item.info}</Text>
-                    <TouchableOpacity
-                        style={[styles.actionBtn, { backgroundColor: item.color }]}
-                        onPress={() => router.push(item.route)}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.actionBtnText}>Ingresar</Text>
-                    </TouchableOpacity>
-                </Animated.View>
-            </Animated.View>
-        );
-    }
-
     return (
-        <AnimatedTouchable
-            style={combinedStyle}
-            activeOpacity={0.9}
-            onPress={onPress}
-            pointerEvents={anyExpanded ? 'none' : 'auto'}
-        >
-            <View style={[styles.metricIconWrap, { backgroundColor: item.bg, marginBottom: 4 }]}>
-                <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
+        <View style={styles.calc3dOuter}>
+            <View style={styles.calc3dGroundShadow} />
+            <View style={styles.calc3dBody}>
+                <LinearGradient
+                    colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
+                    start={{ x: 0.1, y: 0 }}
+                    end={{ x: 0.7, y: 0.9 }}
+                    style={styles.calc3dSheen}
+                    pointerEvents="none"
+                />
+                <LinearGradient colors={['#3A3A42', '#151519']} style={styles.calc3dScreen}>
+                    <MaterialCommunityIcons name="leaf" size={12} color="#A7C957" />
+                    <Text style={styles.calc3dScreenText}>0.00</Text>
+                </LinearGradient>
+
+                <View style={styles.calc3dKeys}>
+                    {keys.map((row, r) => (
+                        <View key={r} style={styles.calc3dRow}>
+                            {row.map((k) => {
+                                const isEquals = k === '=';
+                                return (
+                                    <LinearGradient
+                                        key={k}
+                                        colors={isEquals ? ['#FFC300', '#FFC300'] : ['#FAFAF8', '#DEDCD6']}
+                                        style={[styles.calc3dKey, isEquals && styles.calc3dKeyAccent]}
+                                    >
+                                        <Text style={[styles.calc3dKeyText, isEquals && styles.calc3dKeyTextAccent]}>
+                                            {k}
+                                        </Text>
+                                    </LinearGradient>
+                                );
+                            })}
+                        </View>
+                    ))}
+                </View>
             </View>
-            <Text style={[styles.quickCardTitle, { color: textPrimary, marginTop: 2 }]}>{item.title}</Text>
-            <Animated.Text style={[styles.quickCardSubtitle, { color: textSecondary }, subtitleAnimatedStyle]}>
-                {item.subtitle}
-            </Animated.Text>
-        </AnimatedTouchable>
+        </View>
     );
 }
 
@@ -188,8 +85,7 @@ export default function HomeDashboard() {
     const insets = useSafeAreaInsets();
     const {
         usuario,
-        weatherExpanded,
-        toggleWeatherDetails,
+        esInvitado,
         totalLotes,
         isSyncing,
         syncMessage,
@@ -197,13 +93,14 @@ export default function HomeDashboard() {
         limpiarSyncMessage,
         pendingCount,
         pendingCounts,
-        verificarPendientes,
         syncInProgress,
     } = useHomeDashboard();
 
     const [isSyncModalVisible, setIsSyncModalVisible] = useState(false);
     const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
+    const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
 
+    // Loader "mundo" — igual al original: dos manchas SVG desplazándose sobre la esfera
     const anim1 = useSharedValue(0);
     const anim2 = useSharedValue(0);
 
@@ -211,16 +108,8 @@ export default function HomeDashboard() {
         if (isSyncModalVisible) {
             anim1.value = 0;
             anim2.value = 0;
-            anim1.value = withRepeat(
-                withTiming(1, { duration: 5000, easing: Easing.linear }),
-                -1,
-                false
-            );
-            anim2.value = withRepeat(
-                withTiming(1, { duration: 5000, easing: Easing.linear }),
-                -1,
-                false
-            );
+            anim1.value = withRepeat(withTiming(1, { duration: 5000, easing: Easing.linear }), -1, false);
+            anim2.value = withRepeat(withTiming(1, { duration: 5000, easing: Easing.linear }), -1, false);
         } else {
             cancelAnimation(anim1);
             cancelAnimation(anim2);
@@ -241,21 +130,17 @@ export default function HomeDashboard() {
         return { left, opacity };
     });
 
-    const HEADER_ROW_HEIGHT = 54; 
-    const HEADER_ROW_GAP = 10;    
+    // (Se quitó la animación de pulso: el componente de sincronizar ahora queda fijo)
+
+    const HEADER_ROW_HEIGHT = 54;
+    const HEADER_ROW_GAP = 10;
     const headerContentHeight = insets.top + 2 + HEADER_ROW_HEIGHT + HEADER_ROW_GAP;
     const scrollTopPadding = headerContentHeight + 6;
 
     const scrollY = useSharedValue(0);
     const scrollHandler = useAnimatedScrollHandler({
-        onScroll: (event) => {
-            scrollY.value = event.contentOffset.y;
-        },
+        onScroll: (event) => { scrollY.value = event.contentOffset.y; },
     });
-    const TOP_REVEAL_THRESHOLD = 12; 
-    const HIDE_DURATION = 160;
-    const REVEAL_DURATION = 260;
-    const STAGGER = 70; 
 
     const homeOpacity = useSharedValue(1);
     const homeTranslateY = useSharedValue(0);
@@ -266,7 +151,6 @@ export default function HomeDashboard() {
         () => scrollY.value <= TOP_REVEAL_THRESHOLD,
         (isAtTop, wasAtTop) => {
             if (isAtTop === wasAtTop) return;
-
             if (isAtTop) {
                 notifOpacity.value = withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
                 notifTranslateY.value = withTiming(0, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
@@ -286,93 +170,20 @@ export default function HomeDashboard() {
         opacity: homeOpacity.value,
         transform: [{ translateY: homeTranslateY.value }],
     }));
-
     const notifAnimatedStyle = useAnimatedStyle(() => ({
         opacity: notifOpacity.value,
         transform: [{ translateY: notifTranslateY.value }],
     }));
 
-    const weatherHeight = useSharedValue(0);
-    const weatherRotate = useSharedValue(0);
-
-    const carouselRotation = useSharedValue(0);
-    const rotationOffset = useSharedValue(0);
-    const [activeAccessIndex, setActiveAccessIndex] = useState(null);
-    const startAutoRotation = useCallback((fromDeg = 0) => {
-        'worklet';
-        const base = fromDeg % 360;
-        carouselRotation.value = base;
-        carouselRotation.value = withRepeat(
-            withTiming(base + 360, { duration: AUTO_ROTATE_DURATION, easing: Easing.linear }),
-            -1,
-            false
-        );
-    }, [carouselRotation]);
-
-    useEffect(() => {
-        startAutoRotation(0);
-    }, [startAutoRotation]);
-
-    const gesture = Gesture.Pan()
-        .enabled(activeAccessIndex === null)
-        .onStart(() => {
-            cancelAnimation(carouselRotation);
-        })
-        .onUpdate((event) => {
-            carouselRotation.value = rotationOffset.value + (event.translationX / 2);
-        })
-        .onEnd(() => {
-            rotationOffset.value = carouselRotation.value;
-            startAutoRotation(carouselRotation.value);
-        });
-
-    const handleSelectCard = (index) => {
-        setActiveAccessIndex(index);
-        cancelAnimation(carouselRotation);
-
-        const targetRotLocal = -index * 90;
-        const shortestTarget = getShortestTarget(carouselRotation.value, targetRotLocal);
-        rotationOffset.value = shortestTarget;
-        carouselRotation.value = withTiming(shortestTarget, {
-            duration: SELECT_ANIM_DURATION,
-            easing: SELECT_ANIM_EASING,
-        });
-    };
-
-    const handleCloseExpanded = () => {
-        setActiveAccessIndex(null);
-        startAutoRotation(carouselRotation.value);
-    };
-
-    const handleToggleWeather = () => {
-        const nextState = !weatherExpanded;
-        toggleWeatherDetails();
-        weatherHeight.value = withSpring(nextState ? 1 : 0, { damping: 14, stiffness: 120 });
-        weatherRotate.value = withSpring(nextState ? 180 : 0, { damping: 14, stiffness: 120 });
-    };
-
-    const animatedWeatherStyle = useAnimatedStyle(() => ({
-        maxHeight: interpolate(weatherHeight.value, [0, 1], [0, 90]),
-        opacity: weatherHeight.value,
-        transform: [{ translateY: interpolate(weatherHeight.value, [0, 1], [-10, 0]) }]
-    }));
-
-    const animatedChevronStyle = useAnimatedStyle(() => ({
-        transform: [{ rotate: `${weatherRotate.value}deg` }]
-    }));
-
     const bg = isDark ? '#000000' : '#F2F2F7';
-    const statusBarBg = isDark ? '#000000' : '#F2F2F7';
     const cardBg = isDark ? '#1E1E24' : '#FFFFFF';
     const textPrimary = isDark ? '#FFFFFF' : '#000000';
     const textSecondary = isDark ? '#98989F' : '#8E8E93';
-    const dividerLine = isDark ? '#3A3A3C' : '#F2F2F7';
 
     return (
-        <View
-            style={[styles.container, { backgroundColor: bg }]}
-        >
+        <View style={[styles.container, { backgroundColor: bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+
             <LinearGradient
                 pointerEvents="none"
                 colors={
@@ -383,61 +194,62 @@ export default function HomeDashboard() {
                 style={[styles.statusBarScrim, { height: insets.top + 40 }]}
             />
 
+            {/* Header — igual al original: título "Home" + bandeja de notificaciones glass */}
             <View style={[styles.header, { paddingTop: insets.top + 2 }]}>
                 <View style={styles.headerTopRow}>
-                    <Animated.Text style={[styles.headerHomeTitle, { color: textPrimary }, homeTitleAnimatedStyle]}>Home</Animated.Text>
+                    <Animated.Text style={[styles.headerHomeTitle, { color: textPrimary }, homeTitleAnimatedStyle]}>
+                        Home
+                    </Animated.Text>
 
-                    <AnimatedTouchable
-                        style={[styles.notifTouchable, notifAnimatedStyle]}
-                        activeOpacity={0.75}
-                        onPress={() => setIsNotificationsVisible(true)}
-                    >
-                        <BlurView
-                            intensity={isDark ? 55 : 80}
-                            tint={isDark ? 'dark' : 'light'}
-                            style={styles.notifPill}
+                    {!esInvitado && (
+                        <AnimatedTouchable
+                            style={[styles.notifTouchable, notifAnimatedStyle]}
+                            activeOpacity={0.75}
+                            onPress={() => setIsNotificationsVisible(true)}
                         >
-                            <View
-                                style={[
-                                    StyleSheet.absoluteFillObject,
-                                    { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' },
-                                ]}
-                            />
-                            <LinearGradient
-                                colors={
-                                    isDark
-                                        ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
-                                        : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
-                                }
-                                start={{ x: 0.15, y: 0 }}
-                                end={{ x: 0.85, y: 1 }}
-                                style={StyleSheet.absoluteFillObject}
-                            />
-                            <View
-                                style={[
-                                    styles.notifSpecular,
-                                    { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' },
-                                ]}
-                            />
-                            <View
-                                style={[
-                                    styles.notifGlassBorder,
-                                    { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' },
-                                ]}
-                            />
+                            <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.notifPill}>
+                                <View
+                                    style={[
+                                        StyleSheet.absoluteFillObject,
+                                        { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' },
+                                    ]}
+                                />
+                                <LinearGradient
+                                    colors={
+                                        isDark
+                                            ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
+                                            : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
+                                    }
+                                    start={{ x: 0.15, y: 0 }}
+                                    end={{ x: 0.85, y: 1 }}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
+                                <View
+                                    style={[
+                                        styles.notifSpecular,
+                                        { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' },
+                                    ]}
+                                />
+                                <View
+                                    style={[
+                                        styles.notifGlassBorder,
+                                        { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' },
+                                    ]}
+                                />
 
-                            <MaterialCommunityIcons
-                                name={pendingCount > 0 ? "bell-badge-outline" : "bell-outline"}
-                                size={22}
-                                color={pendingCount > 0 ? '#FF9500' : (isDark ? '#30D158' : '#34C759')}
-                            />
-                            {pendingCount > 0 && (
-                                <View style={styles.notifBadge}>
-                                    <Text style={styles.notifBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
-                                </View>
-                            )}
-                        </BlurView>
-                    </AnimatedTouchable>
+                                <MaterialCommunityIcons
+                                    name={pendingCount > 0 ? 'bell-badge-outline' : 'bell-outline'}
+                                    size={22}
+                                    color={pendingCount > 0 ? '#FF9500' : (isDark ? '#A7C957' : '#6A994E')}
+                                />
+                                {pendingCount > 0 && (
+                                    <View style={styles.notifBadge}>
+                                        <Text style={styles.notifBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+                                    </View>
+                                )}
+                            </BlurView>
+                        </AnimatedTouchable>
+                    )}
                 </View>
             </View>
 
@@ -447,156 +259,124 @@ export default function HomeDashboard() {
                 contentContainerStyle={[styles.scrollContent, { paddingTop: scrollTopPadding }]}
                 showsVerticalScrollIndicator={false}
             >
+                <Text style={[styles.welcomeSubtitle, { color: textSecondary }]}>
+                    Gestiona tus datos agrícolas{'\n'}de forma fácil y segura.
+                </Text>
 
-                <View style={styles.heroCard}>
-                    <MaterialCommunityIcons
-                        name="sprout"
-                        size={110}
-                        color="rgba(255,255,255,0.05)"
-                        style={styles.heroDecorIcon}
-                    />
-
-                    <View style={styles.heroTopRow}>
-                        <View>
-                            <Text style={styles.heroGreeting}>Bienvenido</Text>
-                            <Text style={styles.heroName} numberOfLines={1}>{usuario?.NOMBRE || 'Invitado: Técnico Especialista'}</Text>
+                {/* Barra de sincronizar — solo para usuarios registrados */}
+                {!esInvitado && (
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
+                        style={styles.syncBar}
+                    >
+                        <View style={styles.syncIconCircle}>
+                            <MaterialCommunityIcons name="sync" size={20} color="#FFFFFF" />
                         </View>
-                        <View style={styles.heroAvatarWrap}>
-                            <MaterialCommunityIcons name="leaf" size={22} color="#FFFFFF" />
-                        </View>
-                    </View>
-
-                    <View style={styles.heroStatsGrid}>
-                        <View style={styles.heroStatItemRow}>
-                            <View style={styles.heroStatIconWrap}>
-                                <MaterialCommunityIcons name="map-marker-radius" size={16} color="#34C759" />
-                            </View>
-                            <Text style={[styles.heroStatValue, { color: '#FFFFFF' }]}>{totalLotes}</Text>
-                            <Text style={styles.heroStatLabel}>Lotes Activos</Text>
-                        </View>
-                    </View>
-
-                    {pendingCount > 0 && (
-                        <TouchableOpacity
-                            style={styles.pendingSyncAlert}
-                            activeOpacity={0.8}
-                            onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
-                        >
-                            <MaterialCommunityIcons name="cloud-upload-outline" size={18} color="#FF9500" />
-                            <Text style={styles.pendingSyncText}>
-                                Tienes {pendingCount} cambio{pendingCount > 1 ? 's' : ''} pendiente{pendingCount > 1 ? 's' : ''} de sincronizar
+                        <View style={{ flex: 1, marginLeft: 12 }}>
+                            <Text style={styles.syncTitle}>Sincronizar datos</Text>
+                            <Text style={styles.syncCaption}>
+                                {isSyncing
+                                    ? 'Sincronizando...'
+                                    : pendingCount > 0
+                                        ? `${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}`
+                                        : 'Todo está al día'}
                             </Text>
-                            <MaterialCommunityIcons name="chevron-right" size={16} color="#FF9500" />
-                        </TouchableOpacity>
-                    )}
-                </View>
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: textSecondary }]}>Herramienta Destacada</Text>
-                    
-                    <View style={[styles.card, { backgroundColor: cardBg, paddingVertical: 28, alignItems: 'center' }]}>
+                        </View>
+                        <View style={styles.syncArrowBtn}>
+                            <MaterialCommunityIcons name="arrow-right" size={18} color="#1B3A2A" />
+                        </View>
+                    </TouchableOpacity>
+                )}
+
+                {/* Tarjeta de la calculadora — verde claro, ícono + botón "?" + flecha de acceso */}
+                <View style={styles.featureCardWrapper}>
+                    <View style={styles.featureCard}>
+                        <View style={styles.featureIconBox}>
+                            <MaterialCommunityIcons name="calculator-variant-outline" size={22} color="#1B3A2A" />
+                        </View>
+
                         <TouchableOpacity
-                            style={styles.uiverseBtn}
-                            activeOpacity={0.9}
-                            onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
+                            activeOpacity={0.8}
+                            onPress={() => setIsInfoModalVisible(true)}
+                            style={styles.infoBadge}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                         >
-                            <View style={styles.uiverseWrapper}>
-                                <Text style={styles.uiverseText}>Sincronizar</Text>
-
-                                <View style={[styles.flower, styles.flower1]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower2]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower3]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower4]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower5]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower6]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower7]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower8]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower9]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                                <View style={[styles.flower, styles.flower10]}>
-                                    <View style={[styles.petal, styles.one]} /><View style={[styles.petal, styles.two]} />
-                                    <View style={[styles.petal, styles.three]} /><View style={[styles.petal, styles.four]} />
-                                </View>
-                            </View>
+                            <MaterialCommunityIcons name="information-outline" size={18} color="#1B3A2A" />
                         </TouchableOpacity>
 
-                        <View style={[styles.prefDivider, { backgroundColor: dividerLine, width: '100%', marginVertical: 16 }]} />
-
-                        <View style={styles.syncInfoBox}>
-                            <MaterialCommunityIcons name="cloud-sync-outline" size={18} color="#34C759" style={{ marginTop: 2 }} />
-                            <View style={{ flex: 1, marginLeft: 8 }}>
-                                <Text style={[styles.syncInfoTitle, { color: textPrimary }]}>¿Qué información se va a sincronizar?</Text>
-                                <Text style={[styles.syncInfoDesc, { color: textSecondary }]}>
-                                    Se transferirán a la nube los registros guardados localmente: delimitaciones de lotes, parcelas georreferenciadas y catálogos de ensayos agrícolas pendientes.
-                                </Text>
-                            </View>
+                        <View style={styles.featureLabelRow}>
+                            <Text style={styles.featureTitle}>Calculadora</Text>
+                            <Text style={styles.featureSubtitle}>Nutrientes y dosis</Text>
                         </View>
+
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() => router.push(CALC_ROUTE)}
+                            style={styles.featureArrowBtn}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
                     </View>
-                </View> 
-
-                <View style={styles.section}>
-                    <Text style={[styles.sectionTitle, { color: textSecondary }]}>Acceso Rápido</Text>
-
-                    <GestureDetector gesture={gesture}>
-                        <View style={styles.carouselContainer}>
-                            {QUICK_CARDS.map((item, index) => {
-                                const isExpanded = activeAccessIndex === index;
-                                return (
-                                    <QuickAccessCard
-                                        key={item.id}
-                                        item={item}
-                                        index={index}
-                                        carouselRotation={carouselRotation}
-                                        isExpanded={isExpanded}
-                                        anyExpanded={activeAccessIndex !== null}
-                                        cardBg={cardBg}
-                                        textPrimary={textPrimary}
-                                        textSecondary={textSecondary}
-                                        onPress={() => {
-                                            if (isExpanded) {
-                                                handleCloseExpanded();
-                                            } else {
-                                                handleSelectCard(index);
-                                            }
-                                        }}
-                                        router={router}
-                                    />
-                                );
-                            })}
-                        </View>
-                    </GestureDetector>
                 </View>
 
+                {/* Tarjeta de estado — resumen de lotes y última revisión */}
+                <View style={[styles.stateCard, { backgroundColor: cardBg }]}>
+                    <View style={{ flex: 1 }}>
+                        <View style={styles.stateLabelRow}>
+                            <View style={styles.stateDot} />
+                            <Text style={styles.stateLabel}>ESTADO</Text>
+                        </View>
+                        <Text style={[styles.stateTitle, { color: textPrimary }]} numberOfLines={2}>
+                            {pendingCount > 0
+                                ? `${pendingCount} cambio${pendingCount > 1 ? 's' : ''} sin sincronizar`
+                                : `Todo al día con ${totalLotes} lote${totalLotes === 1 ? '' : 's'} activo${totalLotes === 1 ? '' : 's'}`}
+                        </Text>
+                        <Text style={styles.stateCaption}>
+                            {pendingCount > 0 ? 'Toca sincronizar para actualizar' : 'Última revisión hace 2h'}
+                        </Text>
+                    </View>
+                    <View style={styles.stateImageCircle}>
+                        <MaterialCommunityIcons name="sprout-outline" size={30} color="#6A994E" />
+                    </View>
+                </View>
             </Animated.ScrollView>
 
+            {/* Modal "¿Qué es la calculadora?" — se abre sola al entrar y se cierra sola;
+                también se puede reabrir con el ícono "?" o cerrar antes con el botón */}
+            <Modal
+                visible={isInfoModalVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIsInfoModalVisible(false)}
+            >
+                <View style={styles.infoModalOverlay}>
+                    <View style={[styles.infoModalCard, { backgroundColor: cardBg }]}>
+                        <View style={styles.infoModalIconWrap}>
+                            <MaterialCommunityIcons name="help-circle-outline" size={28} color="#386641" />
+                        </View>
+                        <Text style={[styles.infoModalTitle, { color: textPrimary }]}>¿Qué es la calculadora?</Text>
+                        <Text style={[styles.infoModalText, { color: textSecondary }]}>
+                            Es la herramienta que estima la dosis de fertilizantes y nutrientes que necesita tu
+                            cultivo según el tipo de lote y las condiciones registradas, para ayudarte a aplicar
+                            la cantidad justa y evitar desperdicio.
+                        </Text>
+                        <TouchableOpacity
+                            style={styles.infoModalBtn}
+                            activeOpacity={0.88}
+                            onPress={() => setIsInfoModalVisible(false)}
+                        >
+                            <Text style={styles.infoModalBtnText}>Entendido</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Pantalla de carga — el "mundo" de sincronización, igual al original */}
             <Modal
                 visible={isSyncModalVisible}
-                transparent={true}
+                transparent
                 animationType="fade"
                 onRequestClose={() => setIsSyncModalVisible(false)}
             >
@@ -608,7 +388,7 @@ export default function HomeDashboard() {
                                     <Path
                                         transform="translate(100 100)"
                                         d="M29.4,-17.4C33.1,1.8,27.6,16.1,11.5,31.6C-4.7,47,-31.5,63.6,-43,56C-54.5,48.4,-50.7,16.6,-41,-10.9C-31.3,-38.4,-15.6,-61.5,-1.4,-61C12.8,-60.5,25.7,-36.5,29.4,-17.4Z"
-                                        fill="#7CC133"
+                                        fill="#A7C957"
                                     />
                                 </Svg>
                             </Animated.View>
@@ -617,7 +397,7 @@ export default function HomeDashboard() {
                                     <Path
                                         transform="translate(100 100)"
                                         d="M31.7,-55.8C40.3,-50,45.9,-39.9,49.7,-29.8C53.5,-19.8,55.5,-9.9,53.1,-1.4C50.6,7.1,43.6,14.1,41.8,27.6C40.1,41.1,43.4,61.1,37.3,67C31.2,72.9,15.6,64.8,1.5,62.2C-12.5,59.5,-25,62.3,-31.8,56.7C-38.5,51.1,-39.4,37.2,-49.3,26.3C-59.1,15.5,-78,7.7,-77.6,0.2C-77.2,-7.2,-57.4,-14.5,-49.3,-28.4C-41.2,-42.4,-44.7,-63,-38.5,-70.1C-32.2,-77.2,-16.1,-70.8,-2.3,-66.9C11.6,-63,23.1,-61.5,31.7,-55.8Z"
-                                        fill="#7CC133"
+                                        fill="#6A994E"
                                     />
                                 </Svg>
                             </Animated.View>
@@ -627,7 +407,7 @@ export default function HomeDashboard() {
                         </Text>
                         {syncMessage && !isSyncing && (
                             <TouchableOpacity
-                                style={[styles.closeSyncBtn, { backgroundColor: syncMessage.type === 'error' ? '#FF453A' : '#34C759' }]}
+                                style={[styles.closeSyncBtn, { backgroundColor: syncMessage.type === 'error' ? '#FF453A' : '#6A994E' }]}
                                 onPress={() => { setIsSyncModalVisible(false); limpiarSyncMessage(); }}
                             >
                                 <Text style={styles.closeSyncBtnText}>Cerrar</Text>
@@ -636,7 +416,7 @@ export default function HomeDashboard() {
                         {isSyncing && (
                             <TouchableOpacity
                                 style={styles.closeSyncBtn}
-                                onPress={() => { setIsSyncModalVisible(false); }}
+                                onPress={() => setIsSyncModalVisible(false)}
                             >
                                 <Text style={styles.closeSyncBtnText}>Cancelar</Text>
                             </TouchableOpacity>
@@ -654,7 +434,6 @@ export default function HomeDashboard() {
                 onSincronizar={sincronizar}
                 pendingCounts={pendingCounts}
             />
-
         </View>
     );
 }
@@ -663,13 +442,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
-    backdrop: {
-        ...StyleSheet.absoluteFillObject,
-        zIndex: 40,
-    },
     scrollContent: {
         paddingHorizontal: 16,
-        paddingBottom: 120,
+        paddingBottom: 100,
     },
     header: {
         position: 'absolute',
@@ -691,11 +466,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-    },
-    headerTitle: {
-        fontSize: 24,
-        fontWeight: '700',
-        letterSpacing: -0.3,
     },
     headerHomeTitle: {
         fontSize: 34,
@@ -732,346 +502,315 @@ const styles = StyleSheet.create({
         borderRadius: 27,
         borderWidth: 1.25,
     },
-    heroCard: {
-        backgroundColor: '#1C1C1E',
-        borderRadius: 16,
-        padding: 18,
-        marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 2,
-        overflow: 'hidden',
-        position: 'relative',
-    },
-    heroDecorIcon: {
+    notifBadge: {
         position: 'absolute',
-        right: -22,
-        bottom: -26,
-    },
-    heroTopRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
+        top: 6,
+        right: 6,
+        backgroundColor: '#FF9500',
+        borderRadius: 10,
+        minWidth: 20,
+        height: 20,
+        justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 16,
+        paddingHorizontal: 6,
     },
-    heroGreeting: {
-        fontSize: 12,
-        color: '#8E8E93',
-        fontWeight: '500',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    heroName: {
-        fontSize: 18,
-        fontWeight: '700',
+    notifBadgeText: {
         color: '#FFFFFF',
-        marginTop: 2,
-        maxWidth: 240,
+        fontSize: 11,
+        fontWeight: '700',
     },
-    heroAvatarWrap: {
+    welcomeSubtitle: {
+        fontSize: 14,
+        fontWeight: '500',
+        lineHeight: 20,
+        marginBottom: 18,
+    },
+    featureCard: {
+        borderRadius: 26,
+        padding: 18,
+        backgroundColor: '#DCEAC9',
+        overflow: 'hidden',
+    },
+    featureIconBox: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+        elevation: 2,
+    },
+    featureLabelRow: {
+        marginTop: 22,
+        marginBottom: 2,
+    },
+    featureTitle: {
+        color: '#17331F',
+        fontSize: 20,
+        fontWeight: '800',
+    },
+    featureSubtitle: {
+        color: '#5C7A4C',
+        fontSize: 13,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    featureArrowBtn: {
+        position: 'absolute',
+        right: 16,
+        bottom: 16,
         width: 40,
         height: 40,
-        borderRadius: 12,
-        backgroundColor: '#34C759',
-        justifyContent: 'center',
+        borderRadius: 20,
+        backgroundColor: '#6A994E',
         alignItems: 'center',
+        justifyContent: 'center',
     },
-    heroStatsGrid: {
-        flexDirection: 'row',
-        backgroundColor: 'rgba(255, 255, 255, 0.06)',
-        borderRadius: 12,
+    calc3dOuter: {
+        alignItems: 'center',
+        justifyContent: 'center',
         paddingVertical: 10,
-        paddingHorizontal: 14,
-        alignItems: 'center',
     },
-    heroStatItemRow: {
+    calc3dGroundShadow: {
+        position: 'absolute',
+        bottom: 2,
+        width: 110,
+        height: 26,
+        borderRadius: 55,
+        backgroundColor: 'rgba(0,0,0,0.28)',
+        transform: [{ scaleX: 1.3 }],
+    },
+    calc3dBody: {
+        width: 132,
+        borderRadius: 18,
+        backgroundColor: '#EDEBE6',
+        padding: 9,
+        overflow: 'hidden',
+        transform: [
+            { perspective: 800 },
+            { rotateX: '28deg' },
+            { rotateY: '-10deg' },
+            { rotateZ: '-5deg' },
+        ],
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 16 },
+        shadowOpacity: 0.4,
+        shadowRadius: 16,
+        elevation: 14,
+    },
+    calc3dSheen: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '60%',
+        borderTopLeftRadius: 18,
+        borderTopRightRadius: 18,
+    },
+    calc3dScreen: {
+        height: 36,
+        borderRadius: 9,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        justifyContent: 'flex-end',
+        paddingHorizontal: 10,
+        gap: 6,
+        marginBottom: 9,
     },
-    heroStatIconWrap: {
-        width: 26,
-        height: 26,
-        borderRadius: 8,
-        backgroundColor: 'rgba(52, 199, 89, 0.15)',
+    calc3dScreenText: {
+        color: '#7CF29A',
+        fontSize: 14,
+        fontWeight: '700',
+        fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+    },
+    calc3dKeys: {
+        gap: 6,
+    },
+    calc3dRow: {
+        flexDirection: 'row',
+        gap: 6,
+    },
+    calc3dKey: {
+        flex: 1,
+        height: 20,
+        borderRadius: 6,
         alignItems: 'center',
         justifyContent: 'center',
+        borderBottomWidth: 1.5,
+        borderBottomColor: 'rgba(0,0,0,0.12)',
     },
-    heroStatValue: {
-        fontSize: 16,
+    calc3dKeyAccent: {
+        borderBottomColor: 'rgba(0,0,0,0.22)',
+        shadowColor: '#386641',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.6,
+        shadowRadius: 4,
+    },
+    calc3dKeyText: {
+        fontSize: 10,
         fontWeight: '700',
-        color: '#FFFFFF',
+        color: '#3A3A42',
     },
-    heroStatLabel: {
-        fontSize: 12,
-        color: '#8E8E93',
-        fontWeight: '500',
-        textTransform: 'uppercase',
-        letterSpacing: 0.3,
+    calc3dKeyTextAccent: {
+        color: '#1B3A2A',
     },
-    section: {
+    featureCardWrapper: {
+        position: 'relative',
+        marginBottom: 14,
+    },
+    infoBadge: {
+        position: 'absolute',
+        top: 18,
+        right: 18,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
+        backgroundColor: 'rgba(255,255,255,0.6)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 5,
+    },
+    infoModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.55)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 28,
+    },
+    infoModalCard: {
+        width: '100%',
+        borderRadius: 24,
+        padding: 24,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.2,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    infoModalIconWrap: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: 'rgba(106,153,78,0.14)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 14,
+    },
+    infoModalTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    infoModalText: {
+        fontSize: 13,
+        lineHeight: 19,
+        textAlign: 'center',
         marginBottom: 20,
     },
-    sectionTitle: {
-        fontSize: 13,
-        fontWeight: '600',
-        marginBottom: 8,
-        marginLeft: 4,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    card: {
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        paddingVertical: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 8,
-        elevation: 1,
-    },
-    weatherMainRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+    infoModalBtn: {
+        backgroundColor: '#1B3A2A',
+        paddingHorizontal: 32,
         paddingVertical: 12,
+        borderRadius: 14,
     },
-    statusLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-    },
-    statusTextPrimary: {
+    infoModalBtnText: {
+        color: '#FFFFFF',
+        fontWeight: '700',
         fontSize: 14,
-        fontWeight: '600',
     },
-    statusTextSecondary: {
-        fontSize: 11,
-        marginTop: 1,
-    },
-    metricIconWrap: {
-        width: 32,
-        height: 32,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    weatherExpandableContent: {
-        overflow: 'hidden',
-    },
-    weatherSubMetrics: {
+    stateCard: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
-        paddingVertical: 10,
-        paddingHorizontal: 4,
-    },
-    subMetricBox: {
         alignItems: 'center',
-    },
-    subMetricLabel: {
-        fontSize: 10,
-        fontWeight: '500',
-        marginBottom: 2,
-        textTransform: 'uppercase',
-    },
-    subMetricVal: {
-        fontSize: 13,
-        fontWeight: '600',
-    },
-    prefDivider: {
-        height: 1,
-    },
-    carouselContainer: {
-        height: 210,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginVertical: 10,
-    },
-    quickCarouselCard: {
-        position: 'absolute',
-        borderRadius: 16,
-        padding: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
+        borderRadius: 24,
+        paddingVertical: 18,
+        paddingHorizontal: 18,
+        marginBottom: 14,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.12,
+        shadowOpacity: 0.06,
         shadowRadius: 10,
-        elevation: 5,
+        elevation: 2,
     },
-    quickCardTitle: {
-        fontSize: 13,
-        fontWeight: '700',
-        textAlign: 'center',
-    },
-    quickCardSubtitle: {
-        fontSize: 11,
-        marginTop: 2,
-    },
-    expandedContentBox: {
+    stateLabelRow: {
+        flexDirection: 'row',
         alignItems: 'center',
-        flex: 1,
-        justifyContent: 'space-between',
-        marginTop: 4,
-        width: '100%',
+        marginBottom: 6,
+        gap: 6,
     },
-    quickCardInfo: {
-        fontSize: 10,
-        textAlign: 'center',
-        lineHeight: 13,
-        paddingHorizontal: 2,
+    stateDot: {
+        width: 6,
+        height: 6,
+        borderRadius: 3,
+        backgroundColor: '#6A994E',
     },
-    actionBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 4,
-        borderRadius: 6,
-        marginTop: 2,
+    stateLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        color: '#6A994E',
+        letterSpacing: 0.5,
     },
-    actionBtnText: {
+    stateTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+        lineHeight: 21,
+        marginBottom: 4,
+    },
+    stateCaption: {
+        fontSize: 12,
+        fontWeight: '500',
+        color: '#8DAE7B',
+    },
+    stateImageCircle: {
+        width: 58,
+        height: 58,
+        borderRadius: 29,
+        backgroundColor: 'rgba(106,153,78,0.14)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 12,
+    },
+    syncBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 22,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        backgroundColor: '#1B3A2A',
+        marginBottom: 14,
+    },
+    syncIconCircle: {
+        width: 38,
+        height: 38,
+        borderRadius: 19,
+        backgroundColor: 'rgba(255,255,255,0.14)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    syncTitle: {
         color: '#FFFFFF',
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    closeBtn: {
-        position: 'absolute',
-        top: 8,
-        right: 8,
-        zIndex: 10,
-        width: 24,
-        height: 24,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    uiverseBtn: {
-        height: 76,
-        width: 220,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: 'transparent',
-    },
-    uiverseWrapper: {
-        height: 36,
-        width: 140,
-        position: 'relative',
-        backgroundColor: 'transparent',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    uiverseText: {
-        fontSize: 17,
-        zIndex: 2,
-        color: '#000',
-        paddingHorizontal: 18,
-        paddingVertical: 6,
-        borderRadius: 12,
-        overflow: 'hidden',
-        fontWeight: '700',
-        backgroundColor: 'rgba(255, 255, 255, 0.35)',
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.85)',
-        shadowColor: '#fff',
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.7,
-        shadowRadius: 8,
-        elevation: 4,
-    },
-    flower: {
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        width: 32,
-        height: 32,
-        position: 'absolute',
-        zIndex: 1,
-    },
-    flower1: {
-        top: -16,
-        left: -22,
-        transform: [{ rotate: '5deg' }],
-    },
-    flower2: {
-        bottom: -10,
-        left: -6,
-        transform: [{ rotate: '35deg' }],
-    },
-    flower3: {
-        bottom: -18,
-        left: 36,
-        transform: [{ rotate: '0deg' }],
-    },
-    flower4: {
-        top: -18,
-        left: 22,
-        transform: [{ rotate: '15deg' }],
-    },
-    flower5: {
-        right: -8,
-        top: -14,
-        transform: [{ rotate: '25deg' }],
-    },
-    flower6: {
-        right: -24,
-        bottom: -12,
-        transform: [{ rotate: '30deg' }],
-    },
-    flower7: {
-        top: -16,
-        left: 70,
-        transform: [{ rotate: '45deg' }],
-    },
-    flower8: {
-        bottom: -16,
-        right: 32,
-        transform: [{ rotate: '12deg' }],
-    },
-    flower9: {
-        left: -26,
-        top: 4,
-        transform: [{ rotate: '60deg' }],
-    },
-    flower10: {
-        right: -28,
-        top: 2,
-        transform: [{ rotate: '75deg' }],
-    },
-    petal: {
-        height: 16,
-        width: 16,
-        borderTopLeftRadius: '40%',
-        borderTopRightRadius: '70%',
-        borderBottomRightRadius: '7%',
-        borderBottomLeftRadius: '90%',
-        backgroundColor: 'violet',
-        borderWidth: 0.5,
-        borderColor: 'purple',
-        zIndex: 0,
-        margin: 0,
-    },
-    one: {},
-    two: {
-        transform: [{ rotate: '90deg' }],
-    },
-    three: {
-        transform: [{ rotate: '270deg' }],
-    },
-    four: {
-        transform: [{ rotate: '180deg' }],
-    },
-    syncInfoBox: {
-        flexDirection: 'row',
-        alignItems: 'flex-start',
-        paddingHorizontal: 4,
-    },
-    syncInfoTitle: {
-        fontSize: 13,
-        fontWeight: '600',
+        fontSize: 15,
+        fontWeight: '800',
         marginBottom: 2,
     },
-    syncInfoDesc: {
-        fontSize: 11,
-        lineHeight: 15,
+    syncCaption: {
+        color: '#A7C957',
+        fontSize: 12,
+        fontWeight: '500',
+    },
+    syncArrowBtn: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: '#FFFFFF',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: 8,
     },
     modalOverlay: {
         flex: 1,
@@ -1121,7 +860,7 @@ const styles = StyleSheet.create({
     },
     closeSyncBtn: {
         marginTop: 24,
-        backgroundColor: '#34C759',
+        backgroundColor: '#386641',
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 8,
@@ -1130,38 +869,5 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontWeight: '700',
         fontSize: 14,
-    },
-    notifBadge: {
-        position: 'absolute',
-        top: 6,
-        right: 6,
-        backgroundColor: '#FF9500',
-        borderRadius: 10,
-        minWidth: 20,
-        height: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingHorizontal: 6,
-    },
-    notifBadgeText: {
-        color: '#FFFFFF',
-        fontSize: 11,
-        fontWeight: '700',
-    },
-    pendingSyncAlert: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: 'rgba(255, 149, 0, 0.15)',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        marginTop: 10,
-        gap: 8,
-    },
-    pendingSyncText: {
-        flex: 1,
-        color: '#FF9500',
-        fontSize: 13,
-        fontWeight: '600',
     },
 });

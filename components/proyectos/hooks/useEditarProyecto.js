@@ -7,6 +7,8 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { proyectosLocalService } from '../../../services/proyectos';
+import { localLotesService } from '../../../services/lotes';
+import { obtenerLotesPorProyecto, actualizarLotesDelProyecto } from '../../../db';
 
 export const useEditarProyecto = (proyectoUuid) => {
     const [proyecto, setProyecto] = useState(null);
@@ -14,6 +16,17 @@ export const useEditarProyecto = (proyectoUuid) => {
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState(null);
     const [isNewProject, setIsNewProject] = useState(false);
+    const [lotes, setLotes] = useState([]);
+
+    const cargarLotes = useCallback(async () => {
+        try {
+            await localLotesService.inicializarBaseDatosLocal();
+            const lotesData = await localLotesService.obtenerLotes();
+            setLotes(lotesData || []);
+        } catch (error) {
+            // console removed
+        }
+    }, []);
 
     const cargarProyecto = useCallback(async () => {
         if (!proyectoUuid) return;
@@ -26,6 +39,9 @@ export const useEditarProyecto = (proyectoUuid) => {
             const resultado = await proyectosLocalService.obtenerProyectoLocal(proyectoUuid);
 
             if (resultado) {
+                // Cargar lotes asociados al proyecto (relacion N:M)
+                const lotesUuids = await obtenerLotesPorProyecto(proyectoUuid);
+                resultado.lotes_uuids = lotesUuids;
                 setProyecto(resultado);
                 setIsNewProject(false);
             } else {
@@ -86,6 +102,10 @@ export const useEditarProyecto = (proyectoUuid) => {
             } else {
                 // Proyecto existente - actualizar
                 await proyectosLocalService.actualizarProyectoLocal(proyectoUuid, datosActualizados);
+                // Actualizar relaciones N:M con lotes si changed
+                if (datosActualizados.lotes_uuids) {
+                    await actualizarLotesDelProyecto(proyectoUuid, datosActualizados.lotes_uuids);
+                }
                 await cargarProyecto();
                 return { success: true };
             }
@@ -100,11 +120,13 @@ export const useEditarProyecto = (proyectoUuid) => {
 
     return {
         proyecto,
+        lotes,
         isLoading,
         isSaving,
         error,
         guardarProyecto,
         recargar: cargarProyecto,
+        cargarLotes,
         isNewProject,
     };
 };

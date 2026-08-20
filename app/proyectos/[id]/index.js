@@ -19,10 +19,12 @@ export default function ProyectoDetalleScreen() {
 
     const {
         proyecto,
+        lotes,
         isLoading,
         isSaving,
         error,
         guardarProyecto,
+        cargarLotes,
         isNewProject,
     } = useEditarProyecto(id);
 
@@ -35,10 +37,12 @@ export default function ProyectoDetalleScreen() {
             />
             <EditarProyectoForm
                 proyecto={proyecto}
+                lotes={lotes}
                 isLoading={isLoading}
                 isSaving={isSaving}
                 error={error}
                 onGuardar={guardarProyecto}
+                cargarLotes={cargarLotes}
                 isNewProject={isNewProject}
             />
         </View>
