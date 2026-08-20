@@ -45,6 +45,17 @@ const QUICK_CARDS = [
         bg: 'rgba(255,204,0,0.14)',
         info: 'Calculadora de fertilizantes y nutrientes para tus cultivos.',
     },
+    //BOTON DE CATALOGOS
+    {
+    id: 4,
+    title: 'Catálogos',
+    subtitle: 'Agrícolas',
+    route: '/catalogos',                    //RUTA QUE NAVEGA
+    icon: 'sprout-outline',                //ICONO
+    color: '#8B5CF6',                      //COLOR PÚRPURA
+    bg: 'rgba(139, 92, 246, 0.1)',        //FONDO
+    info: 'Consulta cultivos, enfermedades, plagas y recomendaciones relacionadas.'
+    }
 ];
 
 /* ILUSTRACIÓN AGRÍCOLA MEJORADA */
@@ -304,7 +315,6 @@ export default function HomeDashboard() {
         limpiarSyncMessage,
         pendingCount,
         pendingCounts,
-        verificarPendientes,
     } = useHomeDashboard();
 
     const [isSyncModalVisible, setIsSyncModalVisible] =
@@ -1228,90 +1238,90 @@ export default function HomeDashboard() {
                             ACCESO RÁPIDO
                         </Text>
                     </View>
-
-                    <TouchableOpacity
-                        style={[
-                            styles.quickCard,
-                            {
-                                backgroundColor:
-                                    cardBg,
-                                borderColor:
-                                    isDark
-                                        ? '#21383B'
-                                        : '#E7ECE9',
-                            },
-                        ]}
-                        activeOpacity={0.82}
-                        onPress={() =>
-                            router.push(
-                                QUICK_CARDS[0].route
-                            )
-                        }
-                    >
-                        <View
+                    {QUICK_CARDS.map((card, idx) => (
+                        <TouchableOpacity
+                            key={card.id}
                             style={[
-                                styles.metricIconWrap,
+                                styles.quickCard,
                                 {
                                     backgroundColor:
+                                        cardBg,
+                                    borderColor:
                                         isDark
-                                            ? 'rgba(255,204,0,0.12)'
-                                            : '#FFF7DE',
+                                            ? '#21383B'
+                                            : '#E7ECE9',
+                                    marginTop:
+                                        idx === 0
+                                            ? 0
+                                            : 12,
                                 },
                             ]}
+                            activeOpacity={0.82}
+                            onPress={() =>
+                                router.push(
+                                    card.route
+                                )
+                            }
                         >
+                            <View
+                                style={[
+                                    styles.metricIconWrap,
+                                    {
+                                        backgroundColor:
+                                            card.bg,
+                                    },
+                                ]}
+                            >
+                                <MaterialCommunityIcons
+                                    name={
+                                        card.icon
+                                    }
+                                    size={25}
+                                    color={
+                                        card.color
+                                    }
+                                />
+                            </View>
+
+                            <View
+                                style={{
+                                    flex: 1,
+                                }}
+                            >
+                                <Text
+                                    style={[
+                                        styles.quickTitle,
+                                        {
+                                            color: textPrimary,
+                                        },
+                                    ]}
+                                >
+                                    {
+                                        card.title
+                                    }
+                                </Text>
+
+                                <Text
+                                    style={[
+                                        styles.quickSubtitle,
+                                        {
+                                            color: textSecondary,
+                                        },
+                                    ]}
+                                >
+                                    {
+                                        card.subtitle
+                                    }
+                                </Text>
+                            </View>
+
                             <MaterialCommunityIcons
-                                name={
-                                    QUICK_CARDS[0]
-                                        .icon
-                                }
-                                size={25}
-                                color={
-                                    QUICK_CARDS[0]
-                                        .color
-                                }
+                                name="chevron-right"
+                                size={23}
+                                color={mutedText}
                             />
-                        </View>
-
-                        <View
-                            style={{
-                                flex: 1,
-                            }}
-                        >
-                            <Text
-                                style={[
-                                    styles.quickTitle,
-                                    {
-                                        color: textPrimary,
-                                    },
-                                ]}
-                            >
-                                {
-                                    QUICK_CARDS[0]
-                                        .title
-                                }
-                            </Text>
-
-                            <Text
-                                style={[
-                                    styles.quickSubtitle,
-                                    {
-                                        color: textSecondary,
-                                    },
-                                ]}
-                            >
-                                {
-                                    QUICK_CARDS[0]
-                                        .subtitle
-                                }
-                            </Text>
-                        </View>
-
-                        <MaterialCommunityIcons
-                            name="chevron-right"
-                            size={23}
-                            color={mutedText}
-                        />
-                    </TouchableOpacity>
+                        </TouchableOpacity>
+                    ))}
                 </View>
             </Animated.ScrollView>
 

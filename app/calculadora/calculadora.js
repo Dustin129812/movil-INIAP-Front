@@ -291,7 +291,6 @@ export default function CalculadoraScreen() {
     calculoId,
     propietarioId,
     calculadora
-      .cargarCalculoGuardado,
   ]);
 
   const limpiarMensajes = () => {
