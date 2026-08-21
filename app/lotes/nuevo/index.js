@@ -9,7 +9,7 @@ import { View, TouchableOpacity, StatusBar } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../services/theme';
+import { getAppTheme, useTheme } from '../../../services/theme';
 import CroquisMapaUI from '../../../components/lotes/ui/CroquisMapaUI';
 
 // --- ESTILOS ---
@@ -24,11 +24,11 @@ export default function NuevoLoteScreen() {
   const router = useRouter();
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
-  const backgroundColor = isDark ? '#000000' : '#FFFFFF';
+  const backgroundColor = getAppTheme(isDark).background;
 
   return (
     <View style={[styles.container, { backgroundColor }]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
 
       {/* Back Button Flotante */}
       <TouchableOpacity

@@ -36,7 +36,7 @@ import {
 } from '../../services/theme';
 
 // --- ESTILOS ---
-// Origen: app/styles/tabBarStyles.js
+// Origen: app/styles/tabBarStyles.jsH
 import { tabBarStyles } from '../../src/styles/tabBarStyles';
 
 // Desestructuracion para uso directo
@@ -504,6 +504,7 @@ export default function TabLayout() {
           <Tabs.Screen name="index" />
           <Tabs.Screen name="lotes" />
           <Tabs.Screen name="proyectos" />
+          <Tabs.Screen name="catalogo" />
           <Tabs.Screen name="explore" />
         </Tabs>
       </SearchProvider>

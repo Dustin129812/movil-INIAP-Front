@@ -8,7 +8,7 @@ import React from 'react';
 import { View, StatusBar } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../services/theme';
+import { getAppTheme, useTheme } from '../../../services/theme';
 import EditarProyectoForm from '../../../components/proyectos/ui/EditarProyectoForm';
 import { useEditarProyecto } from '../../../components/proyectos/hooks/useEditarProyecto';
 
@@ -27,7 +27,7 @@ export default function ProyectoDetalleScreen() {
     } = useEditarProyecto(id);
 
     return (
-        <View style={{ flex: 1, backgroundColor: isDark ? '#000000' : '#F2F2F7' }}>
+        <View style={{ flex: 1, backgroundColor: getAppTheme(isDark).background }}>
             <StatusBar
                 barStyle={isDark ? 'light-content' : 'dark-content'}
                 translucent

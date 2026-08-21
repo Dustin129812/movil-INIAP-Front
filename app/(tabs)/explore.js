@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { DynamicIslandNotification } from '../../components/ui';
 import { useAuth } from '../../services/auth';
 import { useDeviceInfo } from '../../services/device';
-import { useTheme } from '../../services/theme';
+import { getAppTheme, useTheme } from '../../services/theme';
 import { useRouter } from 'expo-router';
 
 // --- ESTILOS ---
@@ -255,7 +255,7 @@ export default function SettingsScreen() {
               onPress={() => { setTheme('light'); setSystemTheme(false); }}
               activeOpacity={0.8}
             >
-              <View style={[styles.themePreviewLight, { backgroundColor: '#F2F2F7' }]}>
+              <View style={[styles.themePreviewLight, { backgroundColor: getAppTheme(false).background }]}> 
                 <View style={styles.previewLine} />
                 <View style={styles.previewDotRow}>
                   <View style={[styles.previewDot, { backgroundColor: '#34C759' }]} />

@@ -1,12 +1,10 @@
 import React from 'react';
 import { StyleSheet, View, StatusBar } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ListaProyectosUI } from '../../components/proyectos/ui';
 import { useListaProyectos } from '../../components/proyectos/hooks';
-import { useTheme } from '../../services/theme';
+import { getAppTheme, useTheme } from '../../services/theme';
 
 export default function ProyectosTabScreen() {
-    const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
     const {
         proyectos,
@@ -17,7 +15,7 @@ export default function ProyectosTabScreen() {
     } = useListaProyectos();
 
     return (
-        <View style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+        <View style={[styles.container, { backgroundColor: getAppTheme(isDark).background }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
             <ListaProyectosUI
                 proyectos={proyectos}

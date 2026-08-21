@@ -124,7 +124,40 @@ export const tabBarStyles = StyleSheet.create({
     textShadowRadius: 3,
   },
 
-  // --- SEARCH BUTTON ---
+  // --- CATALOG BUTTON (Nuevo - Icono de libro) ---
+  catalogBtnWrapper: {
+    height: DIMS.SEARCH_BTN_SIZE || 44,
+    borderRadius: (DIMS.SEARCH_BTN_SIZE || 44) / 2,
+    shadowColor: DIMS.SHADOW_COLOR,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 5,
+  },
+  catalogGlass: {
+    width: '100%',
+    height: '100%',
+    borderRadius: (DIMS.SEARCH_BTN_SIZE || 44) / 2,
+    borderWidth: 0.5,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+  },
+  catalogBtnIconWrapper: {
+    width: DIMS.SEARCH_BTN_SIZE || 44,
+    height: DIMS.SEARCH_BTN_SIZE || 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catalogLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+
+  // --- SEARCH BUTTON (Unificado) ---
   searchBtnWrapper: {
     height: DIMS.SEARCH_BTN_SIZE,
     borderRadius: DIMS.SEARCH_BTN_SIZE / 2,
@@ -171,7 +204,7 @@ export const tabBarStyles = StyleSheet.create({
     justifyContent: 'center',
   },
 
-  // --- FULL WIDTH SEARCH ---
+  // --- FULL WIDTH SEARCH (Integrado con la barra) ---
   fullWidthSearchContainer: {
     position: 'absolute',
     alignSelf: 'center',

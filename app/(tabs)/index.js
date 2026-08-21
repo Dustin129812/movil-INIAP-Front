@@ -1,11 +1,11 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useTheme } from '../../services/theme';
+import { getAppTheme, useTheme } from '../../services/theme';
 import HomeDashboard from '../../components/home/ui/HomeDashboard';
 
 export default function HomeScreen() {
   const { isDark } = useTheme();
-  const backgroundColor = isDark ? '#000000' : '#F2F2F7';
+  const backgroundColor = getAppTheme(isDark).background;
 
   return (
     <View style={[styles.container, { backgroundColor }]}>

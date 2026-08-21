@@ -51,6 +51,13 @@ import VerticesMap from './VerticesMap';
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES'];
 
+const HOME_STYLE = {
+    cream: '#FCF8F0',
+    darkGreen: '#0B3D24',
+    green: '#6FAF32',
+    quickIcon: '#A9D266',
+};
+
 const CAMPOS_EDITABLES = [
     { key: 'nombre_lote', label: 'Nombre del lote', icon: 'tag-outline', autoCapitalize: 'sentences' },
     { key: 'provincia', label: 'Provincia', icon: 'map-marker-radius', autoCapitalize: 'words' },
@@ -577,7 +584,7 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                                 activeOpacity={0.85}
                             >
                                 <Text style={styles.figmaStartRouteText}>Editar</Text>
-                                <MaterialCommunityIcons name="arrow-right" size={14} color="#111111" />
+                                <MaterialCommunityIcons name="arrow-right" size={14} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -619,7 +626,7 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                                 activeOpacity={0.85}
                             >
                                 <Text style={styles.figmaStartRouteText}>Editar</Text>
-                                <MaterialCommunityIcons name="arrow-right" size={14} color="#111111" />
+                                <MaterialCommunityIcons name="arrow-right" size={14} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
                     </ImageBackground>
@@ -968,7 +975,7 @@ export default function LotesDashboardUI() {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: colores.bg }]}>
+        <View style={[styles.container, { backgroundColor: isDark ? '#101510' : HOME_STYLE.cream }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
             <StatusPickerModal
@@ -1034,7 +1041,7 @@ export default function LotesDashboardUI() {
                                     { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' },
                                 ]}
                             />
-                            <MaterialCommunityIcons name="vector-square" size={16} color="#34C759" style={{ marginRight: 6 }} />
+                            <MaterialCommunityIcons name="vector-square" size={16} color={isDark ? '#A7C957' : HOME_STYLE.green} style={{ marginRight: 6 }} />
                             <Text style={[styles.counterGlassNumber, { color: colores.textPrimary }]}>{lotesFiltrados.length}</Text>
                         </BlurView>
                     </Animated.View>
@@ -1065,16 +1072,16 @@ export default function LotesDashboardUI() {
                                             <View
                                                 style={[
                                                     StyleSheet.absoluteFillObject,
-                                                    { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' },
+                                                    { backgroundColor: isDark ? 'rgba(167,201,87,0.22)' : HOME_STYLE.quickIcon },
                                                 ]}
                                             />
                                             <View
                                                 style={[
                                                     styles.counterGlassBorder,
-                                                    { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' },
+                                                    { borderColor: isDark ? 'rgba(167,201,87,0.45)' : 'rgba(23,77,46,0.18)' },
                                                 ]}
                                             />
-                                            <Text style={[styles.filterTabText, { color: colores.textPrimary, fontWeight: '800' }]}>
+                                            <Text style={[styles.filterTabText, { color: isDark ? '#FFFFFF' : HOME_STYLE.darkGreen, fontWeight: '800' }]}>
                                                 {tab}
                                             </Text>
                                         </BlurView>
@@ -1162,16 +1169,38 @@ export default function LotesDashboardUI() {
 // ============================================
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-    errorText: { marginTop: 12, fontWeight: '500', fontSize: 15, textAlign: 'center' },
+
+    centered: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+
+    errorText: {
+        marginTop: 12,
+        fontWeight: '500',
+        fontSize: 15,
+        textAlign: 'center',
+    },
+
     retryButton: {
         marginTop: 16,
-        backgroundColor: '#34C759',
+        backgroundColor: HOME_STYLE.green,
         paddingHorizontal: 20,
         paddingVertical: 10,
         borderRadius: 12,
     },
-    retryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
+
+    retryText: {
+        color: '#FFFFFF',
+        fontWeight: '600',
+        fontSize: 15,
+    },
+
+    // ============================================
+    // HEADER
+    // ============================================
 
     header: {
         position: 'absolute',
@@ -1181,6 +1210,7 @@ const styles = StyleSheet.create({
         zIndex: 20,
         paddingHorizontal: 16,
     },
+
     statusBarScrim: {
         position: 'absolute',
         top: 0,
@@ -1188,22 +1218,39 @@ const styles = StyleSheet.create({
         right: 0,
         zIndex: 15,
     },
+
     contentWrapper: {
         flex: 1,
     },
+
     headerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         height: 40,
     },
-    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+
     headerHomeTitle: {
         fontSize: 36,
         fontWeight: '800',
         letterSpacing: -0.8,
     },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+
+    // ============================================
+    // CONTADOR
+    // ============================================
 
     counterGlassPill: {
         flexDirection: 'row',
@@ -1214,10 +1261,11 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.16,
+        shadowOpacity: 0.12,
         shadowRadius: 14,
         elevation: 6,
     },
+
     counterGlassSpecular: {
         position: 'absolute',
         top: 0,
@@ -1227,16 +1275,22 @@ const styles = StyleSheet.create({
         borderRadius: 1,
         opacity: 0.6,
     },
+
     counterGlassBorder: {
         ...StyleSheet.absoluteFillObject,
         borderRadius: 22,
         borderWidth: 1,
     },
+
     counterGlassNumber: {
         fontSize: 20,
         fontWeight: '800',
         letterSpacing: -0.4,
     },
+
+    // ============================================
+    // TABS
+    // ============================================
 
     pinnedTabsWrap: {
         position: 'absolute',
@@ -1246,17 +1300,24 @@ const styles = StyleSheet.create({
         zIndex: 18,
         paddingHorizontal: 16,
     },
+
     tabsGlassContainer: {
         borderRadius: 22,
         overflow: 'hidden',
         paddingVertical: 6,
         paddingHorizontal: 6,
     },
-    filterTabsScroll: { flexDirection: 'row', gap: 8 },
+
+    filterTabsScroll: {
+        flexDirection: 'row',
+        gap: 8,
+    },
+
     filterTabTouchable: {
         borderRadius: 18,
         overflow: 'hidden',
     },
+
     filterTabActiveGlass: {
         paddingHorizontal: 16,
         paddingVertical: 9,
@@ -1265,6 +1326,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         overflow: 'hidden',
     },
+
     filterTabInactive: {
         paddingHorizontal: 16,
         paddingVertical: 9,
@@ -1272,14 +1334,42 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    filterTabText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
 
-    listContainer: { paddingHorizontal: 16, paddingBottom: 120, width: SCREEN_WIDTH },
+    filterTabText: {
+        fontSize: 13,
+        fontWeight: '700',
+        letterSpacing: 0.3,
+    },
 
-    skeletonListContainer: { paddingHorizontal: 16, width: SCREEN_WIDTH },
+    // ============================================
+    // LISTA
+    // ============================================
+
+    listContainer: {
+        paddingHorizontal: 16,
+        paddingBottom: 120,
+        width: SCREEN_WIDTH,
+    },
+
+    skeletonListContainer: {
+        paddingHorizontal: 16,
+        width: SCREEN_WIDTH,
+    },
+
     skeletonLine: {},
 
-    emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 30, width: SCREEN_WIDTH },
+    // ============================================
+    // EMPTY STATE
+    // ============================================
+
+    emptyState: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingTop: 80,
+        paddingHorizontal: 30,
+        width: SCREEN_WIDTH,
+    },
+
     emptyIconContainer: {
         width: 80,
         height: 80,
@@ -1288,10 +1378,25 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
     },
-    emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8, letterSpacing: -0.5 },
-    emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22, fontWeight: '400' },
 
-    // ---- Bottom sheet base (estado + edición) ----
+    emptyTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        marginBottom: 8,
+        letterSpacing: -0.5,
+    },
+
+    emptyText: {
+        fontSize: 15,
+        textAlign: 'center',
+        lineHeight: 22,
+        fontWeight: '400',
+    },
+
+    // ============================================
+    // BOTTOM SHEET
+    // ============================================
+
     sheetContainer: {
         position: 'absolute',
         left: 0,
@@ -1301,12 +1406,17 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 32,
         paddingHorizontal: 16,
         paddingTop: 10,
+
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: -6 },
+        shadowOffset: {
+            width: 0,
+            height: -6,
+        },
         shadowOpacity: 0.15,
         shadowRadius: 20,
         elevation: 20,
     },
+
     sheetHandle: {
         width: 36,
         height: 5,
@@ -1315,9 +1425,28 @@ const styles = StyleSheet.create({
         alignSelf: 'center',
         marginBottom: 12,
     },
-    sheetTitle: { fontSize: 20, fontWeight: '800', textAlign: 'center', marginTop: 2, letterSpacing: -0.4 },
-    sheetSubtitle: { fontSize: 13, textAlign: 'center', marginTop: 4, marginBottom: 18 },
-    sheetOptionsGroup: { borderRadius: 16, overflow: 'hidden', marginBottom: 12 },
+
+    sheetTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        textAlign: 'center',
+        marginTop: 2,
+        letterSpacing: -0.4,
+    },
+
+    sheetSubtitle: {
+        fontSize: 13,
+        textAlign: 'center',
+        marginTop: 4,
+        marginBottom: 18,
+    },
+
+    sheetOptionsGroup: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginBottom: 12,
+    },
+
     sheetOptionRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1325,6 +1454,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         gap: 12,
     },
+
     sheetOptionIconWrap: {
         width: 30,
         height: 30,
@@ -1332,11 +1462,28 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    sheetOptionText: { flex: 1, fontSize: 17, fontWeight: '500' },
-    sheetCancelBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center' },
-    sheetCancelText: { fontSize: 17, fontWeight: '700' },
 
-    // ---- Modal de edición de lote ----
+    sheetOptionText: {
+        flex: 1,
+        fontSize: 17,
+        fontWeight: '500',
+    },
+
+    sheetCancelBtn: {
+        borderRadius: 16,
+        paddingVertical: 15,
+        alignItems: 'center',
+    },
+
+    sheetCancelText: {
+        fontSize: 17,
+        fontWeight: '700',
+    },
+
+    // ============================================
+    // EDITAR LOTE
+    // ============================================
+
     editHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -1344,8 +1491,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
         marginTop: 4,
     },
-    editHeaderAction: { fontSize: 16, fontWeight: '500' },
-    editFieldsGroup: { borderRadius: 16, overflow: 'hidden', marginBottom: 24 },
+
+    editHeaderAction: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+
+    editFieldsGroup: {
+        borderRadius: 16,
+        overflow: 'hidden',
+        marginBottom: 24,
+    },
+
     editFieldRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1353,6 +1510,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 14,
         gap: 10,
     },
+
     editFieldLabel: {
         fontSize: 11,
         fontWeight: '600',
@@ -1360,14 +1518,28 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.3,
     },
-    editFieldInput: { fontSize: 16, fontWeight: '500', paddingVertical: 2 },
+
+    editFieldInput: {
+        fontSize: 16,
+        fontWeight: '500',
+        paddingVertical: 2,
+    },
+
     selectorValueRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingVertical: 2,
     },
-    selectorValue: { fontSize: 16, fontWeight: '500' },
+
+    selectorValue: {
+        fontSize: 16,
+        fontWeight: '500',
+    },
+
+    // ============================================
+    // OVERLAY
+    // ============================================
 
     updatingOverlay: {
         ...StyleSheet.absoluteFillObject,
@@ -1376,39 +1548,42 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-    // ---- Captura invisible del croquis de vértices ----
-    hiddenCaptureWrap: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: 320,
-        height: 240,
-        opacity: 0,
-        zIndex: -1,
-    },
-    hiddenCaptureInner: {
-        width: 320,
-        height: 240,
-    },
+    // ============================================
+    // TARJETA DEL LOTE
+    // ============================================
 
     figmaCardContainer: {
         marginBottom: 24,
         borderRadius: 36,
         padding: 16,
+
+        // Verde muy sutil en modo claro
+        // El fondo real se controla desde colores.js
+        borderWidth: 1,
+        borderColor: 'rgba(52, 199, 89, 0.08)',
+
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.1,
+        shadowOffset: {
+            width: 0,
+            height: 12,
+        },
+        shadowOpacity: 0.08,
         shadowRadius: 24,
         elevation: 6,
     },
+
     figmaImageSection: {
         height: 240,
         borderRadius: 28,
         padding: 16,
         overflow: 'hidden',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
     },
-    figmaImageStyle: { borderRadius: 28 },
+
+    figmaImageStyle: {
+        borderRadius: 28,
+    },
+
     verticesMapFill: {
         position: 'absolute',
         top: 0,
@@ -1418,17 +1593,20 @@ const styles = StyleSheet.create({
         width: '100%',
         height: '100%',
     },
+
     imageOverlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.25)',
         borderRadius: 28,
     },
+
     figmaTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         zIndex: 2,
     },
+
     figmaPopularBadge: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1437,19 +1615,46 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         overflow: 'hidden',
     },
-    figmaPopularText: { color: '#111111', fontSize: 13, fontWeight: '700' },
+
+    figmaPopularText: {
+        color: '#111111',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
     figmaImageBottomRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-end',
         zIndex: 2,
     },
-    figmaTitleArea: { flex: 1, marginRight: 10 },
-    figmaCardTitle: { color: '#FFFFFF', fontSize: 19, fontWeight: '800', marginBottom: 4 },
-    figmaLocationWrapper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    figmaLocationText: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 13, fontWeight: '500' },
+
+    figmaTitleArea: {
+        flex: 1,
+        marginRight: 10,
+    },
+
+    figmaCardTitle: {
+        color: '#FFFFFF',
+        fontSize: 19,
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+
+    figmaLocationWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+
+    figmaLocationText: {
+        color: 'rgba(255,255,255,0.9)',
+        fontSize: 13,
+        fontWeight: '500',
+    },
+
     figmaStartRouteBtn: {
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#34C759',
         paddingHorizontal: 14,
         paddingVertical: 10,
         borderRadius: 22,
@@ -1457,30 +1662,50 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 4,
     },
-    figmaStartRouteText: { color: '#111111', fontSize: 13, fontWeight: '700' },
+
+    figmaStartRouteText: {
+        color: '#ffffff',
+        fontSize: 13,
+        fontWeight: '700',
+    },
+
+    // ============================================
+    // INFORMACIÓN
+    // ============================================
 
     infoBottomSection: {
         paddingTop: 12,
         gap: 8,
     },
+
     infoRowGrid: {
         flexDirection: 'row',
         gap: 8,
     },
+
     infoItem: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        backgroundColor: 'rgba(0,0,0,0.03)',
+
+        // Antes era gris.
+        // Ahora tiene un verde MUY suave.
+        backgroundColor: 'rgba(52,199,89,0.055)',
+
         paddingVertical: 8,
         paddingHorizontal: 10,
         borderRadius: 10,
+
+        borderWidth: 1,
+        borderColor: 'rgba(52,199,89,0.07)',
     },
+
     infoItemLabel: {
         fontSize: 10,
         fontWeight: '500',
     },
+
     infoItemValue: {
         flex: 1,
         fontSize: 11,
@@ -1488,30 +1713,42 @@ const styles = StyleSheet.create({
         textAlign: 'right',
     },
 
+    // ============================================
+    // COORDENADAS
+    // ============================================
+
     coordsRow: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 10,
         borderRadius: 12,
         gap: 8,
+
+        borderWidth: 1,
+        borderColor: 'rgba(52,199,89,0.08)',
     },
+
     coordItem: {
         flex: 1,
     },
+
     coordLabel: {
         fontSize: 10,
         fontWeight: '600',
         marginBottom: 2,
     },
+
     coordValue: {
         fontSize: 10,
         fontWeight: '500',
     },
+
     coordDivider: {
         width: 1,
         height: 30,
-        backgroundColor: 'rgba(128,128,128,0.2)',
+        backgroundColor: 'rgba(52,199,89,0.15)',
     },
+
     miniMapContainer: {
         width: 70,
         height: 50,
@@ -1521,6 +1758,10 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
 
+    // ============================================
+    // SIN VÉRTICES
+    // ============================================
+
     noVerticesPlaceholder: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1528,10 +1769,45 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 12,
         gap: 8,
+
+        backgroundColor: 'rgba(52,199,89,0.055)',
+
+        borderWidth: 1,
+        borderColor: 'rgba(52,199,89,0.08)',
     },
+
     noVerticesText: {
         fontSize: 12,
         fontWeight: '500',
     },
-    statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
+
+    // ============================================
+    // ESTADO
+    // ============================================
+
+    statusDot: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        marginRight: 12,
+    },
+
+    // ============================================
+    // CAPTURA OCULTA
+    // ============================================
+
+    hiddenCaptureWrap: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: 320,
+        height: 240,
+        opacity: 0,
+        zIndex: -1,
+    },
+
+    hiddenCaptureInner: {
+        width: 320,
+        height: 240,
+    },
 });
