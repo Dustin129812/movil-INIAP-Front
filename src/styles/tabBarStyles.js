@@ -4,8 +4,8 @@
 // Origen: app/(tabs)/_layout.js - CleanLiquidGlassTabBar
 // Dependencias: TAB_BAR_DIMENSIONS, TAB_BAR_COLORS de tabBarTheme.js
 
-import { StyleSheet, Platform } from 'react-native';
-import { TAB_BAR_DIMENSIONS as DIMS, TAB_BAR_COLORS } from '../../services/theme/tabBarTheme';
+import { StyleSheet } from 'react-native';
+import { TAB_BAR_DIMENSIONS as DIMS } from '../../services/theme/tabBarTheme';
 
 export const tabBarStyles = StyleSheet.create({
   // --- CONTENEDOR PRINCIPAL ---
@@ -160,6 +160,7 @@ export const tabBarStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     paddingVertical: 0,
+    color: '#1F2A24'
   },
   closeIconBtn: {
     padding: 6,
@@ -206,5 +207,6 @@ export const tabBarStyles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '400',
     paddingVertical: 0,
+    color: '#1F2A24'
   },
 });

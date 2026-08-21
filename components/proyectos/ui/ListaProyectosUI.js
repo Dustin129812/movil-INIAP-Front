@@ -1,31 +1,30 @@
-import React, { useCallback, useRef, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    RefreshControl,
-    Dimensions,
-    ScrollView,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import {
+    Dimensions,
+    FlatList,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    useAnimatedScrollHandler,
-    withTiming,
-    withDelay,
     Easing,
     useAnimatedReaction,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withTiming
 } from 'react-native-reanimated';
-import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { createProyectosStyles } from './proyectosStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../services/theme';
 import { SkeletonCard } from '../../../src/styles/global/SkeletonCard';
+import { createProyectosStyles } from './proyectosStyles';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'INACTIVOS'];

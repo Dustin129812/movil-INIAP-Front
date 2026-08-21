@@ -1,43 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    FlatList,
-    TouchableOpacity,
-    Platform,
-    StatusBar,
-    ScrollView,
-    Alert,
-    ActivityIndicator,
-    Modal,
-    ImageBackground,
-    Dimensions,
-    TextInput,
-    KeyboardAvoidingView,
-    Keyboard,
-    Pressable,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    useAnimatedReaction,
-    withTiming,
-    withSpring,
-    withDelay,
-    Easing,
-} from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSearch } from '../context/SearchContext';
-import { useTheme } from '../../../services/theme';
+import { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    ImageBackground,
+    Keyboard,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import Animated, {
+    Easing,
+    useAnimatedReaction,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { lotesService } from '../../../services/lotes';
+import { useTheme } from '../../../services/theme';
+import { useSearch } from '../context/SearchContext';
 
 import {
-    ESTILOS_STATUS,
     ESTADO_OPCIONES,
+    ESTILOS_STATUS,
     getColores,
 } from './lotesDashboardColors';
 
@@ -60,9 +59,51 @@ const CAMPOS_EDITABLES = [
 ];
 
 // ============================================
+// COLORES COMPARTIDOS CON HOME
+// ============================================
+const THEMES = {
+    light: {
+        fondo: '#FEF9ED',
+        tarjetas: '#FFFFFF',
+        verdeAccionPrincipal: '#0F4C3A',
+        verdeMedio: '#2E7D54',
+        verdeClaroDetalle: '#6BA368',
+        verdeSuaveBoton: '#A6D785',
+        fondoTarjetaEstado: '#FDF3D8',
+        fondoTarjetaCalc: '#FDF8EC',
+        fondoTarjetaCat: '#FEF5E2',
+        textoPrincipal: '#1F2A24',
+        textoSecundario: '#6B7280',
+        bordeSuave: '#F3E5C8',
+        dorado: '#F9A825',
+        doradoSecundario: '#C67C00',
+        azulInstitucional: '#1B3A6B',
+        blurTint: 'light',
+        modalOverlay: 'rgba(0,0,0,0.72)',
+    },
+    dark: {
+        fondo: '#121212',
+        tarjetas: '#1E1E1E',
+        verdeAccionPrincipal: '#2E7D54',
+        verdeMedio: '#6BA368',
+        verdeClaroDetalle: '#A6D785',
+        verdeSuaveBoton: '#0F4C3A',
+        fondoTarjetaEstado: '#2A2A2A',
+        fondoTarjetaCalc: '#252525',
+        fondoTarjetaCat: '#222222',
+        textoPrincipal: '#FFFFFF',
+        textoSecundario: '#9CA3AF',
+        bordeSuave: '#2C2C2C',
+        dorado: '#F9A825',
+        doradoSecundario: '#C67C00',
+        azulInstitucional: '#1B3A6B',
+        blurTint: 'dark',
+        modalOverlay: 'rgba(0,0,0,0.85)',
+    }
+};
+
+// ============================================
 // COMPONENTE: Bottom Sheet Base (estilo Apple)
-// Backdrop con blur + tarjeta que sube desde abajo con spring.
-// Lo reutilizan el selector de estado y el modal de edición.
 // ============================================
 function AppleBottomSheet({ visible, onClose, isDark, children, maxHeight }) {
     const insets = useSafeAreaInsets();
@@ -124,7 +165,7 @@ function AppleBottomSheet({ visible, onClose, isDark, children, maxHeight }) {
                         styles.sheetContainer,
                         sheetStyle,
                         {
-                            backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
+                            backgroundColor: isDark ? '#1C1C1E' : '#FAF6EE',
                             paddingBottom: insets.bottom + 14,
                             maxHeight: maxHeight || '80%',
                         },
@@ -139,7 +180,7 @@ function AppleBottomSheet({ visible, onClose, isDark, children, maxHeight }) {
 }
 
 // ============================================
-// COMPONENTE: Selector de Estado (bottom sheet estilo iOS action sheet)
+// COMPONENTE: Selector de Estado
 // ============================================
 function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }) {
     const colores = getColores(isDark);
@@ -151,7 +192,7 @@ function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }
                 Selecciona el nuevo estado para este lote
             </Text>
 
-            <View style={[styles.sheetOptionsGroup, { backgroundColor: colores.statusPickerCard }]}>
+            <View style={[styles.sheetOptionsGroup, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
                 {ESTADO_OPCIONES.map((op, i) => {
                     const active = currentStatus === op.value;
                     return (
@@ -186,7 +227,7 @@ function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }
             </View>
 
             <TouchableOpacity
-                style={[styles.sheetCancelBtn, { backgroundColor: colores.statusPickerCard }]}
+                style={[styles.sheetCancelBtn, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                 onPress={onClose}
                 activeOpacity={0.6}
             >
@@ -197,7 +238,7 @@ function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }
 }
 
 // ============================================
-// COMPONENTE: Selector de Opciones genérico (para provincia, canton, estacion, cultivo)
+// COMPONENTE: Selector de Opciones genérico
 // ============================================
 function OptionPickerModal({ visible, title, options, currentValue, onSelect, onClose, isDark }) {
     const colores = getColores(isDark);
@@ -210,7 +251,7 @@ function OptionPickerModal({ visible, title, options, currentValue, onSelect, on
             </Text>
 
             <ScrollView style={{ maxHeight: 300 }}>
-                <View style={[styles.sheetOptionsGroup, { backgroundColor: colores.statusPickerCard }]}>
+                <View style={[styles.sheetOptionsGroup, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
                     {options.map((option, i) => {
                         const active = currentValue === option.value || currentValue === option.nombre;
                         return (
@@ -243,7 +284,7 @@ function OptionPickerModal({ visible, title, options, currentValue, onSelect, on
             </ScrollView>
 
             <TouchableOpacity
-                style={[styles.sheetCancelBtn, { backgroundColor: colores.statusPickerCard }]}
+                style={[styles.sheetCancelBtn, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}
                 onPress={onClose}
                 activeOpacity={0.6}
             >
@@ -254,8 +295,7 @@ function OptionPickerModal({ visible, title, options, currentValue, onSelect, on
 }
 
 // ============================================
-// COMPONENTE: Editar Lote (bottom sheet con formulario)
-// Solo nombre_lote es editable directamente; el resto son selectores de opciones.
+// COMPONENTE: Editar Lote
 // ============================================
 function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
     const colores = getColores(isDark);
@@ -267,22 +307,17 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
         cultivo: '',
     });
 
-    // Catalog data for pickers
     const [catalogos, setCatalogos] = useState({ provincias: [], cantones: [], estaciones: [], cultivos: [] });
     const [loadingCatalogos, setLoadingCatalogos] = useState(false);
-
-    // Picker state
-    const [pickerField, setPickerField] = useState(null); // 'provincia' | 'canton' | 'estacion' | 'cultivo' | null
+    const [pickerField, setPickerField] = useState(null);
     const [pickerOptions, setPickerOptions] = useState([]);
 
-    // Load catalogos when modal opens
     useEffect(() => {
         if (visible) {
             cargarCatalogos();
         }
     }, [visible]);
 
-    // Update form when lote changes
     useEffect(() => {
         if (visible && lote) {
             setForm({
@@ -306,7 +341,7 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
                 cultivos: data.cultivos || [],
             });
         } catch (error) {
-            // console removed
+            // error silencioso
         } finally {
             setLoadingCatalogos(false);
         }
@@ -321,8 +356,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
 
     const openPicker = (field) => {
         let options = [];
-        let currentValue = form[field];
-
         switch (field) {
             case 'provincia':
                 options = catalogos.provincias.map(p => ({ nombre: p.nombre || p.name, value: p.nombre || p.name }));
@@ -339,7 +372,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
             default:
                 return;
         }
-
         setPickerOptions(options);
         setPickerField(field);
     };
@@ -359,8 +391,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
         }
     };
 
-    // Campos que son editables como texto vs selectores
-    const CAMPOS_TEXTO = ['nombre_lote'];
     const CAMPOS_SELECTOR = ['provincia', 'canton', 'estacion', 'cultivo'];
 
     return (
@@ -384,8 +414,7 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginTop: 10 }}>
-                <View style={[styles.editFieldsGroup, { backgroundColor: colores.statusPickerCard }]}>
-                    {/* Campo nombre_lote - editable como texto */}
+                <View style={[styles.editFieldsGroup, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
                     <View style={[styles.editFieldRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colores.statusPickerBorder }]}>
                         <MaterialCommunityIcons name="tag-outline" size={18} color={colores.textSecondary} style={{ width: 26 }} />
                         <View style={{ flex: 1 }}>
@@ -401,7 +430,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
                         </View>
                     </View>
 
-                    {/* Campos selectors - solo muestran valor, al tocar abren picker */}
                     {CAMPOS_SELECTOR.map((field) => {
                         const fieldConfig = CAMPOS_EDITABLES.find(f => f.key === field);
                         const iconName = fieldConfig?.icon || 'circle';
@@ -429,7 +457,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
                 </View>
             </ScrollView>
 
-            {/* Picker modal para campos de selección */}
             <OptionPickerModal
                 visible={pickerField !== null}
                 title={getPickerTitle()}
@@ -450,10 +477,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
     const colores = getColores(isDark);
     const statusConfig = getStatusConfig(item.estado_verificacion);
 
-    // Parsear vertices desde el campo correcto del backend
-    // Backend AgroDecide devuelve:
-    //   - geometria: objeto ya decodificado { type: "Polygon", coordinates: [[[lng,lat],...]] }
-    //   - geometria_geojson: string GeoJSON original (backup)
     let vertices = null;
     const geoObj = item.geometria || item.geometria_geojson || item.vertices || null;
     if (geoObj) {
@@ -465,10 +488,8 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                 vertices = null;
             }
         } else if (typeof geoObj === 'object' && geoObj.coordinates) {
-            // geometria ya decodificado: { type: "Polygon", coordinates: [...] }
             vertices = geoObj.coordinates?.[0] || null;
         } else if (Array.isArray(geoObj) && geoObj.length > 0) {
-            // Array directo de coordenadas [[lng,lat], [lng,lat], ...]
             vertices = geoObj;
         }
     }
@@ -501,31 +522,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
 
     const { animateIn, handlePressIn, handlePressOut, containerAnimatedStyle } = useCardAnimations(index);
     const defaultImage = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop';
-
-    // ---- Captura del croquis de vértices como imagen ----
-    // TODO: reactivar cuando definamos storage para imágenes (S3/Cloudinary/servidor propio)
-    // Temporalmente deshabilitado - se muestra VerticesMap directamente en vez de capturar
-    // const [capturedUri, setCapturedUri] = useState(item.imagen_croquis_url || null);
-    // const viewShotRef = useRef(null);
-    // const captureAttempted = useRef(false);
-    // const needsCapture = hasVertices && !capturedUri && !captureAttempted.current;
-    // useEffect(() => {
-    //     if (!needsCapture) return;
-    //     captureAttempted.current = true;
-    //     const timer = setTimeout(async () => {
-    //         try {
-    //             const uri = await viewShotRef.current?.capture?.();
-    //             if (uri) {
-    //                 setCapturedUri(uri);
-    //                 if (typeof lotesService.guardarCapturaLote === 'function') {
-    //                     lotesService.guardarCapturaLote(item.id, uri).catch(() => {});
-    //                 }
-    //             }
-    //         } catch (e) { }
-    //     }, 350);
-    //     return () => clearTimeout(timer);
-    // }, [needsCapture]);
-
     const backgroundImageSource = { uri: item.imagen_url || defaultImage };
 
     useEffect(() => {
@@ -539,146 +535,168 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                 onPressIn={handlePressIn}
                 onPressOut={handlePressOut}
                 onPress={onEdit}
-                style={[styles.figmaCardContainer, { backgroundColor: colores.cardBg }]}
+                style={[
+                    styles.homeCardContainer,
+                    {
+                        backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+                        borderLeftWidth: 6,
+                        borderLeftColor: statusConfig.color
+                    }
+                ]}
             >
-                {/* Si tiene vértices, mostrar VerticesMap directamente como fondo */}
                 {hasVertices ? (
-                    <View style={[styles.figmaImageSection, { backgroundColor: '#1a2a1a' }]}>
+                    <View style={[styles.homeImageSection, { backgroundColor: isDark ? '#111911' : '#1a2a1a' }]}>
                         <VerticesMap vertices={vertices} color={statusConfig.color} style={styles.verticesMapFill} />
                         <View style={styles.imageOverlay} />
-                        <View style={styles.figmaTopRow}>
+                        <View style={styles.homeTopRow}>
                             <TouchableOpacity
                                 onPress={(e) => { e.stopPropagation(); onStatusChange(item); }}
                                 activeOpacity={0.8}
                             >
-                                <BlurView intensity={60} tint="light" style={styles.figmaPopularBadge}>
+                                <BlurView intensity={70} tint={isDark ? 'dark' : 'light'} style={styles.homePopularBadge}>
                                     <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-                                    <Text style={styles.figmaPopularText}>{statusConfig.text}</Text>
+                                    <Text style={[styles.homePopularText, { color: isDark ? '#FFFFFF' : '#111111' }]}>
+                                        {statusConfig.text}
+                                    </Text>
                                 </BlurView>
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.figmaImageBottomRow}>
-                            <View style={styles.figmaTitleArea}>
-                                <Text style={styles.figmaCardTitle} numberOfLines={1}>
+                        <View style={styles.homeImageBottomRow}>
+                            <View style={styles.homeTitleArea}>
+                                <Text style={styles.homeCardTitle} numberOfLines={1}>
                                     {item.nombre_lote || 'Lote sin nombre'}
                                 </Text>
-                                <View style={styles.figmaLocationWrapper}>
+                                <View style={styles.homeLocationWrapper}>
                                     <MaterialCommunityIcons name="map-marker" size={13} color="#FFFFFF" />
-                                    <Text style={styles.figmaLocationText} numberOfLines={1}>
+                                    <Text style={styles.homeLocationText} numberOfLines={1}>
                                         {item.ubicacion_manual || item.estacion || item.canton || item.provincia || 'Ubicación no definida'}
                                     </Text>
                                 </View>
                             </View>
 
                             <TouchableOpacity
-                                style={styles.figmaStartRouteBtn}
+                                style={styles.homeActionBtn}
                                 onPress={(e) => { e.stopPropagation(); onEdit(); }}
                                 activeOpacity={0.85}
                             >
-                                <Text style={styles.figmaStartRouteText}>Editar</Text>
-                                <MaterialCommunityIcons name="arrow-right" size={14} color="#111111" />
+                                <Text style={styles.homeActionBtnText}>Editar</Text>
+                                <MaterialCommunityIcons name="pencil-outline" size={14} color="#111111" />
                             </TouchableOpacity>
                         </View>
                     </View>
                 ) : (
                     <ImageBackground
                         source={backgroundImageSource}
-                        style={styles.figmaImageSection}
-                        imageStyle={styles.figmaImageStyle}
+                        style={styles.homeImageSection}
+                        imageStyle={styles.homeImageStyle}
                     >
                         <View style={styles.imageOverlay} />
-                        <View style={styles.figmaTopRow}>
+                        <View style={styles.homeTopRow}>
                             <TouchableOpacity
                                 onPress={(e) => { e.stopPropagation(); onStatusChange(item); }}
                                 activeOpacity={0.8}
                             >
-                                <BlurView intensity={60} tint="light" style={styles.figmaPopularBadge}>
+                                <BlurView intensity={70} tint={isDark ? 'dark' : 'light'} style={styles.homePopularBadge}>
                                     <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
-                                    <Text style={styles.figmaPopularText}>{statusConfig.text}</Text>
+                                    <Text style={[styles.homePopularText, { color: isDark ? '#FFFFFF' : '#111111' }]}>
+                                        {statusConfig.text}
+                                    </Text>
                                 </BlurView>
                             </TouchableOpacity>
                         </View>
 
-                        <View style={styles.figmaImageBottomRow}>
-                            <View style={styles.figmaTitleArea}>
-                                <Text style={styles.figmaCardTitle} numberOfLines={1}>
+                        <View style={styles.homeImageBottomRow}>
+                            <View style={styles.homeTitleArea}>
+                                <Text style={styles.homeCardTitle} numberOfLines={1}>
                                     {item.nombre_lote || 'Lote sin nombre'}
                                 </Text>
-                                <View style={styles.figmaLocationWrapper}>
+                                <View style={styles.homeLocationWrapper}>
                                     <MaterialCommunityIcons name="map-marker" size={13} color="#FFFFFF" />
-                                    <Text style={styles.figmaLocationText} numberOfLines={1}>
+                                    <Text style={styles.homeLocationText} numberOfLines={1}>
                                         {item.ubicacion_manual || item.estacion || item.canton || item.provincia || 'Ubicación no definida'}
                                     </Text>
                                 </View>
                             </View>
 
                             <TouchableOpacity
-                                style={styles.figmaStartRouteBtn}
+                                style={styles.homeActionBtn}
                                 onPress={(e) => { e.stopPropagation(); onEdit(); }}
                                 activeOpacity={0.85}
                             >
-                                <Text style={styles.figmaStartRouteText}>Editar</Text>
-                                <MaterialCommunityIcons name="arrow-right" size={14} color="#111111" />
+                                <Text style={styles.homeActionBtnText}>Editar</Text>
+                                <MaterialCommunityIcons name="pencil-outline" size={14} color="#111111" />
                             </TouchableOpacity>
                         </View>
                     </ImageBackground>
                 )}
 
-                <View style={styles.infoBottomSection}>
-                    <View style={styles.infoRowGrid}>
-                        <View style={styles.infoItem}>
-                            <MaterialCommunityIcons name="map-marker-radius" size={14} color={colores.textSecondary} />
-                            <Text style={[styles.infoItemLabel, { color: colores.textSecondary }]}>Provincia</Text>
-                            <Text style={[styles.infoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
-                                {item.provincia || '-'}
-                            </Text>
+                <View style={styles.homeInfoBottomSection}>
+                    <View style={styles.homeInfoRowGrid}>
+                        <View style={[styles.homeInfoItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(46,74,51,0.04)' }]}>
+                            <MaterialCommunityIcons name="map-marker-radius" size={16} color={colores.textSecondary} />
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={[styles.homeInfoItemLabel, { color: colores.textSecondary }]}>Provincia</Text>
+                                <Text style={[styles.homeInfoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
+                                    {item.provincia || '-'}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.infoItem}>
-                            <MaterialCommunityIcons name="map-marker-multiple" size={14} color={colores.textSecondary} />
-                            <Text style={[styles.infoItemLabel, { color: colores.textSecondary }]}>Cantón</Text>
-                            <Text style={[styles.infoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
-                                {item.canton || '-'}
-                            </Text>
-                        </View>
-                    </View>
-
-                    <View style={styles.infoRowGrid}>
-                        <View style={styles.infoItem}>
-                            <MaterialCommunityIcons name="water" size={14} color="#0A84FF" />
-                            <Text style={[styles.infoItemLabel, { color: colores.textSecondary }]}>Riego</Text>
-                            <Text style={[styles.infoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
-                                {item.tipo_riego?.replace(/_/g, ' ') || '-'}
-                            </Text>
-                        </View>
-                        <View style={styles.infoItem}>
-                            <MaterialCommunityIcons name="seed" size={14} color="#34C759" />
-                            <Text style={[styles.infoItemLabel, { color: colores.textSecondary }]}>Cultivo</Text>
-                            <Text style={[styles.infoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
-                                {cultivo || '-'}
-                            </Text>
+                        <View style={[styles.homeInfoItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(46,74,51,0.04)' }]}>
+                            <MaterialCommunityIcons name="map-marker-multiple" size={16} color={colores.textSecondary} />
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={[styles.homeInfoItemLabel, { color: colores.textSecondary }]}>Cantón</Text>
+                                <Text style={[styles.homeInfoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
+                                    {item.canton || '-'}
+                                </Text>
+                            </View>
                         </View>
                     </View>
 
-                    <View style={styles.infoRowGrid}>
-                        <View style={styles.infoItem}>
-                            <MaterialCommunityIcons name="vector-polygon" size={14} color="#FF9500" />
-                            <Text style={[styles.infoItemLabel, { color: colores.textSecondary }]}>Vértices</Text>
-                            <Text style={[styles.infoItemValue, { color: colores.textPrimary }]}>
-                                {verticesCount}
-                            </Text>
+                    <View style={styles.homeInfoRowGrid}>
+                        <View style={[styles.homeInfoItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(46,74,51,0.04)' }]}>
+                            <MaterialCommunityIcons name="water" size={16} color="#0A84FF" />
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={[styles.homeInfoItemLabel, { color: colores.textSecondary }]}>Riego</Text>
+                                <Text style={[styles.homeInfoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
+                                    {item.tipo_riego?.replace(/_/g, ' ') || '-'}
+                                </Text>
+                            </View>
                         </View>
-                        <View style={styles.infoItem}>
-                            <MaterialCommunityIcons name="map-marker" size={14} color="#8E8E93" />
-                            <Text style={[styles.infoItemLabel, { color: colores.textSecondary }]}>Ubicación</Text>
-                            <Text style={[styles.infoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
-                                {item.ubicacion_manual || item.canton || item.provincia || '-'}
-                            </Text>
+                        <View style={[styles.homeInfoItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(46,74,51,0.04)' }]}>
+                            <MaterialCommunityIcons name="seed" size={16} color="#34C759" />
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={[styles.homeInfoItemLabel, { color: colores.textSecondary }]}>Cultivo</Text>
+                                <Text style={[styles.homeInfoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
+                                    {cultivo || 'Sin Cultivo Asig...'}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
+
+                    <View style={styles.homeInfoRowGrid}>
+                        <View style={[styles.homeInfoItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(46,74,51,0.04)' }]}>
+                            <MaterialCommunityIcons name="vector-polygon" size={16} color="#FF9500" />
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={[styles.homeInfoItemLabel, { color: colores.textSecondary }]}>Vértices</Text>
+                                <Text style={[styles.homeInfoItemValue, { color: colores.textPrimary }]}>
+                                    {verticesCount}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={[styles.homeInfoItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(46,74,51,0.04)' }]}>
+                            <MaterialCommunityIcons name="map-marker" size={16} color="#8E8E93" />
+                            <View style={{ flex: 1, marginLeft: 8 }}>
+                                <Text style={[styles.homeInfoItemLabel, { color: colores.textSecondary }]}>Ubicación</Text>
+                                <Text style={[styles.homeInfoItemValue, { color: colores.textPrimary }]} numberOfLines={1}>
+                                    {item.ubicacion_manual || item.canton || item.provincia || '-'}
+                                </Text>
+                            </View>
                         </View>
                     </View>
 
                     {verticesCount > 0 && firstVertex && (
-                        <View style={[styles.coordsRow, { backgroundColor: colores.subCardBg }]}>
+                        <View style={[styles.coordsRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(46,74,51,0.02)' }]}>
                             <View style={styles.coordItem}>
                                 <Text style={[styles.coordLabel, { color: colores.textSecondary }]}>Inicio</Text>
                                 <Text style={[styles.coordValue, { color: colores.textPrimary }]}>
@@ -698,15 +716,15 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                                     Lat: {formatCoord(lastVertex?.lat)}
                                 </Text>
                             </View>
-                            <View style={[styles.miniMapContainer, { backgroundColor: colores.cardBg }]}>
+                            <View style={[styles.miniMapContainer, { backgroundColor: isDark ? '#2C2C2E' : '#FAF6EE' }]}>
                                 <VerticesMap vertices={vertices} color={statusConfig.color} />
                             </View>
                         </View>
                     )}
 
                     {verticesCount === 0 && (
-                        <View style={[styles.noVerticesPlaceholder, { backgroundColor: colores.subCardBg }]}>
-                            <MaterialCommunityIcons name="vector-polyline" size={24} color={colores.textSecondary} />
+                        <View style={[styles.noVerticesPlaceholder, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(46,74,51,0.02)' }]}>
+                            <MaterialCommunityIcons name="vector-polyline" size={22} color={colores.textSecondary} />
                             <Text style={[styles.noVerticesText, { color: colores.textSecondary }]}>
                                 Sin vértices capturados
                             </Text>
@@ -719,10 +737,9 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
 }
 
 // ============================================
-// COMPONENTE: Tarjeta Skeleton Exacta de Lote (para loading state)
+// COMPONENTE: Tarjeta Skeleton
 // ============================================
 function SkeletonCard({ isDark }) {
-    const colores = getColores(isDark);
     const { startPulse, animatedStyle } = useSkeletonAnimations();
 
     useEffect(() => {
@@ -730,15 +747,12 @@ function SkeletonCard({ isDark }) {
     }, []);
 
     return (
-        <Animated.View style={[styles.figmaCardContainer, animatedStyle, { backgroundColor: colores.skeletonBg }]}>
-            {/* Bloque grande superior simulando la imagen de la tarjeta */}
-            <View style={[styles.figmaImageSection, { backgroundColor: colores.skeletonBadgeBg, height: 210, marginBottom: 12 }]} />
-            
-            {/* Bloques de líneas simulando los textos (estilo YouTube) */}
+        <Animated.View style={[styles.homeCardContainer, animatedStyle, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={[styles.homeImageSection, { backgroundColor: isDark ? '#2C2C2E' : '#EFECE6', height: 210, marginBottom: 12 }]} />
             <View style={{ gap: 8 }}>
-                <View style={[styles.skeletonLine, { backgroundColor: colores.skeletonBadgeBg, width: '85%', height: 18, borderRadius: 6 }]} />
-                <View style={[styles.skeletonLine, { backgroundColor: colores.skeletonBadgeBg, width: '60%', height: 14, borderRadius: 6 }]} />
-                <View style={[styles.skeletonLine, { backgroundColor: colores.skeletonBadgeBg, width: '40%', height: 12, borderRadius: 6, marginTop: 4 }]} />
+                <View style={[styles.skeletonLine, { backgroundColor: isDark ? '#2C2C2E' : '#EFECE6', width: '85%', height: 18, borderRadius: 6 }]} />
+                <View style={[styles.skeletonLine, { backgroundColor: isDark ? '#2C2C2E' : '#EFECE6', width: '60%', height: 14, borderRadius: 6 }]} />
+                <View style={[styles.skeletonLine, { backgroundColor: isDark ? '#2C2C2E' : '#EFECE6', width: '40%', height: 12, borderRadius: 6, marginTop: 4 }]} />
             </View>
         </Animated.View>
     );
@@ -753,13 +767,13 @@ export default function LotesDashboardUI() {
     const { isDark } = useTheme();
 
     const colores = getColores(isDark);
+    const COLORS = isDark ? THEMES.dark : THEMES.light;
 
     const [statusPickerVisible, setStatusPickerVisible] = useState(false);
     const [loteSeleccionado, setLoteSeleccionado] = useState(null);
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Edición inline (nombre, provincia, cantón, estación, cultivo)
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [loteEditar, setLoteEditar] = useState(null);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -767,7 +781,6 @@ export default function LotesDashboardUI() {
     const horizontalScrollRef = useRef(null);
     const scrollY = useSharedValue(0);
 
-    // --- Header estilo Apple (mismo patrón que Home) ---
     const TOP_REVEAL_THRESHOLD = 12;
     const HIDE_DURATION = 160;
     const REVEAL_DURATION = 260;
@@ -838,7 +851,6 @@ export default function LotesDashboardUI() {
         return ESTILOS_STATUS[syncStatus] || ESTILOS_STATUS.borrador;
     };
 
-    // ---- Edición inline ----
     const handleOpenEdit = (lote) => {
         setLoteEditar(lote);
         setEditModalVisible(true);
@@ -848,8 +860,6 @@ export default function LotesDashboardUI() {
         if (!loteEditar) return;
         setIsSavingEdit(true);
         try {
-            // TODO: confirmar el nombre real de este método en tu lotesService.
-            // Debe aceptar (id, { nombre_lote, provincia, canton, estacion, cultivo })
             const result = await lotesService.actualizarLote(loteEditar.id, form);
             if (result && result.data) {
                 setEditModalVisible(false);
@@ -968,8 +978,14 @@ export default function LotesDashboardUI() {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: colores.bg }]}>
+        <View style={[styles.container, { backgroundColor: COLORS.fondo }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
+
+            {/* --- Círculos decorativos de fondo como en Home --- */}
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                <View style={[styles.bgCircleTopRight, { backgroundColor: COLORS.dorado, opacity: isDark ? 0.08 : 0.12 }]} />
+                <View style={[styles.bgCircleCenterLeft, { backgroundColor: COLORS.dorado, opacity: isDark ? 0.05 : 0.08 }]} />
+            </View>
 
             <StatusPickerModal
                 visible={statusPickerVisible}
@@ -993,7 +1009,7 @@ export default function LotesDashboardUI() {
                 colors={
                     isDark
                         ? ['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']
-                        : ['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0)']
+                        : ['rgba(250,246,238,0.95)', 'rgba(250,246,238,0.4)', 'rgba(250,246,238,0)']
                 }
                 style={[styles.statusBarScrim, { height: insets.top + 40 }]}
             />
@@ -1008,7 +1024,7 @@ export default function LotesDashboardUI() {
                         <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.counterGlassPill}>
                             <View
                                 style={[
-                                    StyleSheet.absoluteFillObject,
+                                    StyleSheet.absoluteFill,
                                     { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' },
                                 ]}
                             />
@@ -1020,7 +1036,7 @@ export default function LotesDashboardUI() {
                                 }
                                 start={{ x: 0.15, y: 0 }}
                                 end={{ x: 0.85, y: 1 }}
-                                style={StyleSheet.absoluteFillObject}
+                                style={StyleSheet.absoluteFill}
                             />
                             <View
                                 style={[
@@ -1046,47 +1062,47 @@ export default function LotesDashboardUI() {
                     <BlurView intensity={isDark ? 45 : 65} tint={isDark ? 'dark' : 'light'} style={styles.tabsGlassContainer}>
                         <View
                             style={[
-                                StyleSheet.absoluteFillObject,
-                            { backgroundColor: isDark ? 'rgba(20,20,22,0.30)' : 'rgba(255,255,255,0.35)' },
-                        ]}
-                    />
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
-                        {TABS.map((tab, index) => {
-                            const active = filtroEstado === tab;
-                            return (
-                                <TouchableOpacity
-                                    key={tab}
-                                    activeOpacity={0.7}
-                                    onPress={() => handleTabPress(tab, index)}
-                                    style={styles.filterTabTouchable}
-                                >
-                                    {active ? (
-                                        <BlurView intensity={isDark ? 60 : 85} tint={isDark ? 'dark' : 'light'} style={styles.filterTabActiveGlass}>
-                                            <View
-                                                style={[
-                                                    StyleSheet.absoluteFillObject,
-                                                    { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' },
-                                                ]}
-                                            />
-                                            <View
-                                                style={[
-                                                    styles.counterGlassBorder,
-                                                    { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' },
-                                                ]}
-                                            />
-                                            <Text style={[styles.filterTabText, { color: colores.textPrimary, fontWeight: '800' }]}>
-                                                {tab}
-                                            </Text>
-                                        </BlurView>
-                                    ) : (
-                                        <View style={styles.filterTabInactive}>
-                                            <Text style={[styles.filterTabText, { color: colores.textSecondary }]}>{tab}</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
+                                StyleSheet.absoluteFill,
+                                { backgroundColor: isDark ? 'rgba(20,20,22,0.30)' : 'rgba(255,255,255,0.35)' },
+                            ]}
+                        />
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
+                            {TABS.map((tab, index) => {
+                                const active = filtroEstado === tab;
+                                return (
+                                    <TouchableOpacity
+                                        key={tab}
+                                        activeOpacity={0.7}
+                                        onPress={() => handleTabPress(tab, index)}
+                                        style={styles.filterTabTouchable}
+                                    >
+                                        {active ? (
+                                            <BlurView intensity={isDark ? 60 : 85} tint={isDark ? 'dark' : 'light'} style={styles.filterTabActiveGlass}>
+                                                <View
+                                                    style={[
+                                                        StyleSheet.absoluteFill,
+                                                        { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' },
+                                                    ]}
+                                                />
+                                                <View
+                                                    style={[
+                                                        styles.counterGlassBorder,
+                                                        { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' },
+                                                    ]}
+                                                />
+                                                <Text style={[styles.filterTabText, { color: colores.textPrimary, fontWeight: '800' }]}>
+                                                    {tab}
+                                                </Text>
+                                            </BlurView>
+                                        ) : (
+                                            <View style={styles.filterTabInactive}>
+                                                <Text style={[styles.filterTabText, { color: colores.textSecondary }]}>{tab}</Text>
+                                            </View>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
                     </BlurView>
                 </Animated.View>
             </View>
@@ -1173,6 +1189,24 @@ const styles = StyleSheet.create({
     },
     retryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
 
+    // Círculos difuminados de fondo como en Home
+    bgCircleTopRight: {
+        position: 'absolute',
+        top: -60,
+        right: -80,
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+    },
+    bgCircleCenterLeft: {
+        position: 'absolute',
+        top: 220,
+        left: -100,
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+    },
+
     header: {
         position: 'absolute',
         top: 0,
@@ -1197,13 +1231,11 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         height: 40,
     },
-    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     headerHomeTitle: {
         fontSize: 36,
         fontWeight: '800',
         letterSpacing: -0.8,
     },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 
     counterGlassPill: {
         flexDirection: 'row',
@@ -1275,7 +1307,6 @@ const styles = StyleSheet.create({
     filterTabText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
 
     listContainer: { paddingHorizontal: 16, paddingBottom: 120, width: SCREEN_WIDTH },
-
     skeletonListContainer: { paddingHorizontal: 16, width: SCREEN_WIDTH },
     skeletonLine: {},
 
@@ -1291,7 +1322,6 @@ const styles = StyleSheet.create({
     emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8, letterSpacing: -0.5 },
     emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22, fontWeight: '400' },
 
-    // ---- Bottom sheet base (estado + edición) ----
     sheetContainer: {
         position: 'absolute',
         left: 0,
@@ -1336,7 +1366,6 @@ const styles = StyleSheet.create({
     sheetCancelBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center' },
     sheetCancelText: { fontSize: 17, fontWeight: '700' },
 
-    // ---- Modal de edición de lote ----
     editHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -1376,39 +1405,24 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-    // ---- Captura invisible del croquis de vértices ----
-    hiddenCaptureWrap: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: 320,
-        height: 240,
-        opacity: 0,
-        zIndex: -1,
-    },
-    hiddenCaptureInner: {
-        width: 320,
-        height: 240,
-    },
-
-    figmaCardContainer: {
-        marginBottom: 24,
-        borderRadius: 36,
-        padding: 16,
+    homeCardContainer: {
+        marginBottom: 20,
+        borderRadius: 24,
+        padding: 12,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 12 },
-        shadowOpacity: 0.1,
-        shadowRadius: 24,
-        elevation: 6,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.06,
+        shadowRadius: 16,
+        elevation: 4,
     },
-    figmaImageSection: {
-        height: 240,
-        borderRadius: 28,
-        padding: 16,
+    homeImageSection: {
+        height: 200,
+        borderRadius: 18,
+        padding: 12,
         overflow: 'hidden',
         justifyContent: 'space-between'
     },
-    figmaImageStyle: { borderRadius: 28 },
+    homeImageStyle: { borderRadius: 18 },
     verticesMapFill: {
         position: 'absolute',
         top: 0,
@@ -1421,79 +1435,78 @@ const styles = StyleSheet.create({
     imageOverlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.25)',
-        borderRadius: 28,
+        borderRadius: 18,
     },
-    figmaTopRow: {
+    homeTopRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         zIndex: 2,
     },
-    figmaPopularBadge: {
+    homePopularBadge: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 20,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 14,
         overflow: 'hidden',
     },
-    figmaPopularText: { color: '#111111', fontSize: 13, fontWeight: '700' },
-    figmaImageBottomRow: {
+    homePopularText: { fontSize: 12, fontWeight: '700' },
+    homeImageBottomRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-end',
         zIndex: 2,
     },
-    figmaTitleArea: { flex: 1, marginRight: 10 },
-    figmaCardTitle: { color: '#FFFFFF', fontSize: 19, fontWeight: '800', marginBottom: 4 },
-    figmaLocationWrapper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    figmaLocationText: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 13, fontWeight: '500' },
-    figmaStartRouteBtn: {
+    homeTitleArea: { flex: 1, marginRight: 8 },
+    homeCardTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '800', marginBottom: 2 },
+    homeLocationWrapper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    homeLocationText: { color: 'rgba(255, 255, 255, 0.9)', fontSize: 12, fontWeight: '500' },
+    homeActionBtn: {
         backgroundColor: '#FFFFFF',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 22,
+        paddingHorizontal: 12,
+        paddingVertical: 7,
+        borderRadius: 14,
         flexDirection: 'row',
         alignItems: 'center',
         gap: 4,
     },
-    figmaStartRouteText: { color: '#111111', fontSize: 13, fontWeight: '700' },
+    homeActionBtnText: { fontSize: 12, fontWeight: '700', color: '#111111' },
 
-    infoBottomSection: {
-        paddingTop: 12,
-        gap: 8,
+    homeInfoBottomSection: {
+        paddingTop: 10,
+        gap: 6,
     },
-    infoRowGrid: {
+    homeInfoRowGrid: {
         flexDirection: 'row',
-        gap: 8,
+        gap: 6,
     },
-    infoItem: {
+    homeInfoItem: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        backgroundColor: 'rgba(0,0,0,0.03)',
-        paddingVertical: 8,
-        paddingHorizontal: 10,
+        paddingVertical: 7,
+        paddingHorizontal: 8,
         borderRadius: 10,
     },
-    infoItemLabel: {
+    homeInfoItemLabel: {
         fontSize: 10,
-        fontWeight: '500',
-    },
-    infoItemValue: {
-        flex: 1,
-        fontSize: 11,
         fontWeight: '600',
-        textAlign: 'right',
+        textTransform: 'uppercase',
+        letterSpacing: 0.2,
+    },
+    homeInfoItemValue: {
+        fontSize: 12,
+        fontWeight: '700',
     },
 
     coordsRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 10,
-        borderRadius: 12,
-        gap: 8,
+        padding: 8,
+        borderRadius: 10,
+        gap: 6,
+        marginTop: 2,
     },
     coordItem: {
         flex: 1,
@@ -1509,13 +1522,13 @@ const styles = StyleSheet.create({
     },
     coordDivider: {
         width: 1,
-        height: 30,
+        height: 26,
         backgroundColor: 'rgba(128,128,128,0.2)',
     },
     miniMapContainer: {
-        width: 70,
-        height: 50,
-        borderRadius: 8,
+        width: 65,
+        height: 45,
+        borderRadius: 6,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
@@ -1525,13 +1538,14 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 12,
-        borderRadius: 12,
-        gap: 8,
+        padding: 10,
+        borderRadius: 10,
+        gap: 6,
+        marginTop: 2,
     },
     noVerticesText: {
         fontSize: 12,
         fontWeight: '500',
     },
-    statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
+    statusDot: { width: 7, height: 7, borderRadius: 3.5, marginRight: 5 },
 });

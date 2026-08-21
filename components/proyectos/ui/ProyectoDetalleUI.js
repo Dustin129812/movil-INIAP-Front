@@ -1,23 +1,23 @@
-import React, { useCallback, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    ScrollView,
-    TouchableOpacity,
-    ActivityIndicator,
-} from 'react-native';
-import { router } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { proyectosStyles } from './proyectosStyles';
+import { router } from 'expo-router';
+import { useCallback, useState } from 'react';
+import {
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import ColaboradoresModal from './ColaboradoresModal';
+import { proyectosStyles } from './proyectosStyles';
 
 const InfoItem = ({ icon, label, value }) => (
-    <View style={proyectosStyles.cardInfoItem}>
-        <MaterialCommunityIcons name={icon} size={16} color="#8E8E93" />
+    <View style={[proyectosStyles.cardInfoItem, styles.customCardInfoItem]}>
+        <MaterialCommunityIcons name={icon} size={16} color="#00875A" />
         <View>
             <Text style={proyectosStyles.cardInfoLabel}>{label}</Text>
-            <Text style={proyectosStyles.cardInfoValue}>{value || 'No especificado'}</Text>
+            <Text style={[proyectosStyles.cardInfoValue, styles.textDark]}>{value || 'No especificado'}</Text>
         </View>
     </View>
 );
@@ -37,21 +37,21 @@ const TimelineItem = ({ visita, index }) => {
     };
 
     return (
-        <View style={proyectosStyles.timelineItem}>
+        <View style={[proyectosStyles.timelineItem, styles.customCard]}>
             <View style={proyectosStyles.timelineDot} />
             <Text style={proyectosStyles.timelineDate}>{formatDate(visita.fecha_visita)}</Text>
-            <Text style={proyectosStyles.timelineTitle}>
+            <Text style={[proyectosStyles.timelineTitle, styles.textDark]}>
                 {visita.tecnico_nombre || 'Visita técnica'}
             </Text>
             {visita.observaciones && (
-                <Text style={proyectosStyles.timelineDescription} numberOfLines={2}>
+                <Text style={[proyectosStyles.timelineDescription, styles.textSecondary]} numberOfLines={2}>
                     {visita.observaciones}
                 </Text>
             )}
             {visita.recomendaciones && (
                 <View style={{ marginTop: 8, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: '#30D158' }}>
                     <Text style={{ fontSize: 12, color: '#30D158', fontWeight: '600' }}>Recomendaciones</Text>
-                    <Text style={proyectosStyles.timelineDescription} numberOfLines={2}>
+                    <Text style={[proyectosStyles.timelineDescription, styles.textSecondary]} numberOfLines={2}>
                         {visita.recomendaciones}
                     </Text>
                 </View>
@@ -62,11 +62,11 @@ const TimelineItem = ({ visita, index }) => {
 
 const EmptyTimeline = () => (
     <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-        <MaterialCommunityIcons name="calendar-blank-outline" size={48} color="#38383A" />
-        <Text style={{ color: '#636366', fontSize: 15, marginTop: 12, textAlign: 'center' }}>
+        <MaterialCommunityIcons name="calendar-blank-outline" size={48} color="#C7C7CC" />
+        <Text style={{ color: '#8E8E93', fontSize: 15, marginTop: 12, textAlign: 'center' }}>
             No hay visitas registradas
         </Text>
-        <Text style={{ color: '#48484A', fontSize: 13, marginTop: 4, textAlign: 'center' }}>
+        <Text style={{ color: '#AEAEB2', fontSize: 13, marginTop: 4, textAlign: 'center' }}>
             Agrega la primera visita de seguimiento
         </Text>
     </View>
@@ -93,16 +93,16 @@ export default function ProyectoDetalleUI({
 
     if (isLoading) {
         return (
-            <View style={[proyectosStyles.container, styles.centered]}>
-                <ActivityIndicator size="large" color="#0A84FF" />
+            <View style={[proyectosStyles.container, styles.centered, styles.screenBackground]}>
+                <ActivityIndicator size="large" color="#00875A" />
             </View>
         );
     }
 
     if (!proyecto) {
         return (
-            <View style={[proyectosStyles.container, styles.centered]}>
-                <MaterialCommunityIcons name="alert-circle-outline" size={64} color="#FF453A" />
+            <View style={[proyectosStyles.container, styles.centered, styles.screenBackground]}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={64} color="#FF3B30" />
                 <Text style={{ color: '#8E8E93', fontSize: 17, marginTop: 16 }}>
                     No se pudo cargar el proyecto
                 </Text>
@@ -111,17 +111,17 @@ export default function ProyectoDetalleUI({
     }
 
     return (
-        <ScrollView style={proyectosStyles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView style={[proyectosStyles.container, styles.screenBackground]} showsVerticalScrollIndicator={false}>
             <View style={proyectosStyles.header}>
-                <Text style={proyectosStyles.headerTitle}>{proyecto.titulo}</Text>
+                <Text style={[proyectosStyles.headerTitle, styles.textDark]}>{proyecto.titulo}</Text>
                 {proyecto.descripcion && (
-                    <Text style={[proyectosStyles.headerSubtitle, { marginTop: 8 }]}>
+                    <Text style={[proyectosStyles.headerSubtitle, styles.textSecondary, { marginTop: 8 }]}>
                         {proyecto.descripcion}
                     </Text>
                 )}
             </View>
 
-            <View style={proyectosStyles.card}>
+            <View style={[proyectosStyles.card, styles.customCard]}>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: '#8E8E93', marginBottom: 16, textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     Información del Proyecto
                 </Text>
@@ -136,9 +136,9 @@ export default function ProyectoDetalleUI({
                 </View>
 
                 {proyecto.tipo_acolchado && (
-                    <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#38383A' }}>
+                    <View style={{ marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#E5E5EA' }}>
                         <Text style={{ fontSize: 13, color: '#8E8E93' }}>
-                            <Text style={{ fontWeight: '600' }}>Acolchado: </Text>
+                            <Text style={{ fontWeight: '600', color: '#1C1C1E' }}>Acolchado: </Text>
                             {proyecto.tipo_acolchado}
                         </Text>
                     </View>
@@ -147,7 +147,7 @@ export default function ProyectoDetalleUI({
 
             <View style={styles.visitasSection}>
                 <View style={styles.visitasSectionHeader}>
-                    <Text style={styles.sectionTitle}>Visitas de Seguimiento</Text>
+                    <Text style={[styles.sectionTitle, styles.textDark]}>Visitas de Seguimiento</Text>
                     <TouchableOpacity style={styles.addButton} onPress={handleNuevaVisita}>
                         <MaterialCommunityIcons name="plus" size={20} color="#FFFFFF" />
                         <Text style={styles.addButtonText}>Nueva</Text>
@@ -177,14 +177,38 @@ export default function ProyectoDetalleUI({
 }
 
 const styles = StyleSheet.create({
+    screenBackground: {
+        backgroundColor: '#FAF6EE',
+    },
     centered: {
         justifyContent: 'center',
         alignItems: 'center',
     },
+    customCard: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: { ios: 0.05, android: 0.1 }[0],
+        shadowRadius: 8,
+        elevation: 2,
+    },
+    customCardInfoItem: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 12,
+        padding: 10,
+    },
+    textDark: {
+        color: '#1C1C1E',
+    },
+    textSecondary: {
+        color: '#636366',
+    },
     infoGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 16,
+        gap: 12,
     },
     visitasSection: {
         paddingHorizontal: 16,
@@ -199,12 +223,11 @@ const styles = StyleSheet.create({
     sectionTitle: {
         fontSize: 20,
         fontWeight: '700',
-        color: '#FFFFFF',
     },
     addButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#0A84FF',
+        backgroundColor: '#00875A',
         paddingHorizontal: 14,
         paddingVertical: 8,
         borderRadius: 20,

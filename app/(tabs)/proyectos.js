@@ -1,8 +1,7 @@
-import React from 'react';
-import { StyleSheet, View, StatusBar } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ListaProyectosUI } from '../../components/proyectos/ui';
 import { useListaProyectos } from '../../components/proyectos/hooks';
+import { ListaProyectosUI } from '../../components/proyectos/ui';
 import { useTheme } from '../../services/theme';
 
 export default function ProyectosTabScreen() {
