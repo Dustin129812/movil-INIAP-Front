@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core';
 
 export const SYNC_STATUS = {
     DRAFT: 'draft',
@@ -134,6 +134,11 @@ export const cultivos = sqliteTable('cultivos', {
     id: integer('id').primaryKey(),
     nombre: text('nombre').notNull(),
     nombre_cientifico: text('nombre_cientifico'),
+    descripcion: text('descripcion'),
+    estado: text('estado').default('activo'),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
 });
 
 export const variedades = sqliteTable('variedades', {
@@ -143,6 +148,123 @@ export const variedades = sqliteTable('variedades', {
     caracteristicas_base: text('caracteristicas_base'),
 });
 
+export const enfermedades = sqliteTable('enfermedades', {
+    id: integer('id').primaryKey(),
+    nombre: text('nombre').notNull(),
+    nombre_cientifico: text('nombre_cientifico'),
+    descripcion: text('descripcion'),
+    sintomas: text('sintomas'),
+    estado: text('estado').default('activo'),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
+});
+
+export const plagas = sqliteTable('plagas', {
+    id: integer('id').primaryKey(),
+    nombre: text('nombre').notNull(),
+    nombre_cientifico: text('nombre_cientifico'),
+    descripcion: text('descripcion'),
+    danos: text('danos'),
+    estado: text('estado').default('activo'),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
+});
+
+export const recomendaciones = sqliteTable('recomendaciones', {
+    id: integer('id').primaryKey(),
+    titulo: text('titulo').notNull(),
+    descripcion: text('descripcion'),
+    tipo: text('tipo').default('manejo'),
+    instrucciones: text('instrucciones'),
+    estado: text('estado').default('activo'),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
+});
+
+export const cultivoEnfermedad = sqliteTable(
+    'cultivo_enfermedad',
+    {
+        cultivo_id: integer('cultivo_id').notNull(),
+        enfermedad_id: integer('enfermedad_id').notNull(),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.cultivo_id,
+                tabla.enfermedad_id,
+            ],
+        }),
+    ]
+);
+
+export const cultivoPlaga = sqliteTable(
+    'cultivo_plaga',
+    {
+        cultivo_id: integer('cultivo_id').notNull(),
+        plaga_id: integer('plaga_id').notNull(),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.cultivo_id,
+                tabla.plaga_id,
+            ],
+        }),
+    ]
+);
+
+export const enfermedadRecomendacion = sqliteTable(
+    'enfermedad_recomendacion',
+    {
+        enfermedad_id: integer('enfermedad_id').notNull(),
+        recomendacion_id: integer('recomendacion_id').notNull(),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.enfermedad_id,
+                tabla.recomendacion_id,
+            ],
+        }),
+    ]
+);
+
+export const plagaRecomendacion = sqliteTable(
+    'plaga_recomendacion',
+    {
+        plaga_id: integer('plaga_id').notNull(),
+        recomendacion_id: integer('recomendacion_id').notNull(),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.plaga_id,
+                tabla.recomendacion_id,
+            ],
+        }),
+    ]
+);
+
+export const catalogosSyncControl = sqliteTable(
+    'catalogos_sync_control',
+    {
+        clave: text('clave').primaryKey(),
+        ultima_sincronizacion: text(
+            'ultima_sincronizacion'
+        ),
+        servidor_fecha: text('servidor_fecha'),
+        estado: text('estado').default('pendiente'),
+        ultimo_error: text('ultimo_error'),
+        updated_at: text('updated_at'),
+    }
+);
 // ============================================
 // CONFIGURACIÓN
 // ============================================

@@ -8,23 +8,26 @@ import Animated, {
     useSharedValue,
     useAnimatedStyle,
     useAnimatedScrollHandler,
-    withTiming,
-    withRepeat,
-    withDelay,
     cancelAnimation,
     Easing,
     interpolate,
     useAnimatedReaction,
+    withDelay,
+    withRepeat,
+    withTiming,
 } from 'react-native-reanimated';
-import Svg, { Path } from 'react-native-svg';
-import { useRouter } from 'expo-router';
-import { useTheme } from '../../../services/theme';
-import { useHomeDashboard } from '../hooks/useHomeDashboard';
-import NotificationsCenter from '../../notifications/ui/NotificationsCenter';
+import Svg, { Circle, Path } from 'react-native-svg';
 
-const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
+import { useTheme } from '../../../services/theme';
+import NotificationsCenter from '../../notifications/ui/NotificationsCenter';
+import { useHomeDashboard } from '../hooks/useHomeDashboard';
+import { useRouter } from 'expo-router';
+
+const AnimatedTouchable =
+    Animated.createAnimatedComponent(TouchableOpacity);
 
 const CALC_ROUTE = '/calculadora/calculadora';
+const CATALOGOS_ROUTE = '/catalogos';
 
 const REVEAL_DURATION = 260;
 const HIDE_DURATION = 160;
@@ -83,6 +86,7 @@ export default function HomeDashboard() {
     const router = useRouter();
     const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
+
     const {
         usuario,
         esInvitado,
@@ -118,16 +122,36 @@ export default function HomeDashboard() {
 
     const svgStyle1 = useAnimatedStyle(() => {
         const progress = anim1.value;
-        const left = interpolate(progress, [0, 0.3, 0.31, 0.35, 0.45, 1], [-32, -96, -96, 112, 112, -32]);
-        const opacity = interpolate(progress, [0, 0.3, 0.31, 0.35, 0.45, 1], [1, 1, 0, 0, 1, 1]);
-        return { left, opacity };
+
+        return {
+            left: interpolate(
+                progress,
+                [0, 0.3, 0.31, 0.35, 0.45, 1],
+                [-32, -96, -96, 112, 112, -32]
+            ),
+            opacity: interpolate(
+                progress,
+                [0, 0.3, 0.31, 0.35, 0.45, 1],
+                [1, 1, 0, 0, 1, 1]
+            ),
+        };
     });
 
     const svgStyle2 = useAnimatedStyle(() => {
         const progress = anim2.value;
-        const left = interpolate(progress, [0, 0.75, 0.76, 0.77, 0.8, 1], [80, -112, -112, 128, 128, 80]);
-        const opacity = interpolate(progress, [0, 0.75, 0.76, 0.77, 0.8, 1], [1, 1, 0, 0, 1, 1]);
-        return { left, opacity };
+
+        return {
+            left: interpolate(
+                progress,
+                [0, 0.75, 0.76, 0.77, 0.8, 1],
+                [80, -112, -112, 128, 128, 80]
+            ),
+            opacity: interpolate(
+                progress,
+                [0, 0.75, 0.76, 0.77, 0.8, 1],
+                [1, 1, 0, 0, 1, 1]
+            ),
+        };
     });
 
     // (Se quitó la animación de pulso: el componente de sincronizar ahora queda fijo)
@@ -138,12 +162,14 @@ export default function HomeDashboard() {
     const scrollTopPadding = headerContentHeight + 6;
 
     const scrollY = useSharedValue(0);
+
     const scrollHandler = useAnimatedScrollHandler({
         onScroll: (event) => { scrollY.value = event.contentOffset.y; },
     });
 
     const homeOpacity = useSharedValue(1);
     const homeTranslateY = useSharedValue(0);
+
     const notifOpacity = useSharedValue(1);
     const notifTranslateY = useSharedValue(0);
 
@@ -152,15 +178,57 @@ export default function HomeDashboard() {
         (isAtTop, wasAtTop) => {
             if (isAtTop === wasAtTop) return;
             if (isAtTop) {
-                notifOpacity.value = withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
-                notifTranslateY.value = withTiming(0, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) });
-                homeOpacity.value = withDelay(STAGGER, withTiming(1, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) }));
-                homeTranslateY.value = withDelay(STAGGER, withTiming(0, { duration: REVEAL_DURATION, easing: Easing.out(Easing.cubic) }));
+                notifOpacity.value = withTiming(1, {
+                    duration: REVEAL_DURATION,
+                    easing: Easing.out(Easing.cubic),
+                });
+
+                notifTranslateY.value = withTiming(0, {
+                    duration: REVEAL_DURATION,
+                    easing: Easing.out(Easing.cubic),
+                });
+
+                homeOpacity.value = withDelay(
+                    STAGGER,
+                    withTiming(1, {
+                        duration: REVEAL_DURATION,
+                        easing: Easing.out(Easing.cubic),
+                    })
+                );
+
+                homeTranslateY.value = withDelay(
+                    STAGGER,
+                    withTiming(0, {
+                        duration: REVEAL_DURATION,
+                        easing: Easing.out(Easing.cubic),
+                    })
+                );
             } else {
-                homeOpacity.value = withTiming(0, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) });
-                homeTranslateY.value = withTiming(-6, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) });
-                notifOpacity.value = withDelay(STAGGER, withTiming(0, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) }));
-                notifTranslateY.value = withDelay(STAGGER, withTiming(-6, { duration: HIDE_DURATION, easing: Easing.in(Easing.cubic) }));
+                homeOpacity.value = withTiming(0, {
+                    duration: HIDE_DURATION,
+                    easing: Easing.in(Easing.cubic),
+                });
+
+                homeTranslateY.value = withTiming(-6, {
+                    duration: HIDE_DURATION,
+                    easing: Easing.in(Easing.cubic),
+                });
+
+                notifOpacity.value = withDelay(
+                    STAGGER,
+                    withTiming(0, {
+                        duration: HIDE_DURATION,
+                        easing: Easing.in(Easing.cubic),
+                    })
+                );
+
+                notifTranslateY.value = withDelay(
+                    STAGGER,
+                    withTiming(-6, {
+                        duration: HIDE_DURATION,
+                        easing: Easing.in(Easing.cubic),
+                    })
+                );
             }
         },
         [TOP_REVEAL_THRESHOLD]
@@ -168,7 +236,11 @@ export default function HomeDashboard() {
 
     const homeTitleAnimatedStyle = useAnimatedStyle(() => ({
         opacity: homeOpacity.value,
-        transform: [{ translateY: homeTranslateY.value }],
+        transform: [
+            {
+                translateY: homeTranslateY.value,
+            },
+        ],
     }));
     const notifAnimatedStyle = useAnimatedStyle(() => ({
         opacity: notifOpacity.value,
@@ -188,11 +260,26 @@ export default function HomeDashboard() {
                 pointerEvents="none"
                 colors={
                     isDark
-                        ? ['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']
-                        : ['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0)']
+                        ? [
+                            'rgba(16,52,57,0.75)',
+                            'rgba(6,17,22,0.18)',
+                            'rgba(6,17,22,0)',
+                        ]
+                        : [
+                            'rgba(255,255,255,0.98)',
+                            'rgba(237,248,238,0.65)',
+                            'rgba(244,248,245,0)',
+                        ]
                 }
-                style={[styles.statusBarScrim, { height: insets.top + 40 }]}
+                style={[
+                    styles.statusBarScrim,
+                    {
+                        height: insets.top + 205,
+                    },
+                ]}
             />
+
+            {/* HEADER  */}
 
             {/* Header — igual al original: título "Home" + bandeja de notificaciones glass */}
             <View style={[styles.header, { paddingTop: insets.top + 2 }]}>
@@ -253,10 +340,17 @@ export default function HomeDashboard() {
                 </View>
             </View>
 
+            {/*CONTENIDO */}
+
             <Animated.ScrollView
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: scrollTopPadding }]}
+                contentContainerStyle={[
+                    styles.scrollContent,
+                    {
+                        paddingTop: scrollTopPadding,
+                    },
+                ]}
                 showsVerticalScrollIndicator={false}
             >
                 <Text style={[styles.welcomeSubtitle, { color: textSecondary }]}>
@@ -321,6 +415,29 @@ export default function HomeDashboard() {
                     </View>
                 </View>
 
+                {/* Tarjeta de Catálogos — verde claro, ícono + flecha de acceso */}
+                <View style={styles.featureCardWrapper}>
+                    <View style={[styles.featureCard, { backgroundColor: '#E8F5E9' }]}>
+                        <View style={[styles.featureIconBox, { backgroundColor: '#C8E6C9' }]}>
+                            <MaterialCommunityIcons name="book-open-outline" size={22} color="#2E7D32" />
+                        </View>
+
+                        <View style={styles.featureLabelRow}>
+                            <Text style={[styles.featureTitle, { color: '#1B5E20' }]}>Catálogos</Text>
+                            <Text style={[styles.featureSubtitle, { color: '#4CAF50' }]}>Cultivos, plagas y más</Text>
+                        </View>
+
+                        <TouchableOpacity
+                            activeOpacity={0.85}
+                            onPress={() => router.push(CATALOGOS_ROUTE)}
+                            style={[styles.featureArrowBtn, { backgroundColor: '#4CAF50' }]}
+                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                        >
+                            <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 {/* Tarjeta de estado — resumen de lotes y última revisión */}
                 <View style={[styles.stateCard, { backgroundColor: cardBg }]}>
                     <View style={{ flex: 1 }}>
@@ -378,13 +495,46 @@ export default function HomeDashboard() {
                 visible={isSyncModalVisible}
                 transparent
                 animationType="fade"
-                onRequestClose={() => setIsSyncModalVisible(false)}
+                onRequestClose={() =>
+                    setIsSyncModalVisible(false)
+                }
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.earthContainer}>
-                        <View style={styles.earthLoader}>
-                            <Animated.View style={[styles.earthSvgWrapper1, svgStyle1]}>
-                                <Svg height="100%" width="100%" viewBox="0 0 200 200">
+                <View
+                    style={
+                        styles.modalOverlay
+                    }
+                >
+                    <View
+                        style={[
+                            styles.earthContainer,
+                            {
+                                backgroundColor:
+                                    isDark
+                                        ? '#102020'
+                                        : '#FFFFFF',
+                                borderColor:
+                                    isDark
+                                        ? '#28513D'
+                                        : '#E4ECE7',
+                            },
+                        ]}
+                    >
+                        <View
+                            style={
+                                styles.earthLoader
+                            }
+                        >
+                            <Animated.View
+                                style={[
+                                    styles.earthSvgWrapper1,
+                                    svgStyle1,
+                                ]}
+                            >
+                                <Svg
+                                    height="100%"
+                                    width="100%"
+                                    viewBox="0 0 200 200"
+                                >
                                     <Path
                                         transform="translate(100 100)"
                                         d="M29.4,-17.4C33.1,1.8,27.6,16.1,11.5,31.6C-4.7,47,-31.5,63.6,-43,56C-54.5,48.4,-50.7,16.6,-41,-10.9C-31.3,-38.4,-15.6,-61.5,-1.4,-61C12.8,-60.5,25.7,-36.5,29.4,-17.4Z"
@@ -392,8 +542,18 @@ export default function HomeDashboard() {
                                     />
                                 </Svg>
                             </Animated.View>
-                            <Animated.View style={[styles.earthSvgWrapper2, svgStyle2]}>
-                                <Svg height="100%" width="100%" viewBox="0 0 200 200">
+
+                            <Animated.View
+                                style={[
+                                    styles.earthSvgWrapper2,
+                                    svgStyle2,
+                                ]}
+                            >
+                                <Svg
+                                    height="100%"
+                                    width="100%"
+                                    viewBox="0 0 200 200"
+                                >
                                     <Path
                                         transform="translate(100 100)"
                                         d="M31.7,-55.8C40.3,-50,45.9,-39.9,49.7,-29.8C53.5,-19.8,55.5,-9.9,53.1,-1.4C50.6,7.1,43.6,14.1,41.8,27.6C40.1,41.1,43.4,61.1,37.3,67C31.2,72.9,15.6,64.8,1.5,62.2C-12.5,59.5,-25,62.3,-31.8,56.7C-38.5,51.1,-39.4,37.2,-49.3,26.3C-59.1,15.5,-78,7.7,-77.6,0.2C-77.2,-7.2,-57.4,-14.5,-49.3,-28.4C-41.2,-42.4,-44.7,-63,-38.5,-70.1C-32.2,-77.2,-16.1,-70.8,-2.3,-66.9C11.6,-63,23.1,-61.5,31.7,-55.8Z"
@@ -402,8 +562,20 @@ export default function HomeDashboard() {
                                 </Svg>
                             </Animated.View>
                         </View>
-                        <Text style={styles.earthText}>
-                            {isSyncing ? 'Sincronizando...' : (syncMessage ? syncMessage.text : 'Listo')}
+
+                        <Text
+                            style={[
+                                styles.earthText,
+                                {
+                                    color: textPrimary,
+                                },
+                            ]}
+                        >
+                            {isSyncing
+                                ? 'Sincronizando...'
+                                : syncMessage
+                                    ? syncMessage.text
+                                    : 'Listo'}
                         </Text>
                         {syncMessage && !isSyncing && (
                             <TouchableOpacity
@@ -418,16 +590,30 @@ export default function HomeDashboard() {
                                 style={styles.closeSyncBtn}
                                 onPress={() => setIsSyncModalVisible(false)}
                             >
-                                <Text style={styles.closeSyncBtnText}>Cancelar</Text>
+                                <Text
+                                    style={
+                                        styles.closeSyncBtnText
+                                    }
+                                >
+                                    Cancelar
+                                </Text>
                             </TouchableOpacity>
                         )}
                     </View>
                 </View>
             </Modal>
 
+            {/*NOTIFICACIONES */}
+
             <NotificationsCenter
-                visible={isNotificationsVisible}
-                onClose={() => setIsNotificationsVisible(false)}
+                visible={
+                    isNotificationsVisible
+                }
+                onClose={() =>
+                    setIsNotificationsVisible(
+                        false
+                    )
+                }
                 isDark={isDark}
                 isSyncing={isSyncing}
                 syncMessage={syncMessage}
@@ -438,6 +624,8 @@ export default function HomeDashboard() {
     );
 }
 
+/* ESTILOS */
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -446,15 +634,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingBottom: 100,
     },
-    header: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 20,
-        paddingBottom: 10,
-        paddingHorizontal: 16,
-    },
+
     statusBarScrim: {
         position: 'absolute',
         top: 0,
@@ -462,24 +642,41 @@ const styles = StyleSheet.create({
         right: 0,
         zIndex: 15,
     },
+
+    header: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 20,
+        paddingBottom: 10,
+        paddingHorizontal: 20,
+    },
+
     headerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
     headerHomeTitle: {
-        fontSize: 34,
+        fontSize: 30,
         fontWeight: '800',
-        letterSpacing: -0.9,
+        letterSpacing: -1.2,
+        lineHeight: 35,
     },
+
     notifTouchable: {
-        borderRadius: 27,
+        borderRadius: 28,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.16,
+        shadowOffset: {
+            width: 0,
+            height: 7,
+        },
+        shadowOpacity: 0.12,
         shadowRadius: 14,
-        elevation: 6,
+        elevation: 5,
     },
+
     notifPill: {
         width: 54,
         height: 54,
@@ -488,36 +685,73 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         overflow: 'hidden',
     },
-    notifSpecular: {
-        position: 'absolute',
-        top: 4,
-        left: 9,
-        width: 20,
-        height: 9,
-        borderRadius: 10,
-        transform: [{ rotate: '-18deg' }],
-    },
+
     notifGlassBorder: {
         ...StyleSheet.absoluteFillObject,
         borderRadius: 27,
-        borderWidth: 1.25,
+        borderWidth: 1,
     },
+
     notifBadge: {
         position: 'absolute',
-        top: 6,
-        right: 6,
+        top: 5,
+        right: 5,
         backgroundColor: '#FF9500',
         borderRadius: 10,
-        minWidth: 20,
-        height: 20,
+        minWidth: 19,
+        height: 19,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 6,
+        paddingHorizontal: 5,
     },
+
     notifBadgeText: {
         color: '#FFFFFF',
-        fontSize: 11,
-        fontWeight: '700',
+        fontSize: 10,
+        fontWeight: '800',
+    },
+
+    /* INTRO */
+
+    introBlock: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        justifyContent: 'space-between',
+        minHeight: 180,
+        paddingTop: 4,
+        paddingLeft: 4,
+        paddingRight: 0,
+        marginBottom: 12,
+        position: 'relative',
+    },
+
+    introTextCol: {
+        flex: 1,
+        paddingRight: 8,
+        paddingBottom: 6,
+    },
+
+    introHello: {
+        fontSize: 30,
+        fontWeight: '800',
+        letterSpacing: -1.0,
+        lineHeight: 36,
+    },
+
+    introName: {
+        fontSize: 30,
+        fontWeight: '800',
+        letterSpacing: -0.8,
+        lineHeight: 36,
+        marginTop: -2,
+    },
+
+    introDescription: {
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '500',
+        maxWidth: 200,
+        marginTop: 8,
     },
     welcomeSubtitle: {
         fontSize: 14,
@@ -812,62 +1046,91 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginLeft: 8,
     },
+
+    /* MODAL */
+
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.75)',
+        backgroundColor: 'rgba(0,0,0,0.72)',
         justifyContent: 'center',
         alignItems: 'center',
     },
+
     earthContainer: {
+        width: 245,
+        minHeight: 245,
+        borderRadius: 26,
+        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
+        padding: 24,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 10,
+        },
+        shadowOpacity: 0.28,
+        shadowRadius: 25,
+        elevation: 10,
     },
+
     earthLoader: {
         width: 120,
         height: 120,
-        backgroundColor: '#3344c1',
+        backgroundColor: '#3344C1',
         position: 'relative',
         overflow: 'hidden',
         borderRadius: 60,
         borderWidth: 2,
-        borderColor: 'white',
+        borderColor: '#FFFFFF',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
         shadowOpacity: 0.3,
         shadowRadius: 5,
         elevation: 10,
         justifyContent: 'center',
         alignItems: 'center',
     },
+
     earthSvgWrapper1: {
         position: 'absolute',
         bottom: -32,
         width: 112,
         height: 112,
     },
+
     earthSvgWrapper2: {
         position: 'absolute',
         top: -48,
         width: 112,
         height: 112,
     },
+
     earthText: {
-        color: 'white',
         marginTop: 16,
-        fontSize: 18,
-        fontFamily: Platform.OS === 'ios' ? 'Gill Sans' : 'sans-serif',
-        fontWeight: '600',
+        fontSize: 17,
+        fontFamily:
+            Platform.OS === 'ios'
+                ? 'Gill Sans'
+                : 'sans-serif',
+        fontWeight: '700',
+        textAlign: 'center',
     },
+
     closeSyncBtn: {
         marginTop: 24,
         backgroundColor: '#386641',
         paddingHorizontal: 20,
         paddingVertical: 10,
-        borderRadius: 8,
+        borderRadius: 10,
     },
+
     closeSyncBtnText: {
         color: '#FFFFFF',
-        fontWeight: '700',
+        fontWeight: '800',
         fontSize: 14,
     },
 });

@@ -254,6 +254,10 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId, onSel
 
   const handleAgregarSeleccionados = useCallback(async () => {
     if (!seleccionados.length) return;
+    if (!proyectoId) {
+      Alert.alert('Error', 'No hay proyecto seleccionado');
+      return;
+    }
 
     const userIds = seleccionados.map((u) => u.id);
     const resultado = await agregarColaboradores(userIds);
@@ -267,7 +271,7 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId, onSel
     } else {
       Alert.alert('Error', resultado.message || 'No se pudieron agregar los colaboradores');
     }
-  }, [seleccionados, agregarColaboradores, cerrarPanel, notifyColaboradorAgregado]);
+  }, [seleccionados, agregarColaboradores, cerrarPanel, notifyColaboradorAgregado, proyectoId]);
 
   const handleEliminar = useCallback(async (userId) => {
     Alert.alert(

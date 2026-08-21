@@ -1,22 +1,16 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import {
   StyleSheet,
+  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
-  useWindowDimensions,
   View,
 } from "react-native";
 
 import { COLORS_CALC, getCalcColors } from "../colors";
 import { FERTILIZANTES, PESO_SACO_KG } from "../fertilizantes";
 import { NUTRIENTES } from "../nutrientes";
-
-const obtenerColumnas = (ancho) => {
-  if (ancho < 540) return 1;
-  if (ancho < 980) return 2;
-  return 3;
-};
 
 function TextoComposicion({ composicion, textSecondary }) {
   return (
@@ -34,10 +28,8 @@ export function ListaFertilizantes({
   limpiarCantidades,
   isDark,
 }) {
-  const { width } = useWindowDimensions();
-  const columnas = obtenerColumnas(width);
-  const cardWidth = columnas === 1 ? "100%" : `${100 / columnas - 2}%`;
   const colors = getCalcColors(isDark);
+  const seleccionados = Object.values(sacosPorHectarea).filter((valor) => Number(String(valor).replace(",", ".")) > 0).length;
 
   return (
     <View style={[styles.card, {
@@ -60,6 +52,7 @@ export function ListaFertilizantes({
             Ingrese los sacos de {PESO_SACO_KG} kg por hectárea
           </Text>
         </View>
+        <View style={[styles.contador, { backgroundColor: colors.macroTint }]}><Text style={[styles.contadorTexto, { color: colors.macroBorder }]}>{seleccionados} elegidos</Text></View>
       </View>
 
       <TouchableOpacity
@@ -75,12 +68,12 @@ export function ListaFertilizantes({
         <Text style={[styles.limpiarBtnText, { color: colors.macroBorder }]}>Limpiar cantidades</Text>
       </TouchableOpacity>
 
-      <View style={styles.grid}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.grid} snapToInterval={264} decelerationRate="fast">
         {FERTILIZANTES.map((fertilizante) => (
           <View
             key={fertilizante.id}
             style={[styles.fertCard, {
-              width: cardWidth,
+              width: 252,
               backgroundColor: colors.subCardBg,
               borderColor: colors.dividerColor,
             }]}
@@ -127,7 +120,7 @@ export function ListaFertilizantes({
             </View>
           </View>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -179,8 +172,7 @@ const styles = StyleSheet.create({
   },
   grid: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+    paddingRight: 4,
   },
   fertCard: {
     minWidth: 230,
@@ -188,6 +180,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: 12,
     marginBottom: 12,
+    marginRight: 12,
   },
   fertHeader: {
     flexDirection: "row",
@@ -247,4 +240,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "900",
   },
+  contador: { borderRadius: 12, paddingHorizontal: 9, paddingVertical: 6 },
+  contadorTexto: { fontSize: 10, fontWeight: "900" },
 });

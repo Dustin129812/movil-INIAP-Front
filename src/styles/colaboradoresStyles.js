@@ -142,6 +142,60 @@ export const colaboradoresStyles = StyleSheet.create({
   divider: { height: 1, backgroundColor: '#F2F2F7' },
   dividerDark: { backgroundColor: '#2C2C2E' },
 
+  // --- CARD DISABLED ---
+  cardDisabled: {
+    opacity: 0.6,
+  },
+
+  // --- ROW DISABLED ---
+  rowDisabled: {
+    opacity: 0.7,
+  },
+  rowNombreDisabled: {
+    color: '#8E8E93',
+  },
+
+  // --- PENDING BADGE ---
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  pendingBadgeText: {
+    fontSize: 11,
+    color: '#FF9500',
+    fontWeight: '500',
+  },
+
+  // --- LEGEND (estado info) ---
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  legendText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF9500',
+  },
+  legendTextDark: {
+    color: '#FFB340',
+  },
+  legendSubtext: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 4,
+  },
+  legendSubtextDark: {
+    color: '#98989F',
+  },
+
   // --- EMPTY STATE ---
   empty: {
     alignItems: 'center',

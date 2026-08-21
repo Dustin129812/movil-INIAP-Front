@@ -10,49 +10,43 @@ import { fetchApi } from '../api/apiClient';
 /**
  * Construye el payload anidado de sincronización.
  * El backend espera: { lotes: [{ proyectos: [{ ciclos: [{ visitas: [{ hojas_datos: [] }] }] }] }] }
+ *
+ * NOTA: Incluye tanto DRAFT como PENDING para asegurar que todos los
+ * registros pendientes se sincronicen. Los DRAFT se marcan como PENDING
+ * antes de incluirse en el payload.
  */
 const construirPayloadSync = async () => {
-    // Obtener todos los pendientes (db.select devuelve un array completo, no destructuring)
-    const lotesPendientes = await db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING));
-    const proyectosPendientes = await db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING));
-    const ciclosPendientes = await db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING));
-    const visitasPendientes = await db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING));
-    const hojasPendientes = await db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING));
+    // Obtener DRAFT y PENDING por separado
+    const [lotesDraft, lotesPending] = await Promise.all([
+        db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.DRAFT)),
+        db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING)),
+    ]);
+    const [proyectosDraft, proyectosPending] = await Promise.all([
+        db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.DRAFT)),
+        db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING)),
+    ]);
+    const [ciclosDraft, ciclosPending] = await Promise.all([
+        db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.DRAFT)),
+        db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING)),
+    ]);
+    const [visitasDraft, visitasPending] = await Promise.all([
+        db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.DRAFT)),
+        db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING)),
+    ]);
+    const [hojasDraft, hojasPending] = await Promise.all([
+        db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.DRAFT)),
+        db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING)),
+    ]);
 
-    const allLotes = Array.isArray(lotesPendientes) ? lotesPendientes : [];
-    const allProyectos = Array.isArray(proyectosPendientes) ? proyectosPendientes : [];
-    const allCiclos = Array.isArray(ciclosPendientes) ? ciclosPendientes : [];
-    const allVisitas = Array.isArray(visitasPendientes) ? visitasPendientes : [];
-    const allHojas = Array.isArray(hojasPendientes) ? hojasPendientes : [];
+    // Combinar DRAFT + PENDING
+    const allLotes = [...(lotesDraft || []), ...(lotesPending || [])];
+    const allProyectos = [...(proyectosDraft || []), ...(proyectosPending || [])];
+    const allCiclos = [...(ciclosDraft || []), ...(ciclosPending || [])];
+    const allVisitas = [...(visitasDraft || []), ...(visitasPending || [])];
+    const allHojas = [...(hojasDraft || []), ...(hojasPending || [])];
 
-    // Indexar por uuid_movil para buscar rápido
-    const hojasByVisitaUuid = {};
-    allHojas.forEach(h => {
-        if (h.visita_id) {
-            if (!hojasByVisitaUuid[h.visita_id]) hojasByVisitaUuid[h.visita_id] = [];
-            hojasByVisitaUuid[h.visita_id].push(h);
-        }
-    });
-
-    const visitasByCicloUuid = {};
-    allVisitas.forEach(v => {
-        if (v.ciclo_id) {
-            if (!visitasByCicloUuid[v.ciclo_id]) visitasByCicloUuid[v.ciclo_id] = [];
-            visitasByCicloUuid[v.ciclo_id].push(v);
-        }
-    });
-
-    const ciclosByProyectoUuid = {};
-    allCiclos.forEach(c => {
-        if (c.proyecto_id) {
-            if (!ciclosByProyectoUuid[c.proyecto_id]) ciclosByProyectoUuid[c.proyecto_id] = [];
-            ciclosByProyectoUuid[c.proyecto_id].push(c);
-        }
-    });
-
-    // Los proyectos del frontend usan 'lote_id' (integer), no uuid de lote
-    // Necesitamos buscar el uuid del lote asociado al proyecto
-    // Para hacerlo simple: agrupar proyectos por lote_uuid cuando sea posible
+    // Los proyectos del frontend usan 'lote_uuid', no lote_id
+    // Agrupar proyectos por lote_uuid cuando sea posible
     // El lote local tiene uuid_movil - los proyectos tienen lote_uuid (referencia al uuid_movil del lote)
     const lotesFlat = [];
 
@@ -111,7 +105,21 @@ const construirPayloadSync = async () => {
                 titulo: proyecto.titulo || 'Proyecto',
                 descripcion: proyecto.descripcion || '',
                 variedad: proyecto.variedad || 'Sin variedad',
-                fecha_siembra: proyecto.fecha_siembra || null,
+                // Validar fecha: solo enviar si es una fecha válida YYYY-MM-DD
+                fecha_siembra: (() => {
+                    const fs = proyecto.fecha_siembra;
+                    if (!fs) return null;
+                    // Si ya es string YYYY-MM-DD válido, retornar
+                    if (typeof fs === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fs)) {
+                        return fs;
+                    }
+                    // Si es fecha ISO u otro formato, intentar parsear
+                    const date = new Date(fs);
+                    if (!isNaN(date.getTime())) {
+                        return date.toISOString().split('T')[0];
+                    }
+                    return null;
+                })(),
                 tipo_acolchado: proyecto.tipo_acolchado || null,
                 tipo_ensayo: proyecto.tipo_ensayo || null,
                 diseno_experimental: proyecto.diseno_experimental || null,
@@ -127,7 +135,17 @@ const construirPayloadSync = async () => {
             uuid_movil: loteUuid,
             nombre_lote: lote.nombre_lote || 'Lote',
             ubicacion_manual: lote.ubicacion_manual || '',
-            coordenadas: lote.coordenadas || [],
+            // Parsear coordenadas de vuelta a array (SQLite guarda como JSON string)
+            coordenadas: (() => {
+                if (!lote.coordenadas) return [];
+                if (Array.isArray(lote.coordenadas)) return lote.coordenadas;
+                try {
+                    const parsed = JSON.parse(lote.coordenadas);
+                    return Array.isArray(parsed) ? parsed : [];
+                } catch {
+                    return [];
+                }
+            })(),
             province_id: lote.provincia_id || 1,
             canton_id: lote.canton_id || 1,
             location_id: lote.estacion_id || null,
@@ -152,19 +170,26 @@ const construirPayloadSync = async () => {
  */
 export const obtenerConteoPendientes = async () => {
     try {
-        // db.select() devuelve un array completo, no un elemento individual
-        const lotesP = await db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING));
-        const proyectosP = await db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING));
-        const ciclosP = await db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING));
-        const visitasP = await db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING));
-        const hojasP = await db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING));
+        // Contar tanto DRAFT como PENDING
+        const [lotesD, lotesP, proyectosD, proyectosP, ciclosD, ciclosP, visitasD, visitasP, hojasD, hojasP] = await Promise.all([
+            db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.DRAFT)),
+            db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING)),
+            db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.DRAFT)),
+            db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING)),
+            db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.DRAFT)),
+            db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.PENDING)),
+            db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.DRAFT)),
+            db.select().from(visitas).where(eq(visitas.sync_status, SYNC_STATUS.PENDING)),
+            db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.DRAFT)),
+            db.select().from(hojas_datos).where(eq(hojas_datos.sync_status, SYNC_STATUS.PENDING)),
+        ]);
 
         const counts = {
-            lotes: Array.isArray(lotesP) ? lotesP.length : 0,
-            proyectos: Array.isArray(proyectosP) ? proyectosP.length : 0,
-            ciclos: Array.isArray(ciclosP) ? ciclosP.length : 0,
-            visitas: Array.isArray(visitasP) ? visitasP.length : 0,
-            hojas: Array.isArray(hojasP) ? hojasP.length : 0,
+            lotes: (lotesD?.length || 0) + (lotesP?.length || 0),
+            proyectos: (proyectosD?.length || 0) + (proyectosP?.length || 0),
+            ciclos: (ciclosD?.length || 0) + (ciclosP?.length || 0),
+            visitas: (visitasD?.length || 0) + (visitasP?.length || 0),
+            hojas: (hojasD?.length || 0) + (hojasP?.length || 0),
         };
         // Solo lotes + proyectos + visitas, para que coincida con la UI
         counts.total = counts.lotes + counts.proyectos + counts.visitas;
@@ -207,7 +232,29 @@ export const syncEngine = async () => {
         });
 
         if (!response.ok) {
-            throw new Error(`Error del servidor: ${response.status}`);
+            let errorDetail = `Error del servidor: ${response.status}`;
+            try {
+                const errorBody = await response.text();
+                console.log('[SyncEngine] Error 422 response body:', errorBody);
+                // Try to parse as JSON for structured errors
+                try {
+                    const errorJson = JSON.parse(errorBody);
+                    if (errorJson.message) {
+                        errorDetail = errorJson.message;
+                    }
+                    if (errorJson.errors) {
+                        errorDetail += ' | ' + JSON.stringify(errorJson.errors);
+                    }
+                } catch {
+                    // Not JSON, use raw text
+                    if (errorBody) {
+                        errorDetail = `Error ${response.status}: ${errorBody.substring(0, 500)}`;
+                    }
+                }
+            } catch (e) {
+                // Couldn't read error body
+            }
+            throw new Error(errorDetail);
         }
 
         const jsonResponse = await response.json();

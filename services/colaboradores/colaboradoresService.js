@@ -28,7 +28,6 @@ export const colaboradoresService = {
       });
 
       if (!respuesta.ok) {
-        // console removed
         return [];
       }
 
@@ -55,7 +54,9 @@ export const colaboradoresService = {
 
       const datos = await respuesta.json();
 
-      if (respuesta.ok && datos.success) {
+      // Aceptar como éxito: status 2xx con success:true, o cualquier 2xx con data (por si el backend no envuelve en success)
+      const esExito = respuesta.ok && (datos.success === true || (respuesta.status >= 200 && respuesta.status < 300 && datos.data !== undefined));
+      if (esExito) {
         return { success: true, data: datos.data };
       }
       return { success: false, message: datos.message || 'Error al agregar colaboradores' };

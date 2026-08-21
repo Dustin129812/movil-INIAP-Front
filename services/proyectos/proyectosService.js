@@ -28,7 +28,6 @@ export const proyectosService = {
       });
 
       if (!respuesta.ok) {
-        // console removed
         return null;
       }
 
@@ -40,7 +39,6 @@ export const proyectosService = {
       if (datos.result) return datos.result;
       return datos;
     } catch (error) {
-      // console removed
       return [];
     }
   },

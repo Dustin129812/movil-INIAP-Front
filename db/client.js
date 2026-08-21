@@ -18,6 +18,7 @@ export const initDb = async () => {
     try {
         await expoDb.execAsync(`
             PRAGMA journal_mode = WAL;
+            PRAGMA foreign_keys = ON;
 
             CREATE TABLE IF NOT EXISTS lotes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -135,7 +136,12 @@ export const initDb = async () => {
             CREATE TABLE IF NOT EXISTS cultivos (
                 id INTEGER PRIMARY KEY,
                 nombre TEXT NOT NULL,
-                nombre_cientifico TEXT
+                nombre_cientifico TEXT,
+                descripcion TEXT,
+                estado TEXT DEFAULT 'activo',
+                created_at TEXT,
+                updated_at TEXT,
+                deleted_at TEXT
             );
 
             CREATE TABLE IF NOT EXISTS variedades (
@@ -145,6 +151,111 @@ export const initDb = async () => {
                 caracteristicas_base TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS enfermedades (
+                id INTEGER PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                nombre_cientifico TEXT,
+                descripcion TEXT,
+                sintomas TEXT,
+                estado TEXT DEFAULT 'activo',
+                created_at TEXT,
+                updated_at TEXT,
+                deleted_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS plagas (
+                id INTEGER PRIMARY KEY,
+                nombre TEXT NOT NULL,
+                nombre_cientifico TEXT,
+                descripcion TEXT,
+                danos TEXT,
+                estado TEXT DEFAULT 'activo',
+                created_at TEXT,
+                updated_at TEXT,
+                deleted_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS recomendaciones (
+                id INTEGER PRIMARY KEY,
+                titulo TEXT NOT NULL,
+                descripcion TEXT NOT NULL,
+                tipo TEXT DEFAULT 'manejo',
+                instrucciones TEXT,
+                estado TEXT DEFAULT 'activo',
+                created_at TEXT,
+                updated_at TEXT,
+                deleted_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS cultivo_enfermedad (
+                cultivo_id INTEGER NOT NULL,
+                enfermedad_id INTEGER NOT NULL,
+                updated_at TEXT,
+                PRIMARY KEY (cultivo_id, enfermedad_id),
+                FOREIGN KEY (cultivo_id)
+                    REFERENCES cultivos(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (enfermedad_id)
+                    REFERENCES enfermedades(id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS cultivo_plaga (
+                cultivo_id INTEGER NOT NULL,
+                plaga_id INTEGER NOT NULL,
+                updated_at TEXT,
+                PRIMARY KEY (cultivo_id, plaga_id),
+                FOREIGN KEY (cultivo_id)
+                    REFERENCES cultivos(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (plaga_id)
+                    REFERENCES plagas(id)
+                    ON DELETE CASCADE
+        );
+
+            CREATE TABLE IF NOT EXISTS enfermedad_recomendacion (
+                enfermedad_id INTEGER NOT NULL,
+                recomendacion_id INTEGER NOT NULL,
+                updated_at TEXT,
+                PRIMARY KEY (enfermedad_id, recomendacion_id),
+                FOREIGN KEY (enfermedad_id)
+                    REFERENCES enfermedades(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (recomendacion_id)
+                    REFERENCES recomendaciones(id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS plaga_recomendacion (
+                plaga_id INTEGER NOT NULL,
+                recomendacion_id INTEGER NOT NULL,
+                updated_at TEXT,
+                PRIMARY KEY (plaga_id, recomendacion_id),
+                FOREIGN KEY (plaga_id)
+                    REFERENCES plagas(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (recomendacion_id)
+                    REFERENCES recomendaciones(id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS catalogos_sync_control (
+                clave TEXT PRIMARY KEY,
+                ultima_sincronizacion TEXT,
+                servidor_fecha TEXT,
+                estado TEXT DEFAULT 'pendiente',
+                ultimo_error TEXT,
+                updated_at TEXT
+            );
+
+            INSERT OR IGNORE INTO catalogos_sync_control (
+                clave,
+                estado
+            ) VALUES (
+                'catalogos',
+                'pendiente'
+            );
+
             CREATE TABLE IF NOT EXISTS proyecto_lotes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 proyecto_uuid TEXT NOT NULL,
@@ -152,11 +263,59 @@ export const initDb = async () => {
                 sync_status TEXT DEFAULT 'draft',
                 created_at TEXT
             );
-        `);
 
+    `);
+    
         // Migración: agregar columnas UUID si no existen (para DB existentes)
         const migrarColumnas = async () => {
             try {
+                 
+            // MIGRACIÓN DEL CATÁLOGO DE CULTIVOS
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE cultivos
+                    ADD COLUMN descripcion TEXT;
+                `);
+            } catch (e) {
+                // La columna ya existe
+            }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE cultivos
+                    ADD COLUMN estado TEXT DEFAULT 'activo';
+                `);
+            } catch (e) {
+                // La columna ya existe
+            }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE cultivos
+                    ADD COLUMN created_at TEXT;
+                `);
+            } catch (e) {
+                // La columna ya existe
+            }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE cultivos
+                    ADD COLUMN updated_at TEXT;
+                `);
+            } catch (e) {
+                // La columna ya existe
+            }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE cultivos
+                    ADD COLUMN deleted_at TEXT;
+                `);
+            } catch (e) {
+                // La columna ya existe
+            }
+
                 // Proyectos
                 await expoDb.execAsync(`
                     ALTER TABLE proyectos ADD COLUMN lote_uuid TEXT;
