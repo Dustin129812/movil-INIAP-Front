@@ -1,9 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import localLotesService from '../lotes/localLotesService';
-import {sincronizarCatalogos} from '../catalogosSyncService';
+import { sincronizarCatalogos } from '../catalogosSyncService';
 import { useApi, verificarTokenAlIniciar } from '../api/useApi';
 import { useDeviceInfo } from '../device/useDeviceInfo';
-
 
 const AuthContext = createContext(undefined);
 
@@ -12,6 +11,7 @@ export function AuthProvider({ children }) {
   const [cargando, setCargando] = useState(true);
   const [cargandoLogin, setCargandoLogin] = useState(false);
   const [esInvitado, setEsInvitado] = useState(false);
+  const [videoEnded, setVideoEnded] = useState(false);
   const api = useApi();
   const { deviceInfo } = useDeviceInfo();
 
@@ -26,9 +26,8 @@ export function AuthProvider({ children }) {
     let hideTimeoutId;
     let mounted = true;
     let inicializacionCompleta = false;
-    
-    // ⏱️ Aumentado a 3.5 segundos para que la animación se luzca por completo al iniciar
-    const TIEMPO_MINIMO_CARGA = 3500; 
+
+    const TIEMPO_MINIMO_CARGA = 3500;
 
     function verificarOCultar() {
       if (mounted && inicializacionCompleta) {
@@ -45,19 +44,13 @@ export function AuthProvider({ children }) {
 
         if (mounted) {
           setUsuario(usuarioGuardado);
-          // Inicializar base de datos local si hay usuario autenticado
           if (usuarioGuardado || tieneAuth) {
             await localLotesService.inicializarBaseDatosLocal();
-            
-            const resultadoCatalogos = await sincronizarCatalogos ();
-
-            if (
-              !resultadoCatalogos.success &&
-              !resultadoCatalogos.offline 
-            ) {
+            const resultadoCatalogos = await sincronizarCatalogos();
+            if (!resultadoCatalogos.success && !resultadoCatalogos.offline) {
               console.warn('[Auth] No se pudo sincronizar catálogos:', resultadoCatalogos.message);
             }
-          } 
+          }
         }
       } catch (error) {
         if (mounted) {
@@ -71,7 +64,6 @@ export function AuthProvider({ children }) {
       }
     }
 
-    // Timeout de seguridad - 8 segundos máximo esperando carga
     timeoutId = setTimeout(() => {
       if (mounted) {
         inicializacionCompleta = true;
@@ -81,7 +73,6 @@ export function AuthProvider({ children }) {
 
     inicializarAuth();
 
-    // Tiempo mínimo de carga ampliado para apreciar la animación
     hideTimeoutId = setTimeout(() => {
       if (mounted) {
         inicializacionCompleta = true;
@@ -95,6 +86,15 @@ export function AuthProvider({ children }) {
       clearTimeout(hideTimeoutId);
     };
   }, []);
+
+  // Cuando el video termina, ocultar el splash
+  useEffect(() => {
+    if (videoEnded) {
+      setCargando(false);
+      setCargandoLogin(false);
+      setVideoEnded(false);
+    }
+  }, [videoEnded]);
 
   const login = useCallback(async (email, password) => {
     setCargandoLogin(true);
@@ -114,10 +114,11 @@ export function AuthProvider({ children }) {
         setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
         setEsInvitado(false);
         await localLotesService.inicializarBaseDatosLocal();
-        const resultadoCatalogos =
-        await sincronizarCatalogos();
-          if (!resultadoCatalogos.success && !resultadoCatalogos.offline) {console.warn('[Login] No se sincronizaron los catálogos:',resultadoCatalogos.message);}
-        await new Promise(resolve => setTimeout(resolve, 3000));//Tiempo de carga
+        const resultadoCatalogos = await sincronizarCatalogos();
+        if (!resultadoCatalogos.success && !resultadoCatalogos.offline) {
+          console.warn('[Login] No se sincronizaron catálogos:', resultadoCatalogos.message);
+        }
+        await new Promise(resolve => setTimeout(resolve, 10000));
         return { success: true };
       }
       return { success: false, message: respuesta.message };
@@ -126,7 +127,6 @@ export function AuthProvider({ children }) {
     }
   }, [deviceInfo, api]);
 
-  // También se usa para login con merge (device_uuid)
   const loginConMerge = useCallback(async (email, password, deviceUuid) => {
     setCargandoLogin(true);
     try {
@@ -141,20 +141,11 @@ export function AuthProvider({ children }) {
         setUsuario({ ID: respuesta.ID, NOMBRE: respuesta.NOMBRE, CORREO: respuesta.CORREO });
         setEsInvitado(false);
         await localLotesService.inicializarBaseDatosLocal();
-         const resultadoCatalogos =
-          await sincronizarCatalogos();
-
-          if (
-              !resultadoCatalogos.success &&
-              !resultadoCatalogos.offline
-          ) {
-              console.warn(
-                  '[LoginMerge] No se sincronizaron los catálogos:',
-                  resultadoCatalogos.message
-              );
-          }
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        // Retornar info de merge si la hay
+        const resultadoCatalogos = await sincronizarCatalogos();
+        if (!resultadoCatalogos.success && !resultadoCatalogos.offline) {
+          console.warn('[LoginMerge] No se sincronizaron catálogos:', resultadoCatalogos.message);
+        }
+        await new Promise(resolve => setTimeout(resolve, 10000));
         const datosReasignados = respuesta.datos_reasignados || 0;
         return { success: true, datosReasignados };
       }
@@ -178,24 +169,14 @@ export function AuthProvider({ children }) {
         });
         setEsInvitado(true);
         await localLotesService.inicializarBaseDatosLocal();
-        const resultadoCatalogos =
-        await sincronizarCatalogos();
-
-        if (
-        !resultadoCatalogos.success &&
-        !resultadoCatalogos.offline
-        ) {
-        console.warn(
-        '[LoginInvitado] No se sincronizaron los catálogos:',
-        resultadoCatalogos.message
-        );
+        const resultadoCatalogos = await sincronizarCatalogos();
+        if (!resultadoCatalogos.success && !resultadoCatalogos.offline) {
+          console.warn('[LoginInvitado] No se sincronizaron catálogos:', resultadoCatalogos.message);
         }
-        // Esperar un poco más para que se vea la animación
-        await new Promise(resolve => setTimeout(resolve, 3000));
+        await new Promise(resolve => setTimeout(resolve, 10000));
         return { success: true };
       }
-
-      return { success: false, message: respuesta.message || 'No se pudo iniciar sesión como invitado' };
+      return { success: false, message: respuesta.message || 'No se pudo iniciar como invitado' };
     } catch (error) {
       return { success: false, message: 'Error al iniciar como invitado' };
     } finally {
@@ -242,6 +223,7 @@ export function AuthProvider({ children }) {
         dispositivoId: deviceInfo.uuid,
         modelo: deviceInfo.modelo,
         sistemaOperativo: deviceInfo.sistemaOperativo,
+        setVideoEnded,
         login,
         loginConMerge,
         loginInvitado,

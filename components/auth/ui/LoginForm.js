@@ -1,24 +1,28 @@
-import React, { useState, useRef } from 'react';
+import { Feather } from '@expo/vector-icons';
+import { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
   Image,
   ImageBackground,
-  Animated,
-  Dimensions
+  Keyboard,
+  KeyboardAvoidingView,
+  PanResponder,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { useAuth } from '../hooks/useAuth';
 import { useDeviceInfo } from '../../../services/device';
+import { useAuth } from '../hooks/useAuth';
 
-const { width } = Dimensions.get('window');
+// Calculamos las dimensiones para hacer el diseño responsivo
+const { width, height } = Dimensions.get('window');
+const isSmallScreen = height < 700; // Detecta si es un teléfono pequeño
 
 // PALETA DE COLORES
 const COLORS = {
@@ -58,48 +62,74 @@ export default function LoginForm() {
   const [mostrarPassword, setMostrarPassword] = useState(false);
   const [cargandoInvitado, setCargandoInvitado] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   
   // Estados para animaciones
   const [isGuestMode, setIsGuestMode] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
-  // Valores Animados
+  // Valores Animados para el efecto "Scroll"
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
+  const isGuestModeRef = useRef(isGuestMode);
+  
+  useEffect(() => {
+    isGuestModeRef.current = isGuestMode;
+  }, [isGuestMode]);
 
-  const toggleViewMode = () => {
-    // Animación de salida
+  // Detector de Teclado
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const keyboardDidShowListener = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+    const keyboardDidHideListener = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+
+    return () => {
+      keyboardDidHideListener.remove();
+      keyboardDidShowListener.remove();
+    };
+  }, []);
+
+  const handleModeChange = (goToGuest) => {
+    if (goToGuest === isGuestModeRef.current) return;
+
+    Keyboard.dismiss(); 
+
+    const exitTranslateY = goToGuest ? -100 : 100; 
+    const enterTranslateY = goToGuest ? 100 : -100;
+
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: isGuestMode ? -15 : 15,
-        duration: 200,
-        useNativeDriver: true,
-      })
+      Animated.timing(fadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: exitTranslateY, duration: 200, useNativeDriver: true })
     ]).start(() => {
-      setIsGuestMode(!isGuestMode);
-      slideAnim.setValue(isGuestMode ? 15 : -15);
+      setIsGuestMode(goToGuest);
+      slideAnim.setValue(enterTranslateY);
       
-      // Animación de entrada
       Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        })
+        Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true })
       ]).start();
     });
   };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        return Math.abs(gestureState.dy) > 30 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        const currentlyGuest = isGuestModeRef.current;
+        if (gestureState.dy < -40 && !currentlyGuest) {
+          handleModeChange(true);
+        } else if (gestureState.dy > 40 && currentlyGuest) {
+          handleModeChange(false);
+        }
+      }
+    })
+  ).current;
 
   const handleInvitado = async () => {
     if (!deviceInfo.uuid) {
@@ -108,12 +138,7 @@ export default function LoginForm() {
     }
     setCargandoInvitado(true);
     try {
-      await handleLoginInvitado(
-        deviceInfo.uuid,
-        deviceInfo.modelo,
-        deviceInfo.sistemaOperativo,
-        deviceInfo.hardware
-      );
+      await handleLoginInvitado(deviceInfo.uuid, deviceInfo.modelo, deviceInfo.sistemaOperativo, deviceInfo.hardware);
     } catch (error) {
       Alert.alert('Error', 'Ocurrió un error al iniciar como invitado');
     } finally {
@@ -155,7 +180,7 @@ export default function LoginForm() {
 
   return (
     <View style={styles.container}>
-      {/* Fondo Superior con curva pronunciada */}
+      {/* Fondo Superior Dinámico */}
       <View style={styles.imageWrapper}>
         <ImageBackground
           source={require('../../../assets/images/background.jpeg')}
@@ -176,35 +201,23 @@ export default function LoginForm() {
         style={styles.bottomSheet}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
-        {/* Botón Flotante con cambio de flechas */}
-        <TouchableOpacity 
-          style={styles.floatingButton} 
-          activeOpacity={0.8}
-          onPress={toggleViewMode}
-          disabled={isAnyLoading}
+        <Animated.View 
+          {...panResponder.panHandlers}
+          style={[
+            styles.formContainer, 
+            { 
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }]
+            }
+          ]}
         >
-          <Feather 
-            name={isGuestMode ? "arrow-left" : "arrow-right"} 
-            size={28} 
-            color={COLORS.azulOscuroTitulo} 
-          />
-        </TouchableOpacity>
-
-        {/* Contenedor Animado para Formulario / Invitado */}
-        <Animated.View style={[
-          styles.formContainer, 
-          { 
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }]
-          }
-        ]}>
           {!isGuestMode ? (
-            // ================== VISTA DE LOGIN CON CREDENCIALES ==================
-            <>
+            // ================== VISTA DE LOGIN ==================
+            <View style={styles.viewContent}>
+              <View style={styles.topSpacer} />
               <Text style={styles.title}>¡Bienvenido de nuevo!</Text>
               <Text style={styles.welcomeText}>Inicia sesión para continuar</Text>
 
-              {/* Input Email */}
               <View style={[styles.inputWrapper, emailFocused && styles.inputWrapperFocused]}>
                 <TextInput
                   style={styles.input}
@@ -222,8 +235,7 @@ export default function LoginForm() {
                 <Feather name="mail" size={20} color={emailFocused ? COLORS.verdeBosquePrimario : COLORS.grisSombra} style={styles.inputIcon} />
               </View>
 
-              {/* Input Contraseña */}
-              <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused, { marginBottom: 30 }]}>
+              <View style={[styles.inputWrapper, passwordFocused && styles.inputWrapperFocused, styles.passwordMargin]}>
                 <TextInput
                   style={styles.input}
                   placeholder="Contraseña"
@@ -235,74 +247,65 @@ export default function LoginForm() {
                   onFocus={() => setPasswordFocused(true)}
                   onBlur={() => setPasswordFocused(false)}
                 />
-                <TouchableOpacity
-                  onPress={() => setMostrarPassword(!mostrarPassword)}
-                  style={styles.eyeButton}
-                  activeOpacity={0.7}
-                >
-                  <Feather
-                    name={mostrarPassword ? 'unlock' : 'lock'}
-                    size={20}
-                    color={passwordFocused ? COLORS.verdeBosquePrimario : COLORS.grisSombra}
-                  />
+                <TouchableOpacity onPress={() => setMostrarPassword(!mostrarPassword)} style={styles.eyeButton} activeOpacity={0.7}>
+                  <Feather name={mostrarPassword ? 'unlock' : 'lock'} size={20} color={passwordFocused ? COLORS.verdeBosquePrimario : COLORS.grisSombra} />
                 </TouchableOpacity>
               </View>
 
-              {/* Botón LOGIN */}
-              <TouchableOpacity
-                style={[styles.button, isAnyLoading && styles.buttonDisabled]}
-                onPress={handleLoginSubmit}
-                disabled={isAnyLoading}
-                activeOpacity={0.85}
-              >
+              <TouchableOpacity style={[styles.button, isAnyLoading && styles.buttonDisabled]} onPress={handleLoginSubmit} disabled={isAnyLoading} activeOpacity={0.85}>
                 {isLoading || isSubmitting ? (
                   <ActivityIndicator color={COLORS.blancoPuro} />
                 ) : (
                   <Text style={styles.buttonText}>INGRESAR</Text>
                 )}
               </TouchableOpacity>
-            </>
-          ) : (
-            // ================== VISTA DE INVITADO ==================
-            <View style={styles.guestContainer}>
-              <View style={styles.guestIconWrapper}>
-                <Feather name="compass" size={60} color={COLORS.verdeBosquePrimario} />
-              </View>
-              <Text style={styles.title}>Modo Explorador</Text>
-              <Text style={styles.welcomeText}>
-                Descubre las funcionalidades principales de la aplicación sin necesidad de crear una cuenta.
-              </Text>
 
-              <TouchableOpacity
-                style={[styles.guestButton, isAnyLoading && styles.buttonDisabled]}
-                onPress={handleInvitado}
-                disabled={isAnyLoading}
-                activeOpacity={0.85}
-              >
-                {cargandoInvitado || isLoadingDevice ? (
-                  <ActivityIndicator color={COLORS.blancoPuro} />
-                ) : (
-                  <>
-                    <Feather name="user-check" size={20} color={COLORS.blancoPuro} style={{ marginRight: 10 }} />
-                    <Text style={styles.buttonText}>INGRESAR COMO INVITADO</Text>
-                  </>
-                )}
-              </TouchableOpacity>
+              <View style={styles.flexibleSpacer} />
+
+              {!isKeyboardVisible && (
+                <View style={styles.swipeIndicator}>
+                  <Feather name="chevron-up" size={isSmallScreen ? 20 : 24} color={COLORS.grisSombra} />
+                  <Text style={styles.swipeText}>Deslice hacia arriba para ingresar sin cuenta</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            // ================== VISTA DE EXPLORADOR (Invitado) ==================
+            <View style={styles.viewContent}>
+              <View style={[styles.swipeIndicator, { paddingTop: isSmallScreen ? 5 : 15 }]}>
+                <Feather name="chevron-down" size={isSmallScreen ? 20 : 24} color={COLORS.grisSombra} />
+                <Text style={styles.swipeText}>Deslice hacia abajo para usar correo</Text>
+              </View>
+
+              <View style={styles.guestCenterContainer}>
+                <View style={styles.guestIconWrapper}>
+                  <Feather name="compass" size={isSmallScreen ? 40 : 50} color={COLORS.verdeBosquePrimario} />
+                </View>
+                {/* AQUI ESTABA EL ERROR: Faltaba el < de cierre */}
+                <Text style={styles.title}>Investigador</Text>
+
+                <TouchableOpacity style={[styles.guestButton, isAnyLoading && styles.buttonDisabled]} onPress={handleInvitado} disabled={isAnyLoading} activeOpacity={0.85}>
+                  {cargandoInvitado || isLoadingDevice ? (
+                    <ActivityIndicator color={COLORS.blancoPuro} />
+                  ) : (
+                    <>
+                      <Text style={styles.buttonText}>CONTINUAR COMO INVITADO</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           )}
-
-          {/* Logo INIAP inferior para ambas vistas */}
-          <View style={styles.footerContainer}>
-             <Image
-                source={require('../../../assets/images/INIAP.png')}
-                style={styles.iniapLogo}
-                resizeMode="contain"
-             />
-             <Text style={styles.derechosTexto}>© 2025 Todos los derechos reservados</Text>
-          </View>
-
         </Animated.View>
       </KeyboardAvoidingView>
+
+      {/* FOOTER ESTÁTICO FIJO FUERA DEL SCROLL/KEYBOARD */}
+      {!isKeyboardVisible && (
+        <View style={styles.footerContainer}>
+           <Image source={require('../../../assets/images/INIAP.png')} style={styles.iniapLogo} resizeMode="contain" />
+           <Text style={styles.derechosTexto}>© 2025 Todos los derechos reservados</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -313,13 +316,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.blancoPuro,
   },
   imageWrapper: {
-    height: '42%',
+    height: isSmallScreen ? '35%' : '42%', 
     width: '100%',
-    // Redondeo pronunciado para simular la semiesfera de la imagen
     borderBottomLeftRadius: 180, 
     borderBottomRightRadius: 180,
     overflow: 'hidden',
     backgroundColor: COLORS.verdeOscuroProfundo,
+    zIndex: 2, 
   },
   headerBackground: {
     width: '100%',
@@ -333,41 +336,32 @@ const styles = StyleSheet.create({
   headerOverlay: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 40,
+    paddingTop: isSmallScreen ? 20 : 40,
   },
   topLogo: {
-    width: 140,
-    height: 140,
+    width: isSmallScreen ? 100 : 140, 
+    height: isSmallScreen ? 100 : 140,
     borderRadius: 30, 
   },
   bottomSheet: {
     flex: 1,
     backgroundColor: COLORS.blancoPuro,
-    paddingHorizontal: 24,
-    marginTop: -20,
-  },
-  floatingButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.blancoPuro,
-    alignSelf: 'center',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: -30, 
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 8,
-    zIndex: 10,
+    paddingHorizontal: isSmallScreen ? 16 : 24,
+    marginTop: isSmallScreen ? -15 : -25,
+    zIndex: 1,
   },
   formContainer: {
     flex: 1,
+    paddingTop: isSmallScreen ? 20 : 35, 
+  },
+  viewContent: {
+    flex: 1,
+  },
+  topSpacer: {
+    height: isSmallScreen ? 0 : 10,
   },
   title: {
-    fontSize: 26,
+    fontSize: isSmallScreen ? 22 : 26,
     fontWeight: '700',
     color: COLORS.verdeOscuroProfundo,
     textAlign: 'center',
@@ -375,12 +369,12 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   welcomeText: {
-    fontSize: 15,
+    fontSize: isSmallScreen ? 13 : 15,
     color: COLORS.grisMedioTexto,
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: isSmallScreen ? 20 : 30,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    lineHeight: 22,
+    lineHeight: isSmallScreen ? 18 : 22,
   },
   inputWrapper: {
     flexDirection: 'row',
@@ -389,8 +383,11 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: COLORS.grisBorde,
-    marginBottom: 16,
-    height: 58,
+    height: isSmallScreen ? 50 : 58, 
+    marginBottom: isSmallScreen ? 12 : 16,
+  },
+  passwordMargin: {
+    marginBottom: isSmallScreen ? 20 : 30,
   },
   inputWrapperFocused: {
     borderColor: COLORS.verdeBosquePrimario,
@@ -400,7 +397,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     paddingLeft: 20,
-    fontSize: 16,
+    fontSize: isSmallScreen ? 14 : 16,
     color: COLORS.azulOscuroTitulo,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
@@ -417,7 +414,7 @@ const styles = StyleSheet.create({
   button: {
     backgroundColor: COLORS.verdeBosquePrimario,
     borderRadius: 12,
-    paddingVertical: 18,
+    paddingVertical: isSmallScreen ? 14 : 18, 
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: COLORS.verdeBosquePrimario,
@@ -433,52 +430,73 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: COLORS.blancoPuro,
-    fontSize: 15,
+    fontSize: isSmallScreen ? 13 : 15,
     fontWeight: '700',
     letterSpacing: 1,
   },
-  
-  /* ESTILOS VISTA INVITADO */
-  guestContainer: {
+  flexibleSpacer: {
+    flex: 1, 
+    minHeight: isSmallScreen ? 10 : 20 
+  },
+  swipeIndicator: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    // Le di padding inferior extra para que el footer fijo no lo cubra
+    paddingBottom: isSmallScreen ? 60 : 70, 
+  },
+  swipeText: {
+    fontSize: isSmallScreen ? 13 : 15,
+    color: COLORS.grisSombra,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginTop: 4,
+  },
+  guestCenterContainer: {
     flex: 1,
     alignItems: 'center',
-    paddingTop: 10,
+    justifyContent: 'center',
+    // Aumentamos padding inferior para que el botón no quede oculto detrás del footer
+    paddingBottom: 70, 
   },
   guestIconWrapper: {
-    width: 100,
-    height: 100,
+    width: isSmallScreen ? 60 : 75,
+    height: isSmallScreen ? 60 : 75,
     borderRadius: 50,
     backgroundColor: COLORS.verdeSuaveFondo,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: isSmallScreen ? 15 : 20,
   },
   guestButton: {
     backgroundColor: COLORS.verdeBosquePrimario,
     borderRadius: 12,
-    paddingVertical: 18,
+    paddingVertical: isSmallScreen ? 14 : 18,
     paddingHorizontal: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: isSmallScreen ? 40 : 50,
     width: '100%',
   },
-
-  /* FOOTER INIAP */
+  
+  /* ESTILOS DEL FOOTER FIJO */
   footerContainer: {
+    position: 'absolute', // ESTO LO FIJA A LA PANTALLA
+    bottom: isSmallScreen ? 15 : 25, // Separación inferior
+    left: 0, // Lo centra horizontalmente 
+    right: 0, // Lo centra horizontalmente
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    flex: 1,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+    justifyContent: 'center',
+    zIndex: 10, // Asegura que esté siempre por encima del fondo
   },
   iniapLogo: {
-    width: 70,
-    height: 40,
+    width: isSmallScreen ? 60 : 70,
+    height: isSmallScreen ? 30 : 40,
+    marginBottom: -5,
   },
   derechosTexto: {
-    fontSize: 12,
+    fontSize: isSmallScreen ? 10 : 12,
     color: COLORS.grisSombra,
-    marginTop: 8,
+    marginTop: 0,
   }
 });

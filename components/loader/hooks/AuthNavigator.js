@@ -7,12 +7,16 @@ import LoginForm from '../../auth/ui/LoginForm';
 import AnimatedSplashScreen from '../ui/AnimatedSplashScreen';
 
 function AuthNavigator() {
-    const { autenticado, cargando, cargandoLogin } = useAuth();
+    const { autenticado, cargando, cargandoLogin, setVideoEnded } = useAuth();
     const { isDark } = useTheme();
     const bg = isDark ? '#000000' : '#F2F2F7';
 
     if (cargando || cargandoLogin) {
-        return <AnimatedSplashScreen />;
+        return (
+            <AnimatedSplashScreen
+                onFinish={() => setVideoEnded(true)}
+            />
+        );
     }
 
     if (autenticado) {
