@@ -153,7 +153,7 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
                         activeOpacity={0.7}
                     >
                         <MaterialCommunityIcons name="leaf" size={14} color="#6A994E" />
-                        <Text style={misCultivosButtonStyles.misCultivosBtnText}>Mis Cultivos</Text>
+                        <Text style={misCultivosButtonStyles.misCultivosBtnText}>Seguimiento</Text>
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
@@ -372,7 +372,7 @@ export default function ListaProyectosUI({
                             onPress={() => router.push('/mis-cultivos')}
                         >
                             <MaterialCommunityIcons name="leaf" size={16} color="#6A994E" />
-                            <Text style={[styles.misCultivosText, { color: '#6A994E' }]}>Mis Cultivos</Text>
+                            <Text style={[styles.misCultivosText, { color: '#6A994E' }]}>Seguimiento</Text>
                         </TouchableOpacity>
 
                         <Animated.View style={counterAnimatedStyle}>
