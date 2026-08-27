@@ -251,4 +251,42 @@ export const sharedProyectoStyles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
   },
+
+  // --- CULTIVO/VARIEDAD ROW ---
+  cultivoVariedadRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 8,
+  },
+
+  // --- LOTE CHIPS ---
+  selectedLotesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 12,
+  },
+  loteChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(52, 199, 89, 0.15)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    maxWidth: '100%',
+  },
+  loteChipDark: {
+    backgroundColor: 'rgba(52, 199, 89, 0.2)',
+  },
+  loteChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#34C759',
+    flex: 1,
+  },
+  loteChipTextDark: {
+    color: '#34C759',
+  },
 });

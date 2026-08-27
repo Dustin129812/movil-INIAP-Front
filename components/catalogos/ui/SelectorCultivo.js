@@ -21,11 +21,10 @@ function SelectorCultivo({
     const { isDark } = useTheme();
 
     const colors = {
-        card: isDark ? "#171D1B" : "#FFFFFF",
-        border: isDark ? "#303936" : "#DDE8E4",
-        text: isDark ? "#F8FAF9" : "#18231F",
-        secondary: isDark ? "#AAB7B2" : "#687771",
-        primary: "#159A70",
+        card: isDark ? "#1E1E24" : "#FFFFFF",
+        text: isDark ? "#FFFFFF" : "#000000",
+        secondary: isDark ? "#98989F" : "#69736F",
+        primary: "#34C759",
         empty: isDark ? "#121715" : "#F8FAF9",
     };
 
@@ -54,8 +53,7 @@ function SelectorCultivo({
                 style={[
                     styles.empty,
                     {
-                        backgroundColor: colors.empty,
-                        borderColor: colors.border,
+                        backgroundColor: colors.card,
                     },
                 ]}
             >
@@ -213,8 +211,12 @@ const styles = StyleSheet.create({
         width: 154,
         minHeight: 145,
         padding: 14,
-        borderWidth: 1,
         borderRadius: 18,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 1,
     },
     icon: {
         width: 46,
@@ -256,8 +258,7 @@ const styles = StyleSheet.create({
     },
     empty: {
         padding: 24,
-        borderWidth: 1,
-        borderRadius: 18,
+        borderRadius: 16,
         alignItems: "center",
     },
     emptyTitle: {

@@ -25,6 +25,7 @@ export default function ProyectoDetalleScreen() {
         error,
         guardarProyecto,
         cargarLotes,
+        colaboradores,
         isNewProject,
     } = useEditarProyecto(id);
 
@@ -43,6 +44,7 @@ export default function ProyectoDetalleScreen() {
                 error={error}
                 onGuardar={guardarProyecto}
                 cargarLotes={cargarLotes}
+                colaboradores={colaboradores}
                 isNewProject={isNewProject}
             />
         </View>

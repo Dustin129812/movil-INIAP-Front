@@ -106,9 +106,9 @@ export const descargarMisDatos = async () => {
                 nombre_lote: lote.nombre_lote || lote.nombre || 'Lote Asignado',
                 ubicacion_manual: lote.ubicacion_manual || '',
                 coordenadas: typeof lote.geometria === 'string' ? lote.geometria : JSON.stringify(lote.geometria || []),
-                provincia_id: lote.province_id || 1,
+                provincia_id: lote.provincia_id || 1,
                 canton_id: lote.canton_id || 1,
-                estacion_id: lote.location_id || null,
+                estacion_id: lote.estacion_id || null,
                 sync_status: SYNC_STATUS.SYNCED
             });
 

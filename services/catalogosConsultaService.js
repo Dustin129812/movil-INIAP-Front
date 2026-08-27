@@ -99,6 +99,28 @@ export async function obtenerEnfermedadesPorCultivo(
 }
 
 /**
+ * Obtiene variedades activas de un cultivo específico.
+ */
+export async function obtenerVariedadesPorCultivo(cultivoId) {
+    const id = normalizarId(cultivoId);
+
+    if (!id) {
+        return [];
+    }
+
+    return await db
+        .select({
+            id: variedades.id,
+            nombre: variedades.nombre,
+            cultivo_id: variedades.cultivo_id,
+            caracteristicas_base: variedades.caracteristicas_base,
+        })
+        .from(variedades)
+        .where(eq(variedades.cultivo_id, id))
+        .orderBy(asc(variedades.nombre));
+}
+
+/**
  * Obtiene plagas relacionadas con un cultivo.
  */
 export async function obtenerPlagasPorCultivo(
@@ -251,6 +273,7 @@ export async function obtenerEstadoCatalogos() {
 
 export default {
     obtenerCultivosActivos,
+    obtenerVariedadesPorCultivo,
     obtenerEnfermedadesPorCultivo,
     obtenerPlagasPorCultivo,
     obtenerRecomendacionesPorEnfermedad,

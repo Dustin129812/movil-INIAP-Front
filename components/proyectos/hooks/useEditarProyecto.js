@@ -8,7 +8,14 @@ import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { proyectosLocalService } from '../../../services/proyectos';
 import { localLotesService } from '../../../services/lotes';
-import { obtenerLotesPorProyecto, actualizarLotesDelProyecto } from '../../../db';
+import {
+    obtenerLotesPorProyecto,
+    actualizarLotesDelProyecto,
+    obtenerColaboradoresPorProyecto,
+    actualizarColaboradoresDelProyecto,
+    db,
+} from '../../../db';
+import { proyecto_colaboradores, usuarios } from '../../../db/schema';
 
 export const useEditarProyecto = (proyectoUuid) => {
     const [proyecto, setProyecto] = useState(null);
@@ -17,6 +24,7 @@ export const useEditarProyecto = (proyectoUuid) => {
     const [error, setError] = useState(null);
     const [isNewProject, setIsNewProject] = useState(false);
     const [lotes, setLotes] = useState([]);
+    const [colaboradores, setColaboradores] = useState([]);
 
     const cargarLotes = useCallback(async () => {
         try {
@@ -27,6 +35,24 @@ export const useEditarProyecto = (proyectoUuid) => {
             // console removed
         }
     }, []);
+
+    const cargarColaboradores = useCallback(async () => {
+        if (!proyectoUuid) return;
+        try {
+            // Cargar IDs de colaboradores desde la BD local
+            const colaboradoresIds = await obtenerColaboradoresPorProyecto(proyectoUuid);
+            if (colaboradoresIds && colaboradoresIds.length > 0) {
+                // Los IDs son numéricos de usuario del servidor
+                // Necesitamos obtener los detalles de algún lado
+                // Por ahora guardamos solo los IDs y el modal buscará los detalles
+                setColaboradores(colaboradoresIds.map(id => ({ id, usuario_id: id })));
+            } else {
+                setColaboradores([]);
+            }
+        } catch (error) {
+            setColaboradores([]);
+        }
+    }, [proyectoUuid]);
 
     const cargarProyecto = useCallback(async () => {
         if (!proyectoUuid) return;
@@ -41,9 +67,12 @@ export const useEditarProyecto = (proyectoUuid) => {
             if (resultado) {
                 // Cargar lotes asociados al proyecto (relacion N:M)
                 const lotesUuids = await obtenerLotesPorProyecto(proyectoUuid);
-                resultado.lotes_uuids = lotesUuids;
+                resultado.lotes_ids = lotesUuids; // Alias for EditarProyectoForm compatibility
+                resultado.lotes_uuids = lotesUuids; // Keep for service calls
                 setProyecto(resultado);
                 setIsNewProject(false);
+                // Cargar colaboradores
+                await cargarColaboradores();
             } else {
                 // 2. No existe localmente - puede ser un proyecto "Por definir" o no existe
                 // Verificar si tiene datos que indican que debe existir pero no se guardó localmente
@@ -103,8 +132,15 @@ export const useEditarProyecto = (proyectoUuid) => {
                 // Proyecto existente - actualizar
                 await proyectosLocalService.actualizarProyectoLocal(proyectoUuid, datosActualizados);
                 // Actualizar relaciones N:M con lotes si changed
-                if (datosActualizados.lotes_uuids) {
-                    await actualizarLotesDelProyecto(proyectoUuid, datosActualizados.lotes_uuids);
+                // Use lotes_ids (form field) or lotes_uuids (service field)
+                const lotesIds = datosActualizados.lotes_ids || datosActualizados.lotes_uuids;
+                if (lotesIds && Array.isArray(lotesIds)) {
+                    await actualizarLotesDelProyecto(proyectoUuid, lotesIds);
+                }
+                // Actualizar colaboradores si changed
+                const colaboradoresIds = datosActualizados.colaboradores_ids;
+                if (colaboradoresIds !== undefined && Array.isArray(colaboradoresIds)) {
+                    await actualizarColaboradoresDelProyecto(proyectoUuid, colaboradoresIds);
                 }
                 await cargarProyecto();
                 return { success: true };
@@ -127,6 +163,8 @@ export const useEditarProyecto = (proyectoUuid) => {
         guardarProyecto,
         recargar: cargarProyecto,
         cargarLotes,
+        cargarColaboradores,
+        colaboradores,
         isNewProject,
     };
 };

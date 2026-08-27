@@ -145,6 +145,16 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
                             </View>
                         </View>
                     )}
+
+                    {/* Botón Mis Cultivos */}
+                    <TouchableOpacity
+                        style={misCultivosButtonStyles.misCultivosBtn}
+                        onPress={() => router.push(`/mis-cultivos?proyectoId=${proyecto.uuid_movil || proyecto.id}`)}
+                        activeOpacity={0.7}
+                    >
+                        <MaterialCommunityIcons name="leaf" size={14} color="#6A994E" />
+                        <Text style={misCultivosButtonStyles.misCultivosBtnText}>Mis Cultivos</Text>
+                    </TouchableOpacity>
                 </View>
             </TouchableOpacity>
 
@@ -356,25 +366,35 @@ export default function ListaProyectosUI({
                         Proyectos
                     </Animated.Text>
 
-                    <Animated.View style={counterAnimatedStyle}>
-                        <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.counterGlassPill}>
-                            <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' }]} />
-                            <LinearGradient
-                                colors={
-                                    isDark
-                                        ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
-                                        : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
-                                }
-                                start={{ x: 0.15, y: 0 }}
-                                end={{ x: 0.85, y: 1 }}
-                                style={StyleSheet.absoluteFill}
-                            />
-                            <View style={[styles.counterGlassSpecular, { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' }]} />
-                            <View style={[styles.counterGlassBorder, { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' }]} />
-                            <MaterialCommunityIcons name="flask-outline" size={16} color="#0A84FF" style={{ marginRight: 6 }} />
-                            <Text style={[styles.counterGlassNumber, { color: textPrimary }]}>{proyectos.length}</Text>
-                        </BlurView>
-                    </Animated.View>
+                    <View style={styles.headerButtons}>
+                        <TouchableOpacity
+                            style={[styles.misCultivosButton, { backgroundColor: isDark ? 'rgba(106,153,78,0.2)' : 'rgba(106,153,78,0.15)' }]}
+                            onPress={() => router.push('/mis-cultivos')}
+                        >
+                            <MaterialCommunityIcons name="leaf" size={16} color="#6A994E" />
+                            <Text style={[styles.misCultivosText, { color: '#6A994E' }]}>Mis Cultivos</Text>
+                        </TouchableOpacity>
+
+                        <Animated.View style={counterAnimatedStyle}>
+                            <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.counterGlassPill}>
+                                <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' }]} />
+                                <LinearGradient
+                                    colors={
+                                        isDark
+                                            ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
+                                            : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
+                                    }
+                                    start={{ x: 0.15, y: 0 }}
+                                    end={{ x: 0.85, y: 1 }}
+                                    style={StyleSheet.absoluteFill}
+                                />
+                                <View style={[styles.counterGlassSpecular, { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' }]} />
+                                <View style={[styles.counterGlassBorder, { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' }]} />
+                                <MaterialCommunityIcons name="flask-outline" size={16} color="#0A84FF" style={{ marginRight: 6 }} />
+                                <Text style={[styles.counterGlassNumber, { color: textPrimary }]}>{proyectos.length}</Text>
+                            </BlurView>
+                        </Animated.View>
+                    </View>
                 </View>
             </View>
 
@@ -483,6 +503,23 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         height: 40,
+    },
+    headerButtons: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    misCultivosButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 16,
+        gap: 4,
+    },
+    misCultivosText: {
+        fontSize: 12,
+        fontWeight: '700',
     },
     headerHomeTitle: {
         fontSize: 36,
@@ -637,5 +674,27 @@ const deleteStyles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#FFFFFF',
+    },
+});
+
+// ============================================
+// MIS CULTIVOS BUTTON STYLES (CARD)
+// ============================================
+const misCultivosButtonStyles = StyleSheet.create({
+    misCultivosBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 10,
+        backgroundColor: 'rgba(106,153,78,0.12)',
+        marginTop: 12,
+        gap: 6,
+    },
+    misCultivosBtnText: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#6A994E',
     },
 });

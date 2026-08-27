@@ -73,6 +73,10 @@ export const initDb = async () => {
                 titulo TEXT NOT NULL,
                 descripcion TEXT,
                 variedad TEXT,
+                variedad_id INTEGER,
+                variedad_nombre TEXT,
+                cultivo_id INTEGER,
+                cultivo_nombre TEXT,
                 fecha_siembra TEXT,
                 estado TEXT DEFAULT 'activo',
                 tipo_acolchado TEXT,
@@ -264,6 +268,14 @@ export const initDb = async () => {
                 created_at TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS proyecto_colaboradores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                proyecto_uuid TEXT NOT NULL,
+                usuario_id INTEGER NOT NULL,
+                sync_status TEXT DEFAULT 'draft',
+                created_at TEXT
+            );
+
     `);
     
         // Migración: agregar columnas UUID si no existen (para DB existentes)
@@ -393,6 +405,36 @@ export const initDb = async () => {
                     ALTER TABLE proyectos ADD COLUMN deleted_at TEXT;
                 `);
             } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE proyectos ADD COLUMN cultivo_id INTEGER;
+                `);
+            } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE proyectos ADD COLUMN cultivo_nombre TEXT;
+                `);
+            } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE proyectos ADD COLUMN variedad_id INTEGER;
+                `);
+            } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE proyectos ADD COLUMN variedad_nombre TEXT;
+                `);
+            } catch (e) { /* columna ya existe */ }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE proyectos ADD COLUMN lote_uuid TEXT;
+                `);
+            } catch (e) { /* columna ya existe */ }
         };
 
         await migrarColumnas();
@@ -473,7 +515,11 @@ export const crearProyectoLocal = async (proyectoData, { loteUuid }) => {
         lote_uuid: loteUuid || proyectoData.lote_uuid || null,
         titulo: proyectoData.titulo,
         descripcion: proyectoData.descripcion || null,
-        variedad: proyectoData.variedad || null,
+        variedad_id: proyectoData.variedad_id || null,
+        variedad: proyectoData.variedad_nombre || proyectoData.variedad || null,
+        variedad_nombre: proyectoData.variedad_nombre || null,
+        cultivo_id: proyectoData.cultivo_id || null,
+        cultivo_nombre: proyectoData.cultivo_nombre || null,
         fecha_siembra: proyectoData.fecha_siembra || null,
         estado: proyectoData.estado || 'activo',
         tipo_acolchado: proyectoData.tipo_acolchado || null,
@@ -528,10 +574,12 @@ export const softDeleteProyecto = async (uuid_movil) => {
 };
 
 export const actualizarProyectoLocal = async (uuid_movil, datos) => {
+    // Excluir campos de relación N:M y variedad_id que no son columnas de proyectos
+    const { lotes_ids, lotes_uuids, variedad_id, colaboradores_ids, ...proyectoData } = datos;
     await db
         .update(schema.proyectos)
         .set({
-            ...datos,
+            ...proyectoData,
             sync_status: SYNC_STATUS.PENDING,
             updated_at: new Date().toISOString(),
         })
@@ -584,6 +632,38 @@ export const actualizarLotesDelProyecto = async (proyectoUuid, loteUuids) => {
     // Crear nuevas relaciones
     for (const loteUuid of loteUuids) {
         await crearProyectoLoteRelacion(proyectoUuid, loteUuid);
+    }
+};
+
+// ============================================
+// PROYECTO-COLABORADORES (RELACION N:M)
+// ============================================
+
+export const crearProyectoColaboradorRelacion = async (proyectoUuid, usuarioId) => {
+    const now = new Date().toISOString();
+    await db.insert(schema.proyecto_colaboradores).values({
+        proyecto_uuid: proyectoUuid,
+        usuario_id: usuarioId,
+        sync_status: SYNC_STATUS.DRAFT,
+        created_at: now,
+    });
+};
+
+export const obtenerColaboradoresPorProyecto = async (proyectoUuid) => {
+    const resultados = await db
+        .select()
+        .from(schema.proyecto_colaboradores)
+        .where(eq(schema.proyecto_colaboradores.proyecto_uuid, proyectoUuid));
+    return resultados.map(r => r.usuario_id);
+};
+
+export const actualizarColaboradoresDelProyecto = async (proyectoUuid, usuarioIds) => {
+    // Eliminar relaciones existentes
+    await db.delete(schema.proyecto_colaboradores)
+        .where(eq(schema.proyecto_colaboradores.proyecto_uuid, proyectoUuid));
+    // Crear nuevas relaciones
+    for (const usuarioId of usuarioIds) {
+        await crearProyectoColaboradorRelacion(proyectoUuid, usuarioId);
     }
 };
 

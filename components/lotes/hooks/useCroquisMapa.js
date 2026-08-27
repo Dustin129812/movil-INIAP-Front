@@ -6,6 +6,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lotesService } from '../../../services/lotes';
 import { crearLoteLocal, crearProyectoLocal } from '../../../db';
 
+/**
+ * Calcula la distancia entre dos puntos usando la fórmula de Haversine.
+ * @param {number} lat1 - Latitud del punto 1
+ * @param {number} lon1 - Longitud del punto 1
+ * @param {number} lat2 - Latitud del punto 2
+ * @param {number} lon2 - Longitud del punto 2
+ * @returns {number} Distancia en metros
+ */
+const calcularDistanciaEntrePuntos = (lat1, lon1, lat2, lon2) => {
+    const R = 6378137; // Radio de la Tierra en metros
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
+
 export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
     const mapRef = useRef(null);
 
@@ -215,10 +235,24 @@ export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
                         };
                         mapRef.current?.animateToRegion(reg, 500);
                         if (acc <= 25) {
-                            setPoints(prev => [...prev, {
+                            const newPoint = {
                                 latitude: newLoc.coords.latitude,
                                 longitude: newLoc.coords.longitude
-                            }]);
+                            };
+                            // Verificar que no sea un punto duplicado o muy cercano al último
+                            setPoints(prev => {
+                                if (prev.length === 0) return [newPoint];
+                                const lastPoint = prev[prev.length - 1];
+                                const distancia = calcularDistanciaEntrePuntos(
+                                    lastPoint.latitude, lastPoint.longitude,
+                                    newPoint.latitude, newPoint.longitude
+                                );
+                                // Solo agregar si está a más de 2 metros del último punto
+                                if (distancia >= 2) {
+                                    return [...prev, newPoint];
+                                }
+                                return prev;
+                            });
                         }
                     }
                 );
@@ -232,6 +266,15 @@ export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
 
     const agregarVerticeManual = () => {
         if (crosshairLocation) {
+            // Verificar que no sea un punto duplicado (misma lat/lng)
+            const esDuplicado = points.some(p =>
+                p.latitude === crosshairLocation.latitude &&
+                p.longitude === crosshairLocation.longitude
+            );
+            if (esDuplicado) {
+                Alert.alert('Punto Duplicado', 'Ese punto ya existe en el polígono.');
+                return;
+            }
             setPoints(prev => [...prev, crosshairLocation]);
         }
     };
