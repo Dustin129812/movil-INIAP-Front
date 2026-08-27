@@ -266,6 +266,109 @@ export const plagaRecomendacion = sqliteTable(
     ]
 );
 
+// ============================================
+// TABLAS DE SEGUIMIENTO POR ETAPAS
+// ============================================
+
+export const etapasCultivo = sqliteTable('etapas_cultivo', {
+    id: integer('id').primaryKey(),
+    cultivo_id: integer('cultivo_id'),
+    nombre: text('nombre').notNull(),
+    descripcion: text('descripcion'),
+    orden: integer('orden').notNull(),
+    duracion_dias_estimada: integer('duracion_dias_estimada'),
+    indicadores_clave: text('indicadores_clave'),
+    estado: text('estado').default('activo'),
+    updated_at: text('updated_at'),
+});
+
+export const etapaRecomendacion = sqliteTable(
+    'etapa_recomendacion',
+    {
+        etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+        recomendacion_id: integer('recomendacion_id').notNull(),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.etapa_cultivo_id,
+                tabla.recomendacion_id,
+            ],
+        }),
+    ]
+);
+
+export const etapaEnfermedad = sqliteTable(
+    'etapa_enfermedad',
+    {
+        etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+        enfermedad_id: integer('enfermedad_id').notNull(),
+        nivel_riesgo: text('nivel_riesgo').default('medio'),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.etapa_cultivo_id,
+                tabla.enfermedad_id,
+            ],
+        }),
+    ]
+);
+
+export const etapaPlaga = sqliteTable(
+    'etapa_plaga',
+    {
+        etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+        plaga_id: integer('plaga_id').notNull(),
+        nivel_riesgo: text('nivel_riesgo').default('medio'),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.etapa_cultivo_id,
+                tabla.plaga_id,
+            ],
+        }),
+    ]
+);
+
+export const seguimientos = sqliteTable('seguimientos', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server_id: integer('server_id'),
+    uuid_movil: text('uuid_movil').unique(),
+    proyecto_uuid: text('proyecto_uuid').notNull(),
+    etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+    fecha_inicio: text('fecha_inicio').notNull(),
+    fecha_fin: text('fecha_fin'),
+    estado: text('estado').default('en_progreso'),
+    observaciones: text('observaciones'),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+});
+
+export const eventosSeguimiento = sqliteTable('eventos_seguimiento', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server_id: integer('server_id'),
+    uuid_movil: text('uuid_movil').unique(),
+    seguimiento_uuid: text('seguimiento_uuid').notNull(),
+    tipo_evento: text('tipo_evento').notNull(),
+    titulo: text('titulo').notNull(),
+    descripcion: text('descripcion'),
+    fecha_evento: text('fecha_evento').notNull(),
+    enfermedad_id: integer('enfermedad_id'),
+    plaga_id: integer('plaga_id'),
+    recomendacion_id: integer('recomendacion_id'),
+    severidad: text('severidad'),
+    datos_adicionales: text('datos_adicionales'),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+});
+
 export const catalogosSyncControl = sqliteTable(
     'catalogos_sync_control',
     {

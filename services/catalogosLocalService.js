@@ -10,7 +10,12 @@ import {
     enfermedadRecomendacion,
     plagaRecomendacion,
     catalogosSyncControl,
+    etapasCultivo,
 } from "../db/schema";
+import {
+    guardarEtapasCatalogo,
+    guardarRelacionesEtapas,
+} from "./seguimiento/seguimientoLocalService";
 
 /**
  * Inserta o actualiza los registros de un catálogo.
@@ -161,6 +166,11 @@ export async function guardarCatalogosLocales(payload) {
             })
         );
 
+        // Guardar etapas del cultivo
+        if (payload.etapas_cultivo) {
+            await guardarEtapasCatalogo(payload.etapas_cultivo);
+        }
+
         /*
          * El backend devuelve todas las relaciones.
          * Solamente procesamos si hay catálogos disponibles.
@@ -170,7 +180,8 @@ export async function guardarCatalogosLocales(payload) {
         const hayCatalogos = payload.cultivos?.length > 0 ||
             payload.enfermedades?.length > 0 ||
             payload.plagas?.length > 0 ||
-            payload.recomendaciones?.length > 0;
+            payload.recomendaciones?.length > 0 ||
+            payload.etapas_cultivo?.length > 0;
 
         if (!hayCatalogos) {
             console.log("[Catálogos] No hay catálogos disponibles, omitiendo relaciones");
@@ -263,6 +274,11 @@ export async function guardarCatalogosLocales(payload) {
                     updated_at: item.updated_at || null,
                 }))
             );
+        }
+
+        // Guardar relaciones de etapas
+        if (relaciones.etapa_recomendacion || relaciones.etapa_enfermedad || relaciones.etapa_plaga) {
+            await guardarRelacionesEtapas(relaciones);
         }
 
         await tx
