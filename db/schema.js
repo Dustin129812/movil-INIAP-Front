@@ -184,6 +184,20 @@ export const recomendaciones = sqliteTable('recomendaciones', {
     deleted_at: text('deleted_at'),
 });
 
+export const etapasCultivo = sqliteTable('etapas_cultivo', {
+    id: integer('id').primaryKey(),
+    cultivo_id: integer('cultivo_id').notNull(),
+    nombre: text('nombre').notNull(),
+    descripcion: text('descripcion'),
+    orden: integer('orden').notNull(),
+    duracion_dias_estimada: integer('duracion_dias_estimada'),
+    indicadores_clave: text('indicadores_clave'),
+    estado: text('estado').default('activo'),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
+});
+
 export const cultivoEnfermedad = sqliteTable(
     'cultivo_enfermedad',
     {
@@ -247,6 +261,59 @@ export const plagaRecomendacion = sqliteTable(
             columns: [
                 tabla.plaga_id,
                 tabla.recomendacion_id,
+            ],
+        }),
+    ]
+);
+
+export const etapaRecomendacion = sqliteTable(
+    'etapa_recomendacion',
+    {
+        etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+        recomendacion_id: integer('recomendacion_id').notNull(),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.etapa_cultivo_id,
+                tabla.recomendacion_id,
+            ],
+        }),
+    ]
+);
+
+export const etapaEnfermedad = sqliteTable(
+    'etapa_enfermedad',
+    {
+        etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+        enfermedad_id: integer('enfermedad_id').notNull(),
+        nivel_riesgo: text('nivel_riesgo'),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.etapa_cultivo_id,
+                tabla.enfermedad_id,
+            ],
+        }),
+    ]
+);
+
+export const etapaPlaga = sqliteTable(
+    'etapa_plaga',
+    {
+        etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+        plaga_id: integer('plaga_id').notNull(),
+        nivel_riesgo: text('nivel_riesgo'),
+        updated_at: text('updated_at'),
+    },
+    (tabla) => [
+        primaryKey({
+            columns: [
+                tabla.etapa_cultivo_id,
+                tabla.plaga_id,
             ],
         }),
     ]

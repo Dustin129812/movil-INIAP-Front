@@ -23,6 +23,7 @@ function AuthNavigator() {
         return (
             <Stack screenOptions={{ headerShown: false, headerBackTitle: '', contentStyle: { backgroundColor: bg } }}>
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="infografias" />
                 <Stack.Screen name="lotes/[id]" />
                 <Stack.Screen name="lotes/nuevo/index" />
                 <Stack.Screen name="proyectos/nuevo/index" />

@@ -187,6 +187,23 @@ export const initDb = async () => {
                 deleted_at TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS etapas_cultivo (
+                id INTEGER PRIMARY KEY,
+                cultivo_id INTEGER NOT NULL,
+                nombre TEXT NOT NULL,
+                descripcion TEXT,
+                orden INTEGER NOT NULL,
+                duracion_dias_estimada INTEGER,
+                indicadores_clave TEXT,
+                estado TEXT DEFAULT 'activo',
+                created_at TEXT,
+                updated_at TEXT,
+                deleted_at TEXT,
+                FOREIGN KEY (cultivo_id)
+                    REFERENCES cultivos(id)
+                    ON DELETE CASCADE
+            );
+
             CREATE TABLE IF NOT EXISTS cultivo_enfermedad (
                 cultivo_id INTEGER NOT NULL,
                 enfermedad_id INTEGER NOT NULL,
@@ -236,6 +253,47 @@ export const initDb = async () => {
                     ON DELETE CASCADE,
                 FOREIGN KEY (recomendacion_id)
                     REFERENCES recomendaciones(id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS etapa_recomendacion (
+                etapa_cultivo_id INTEGER NOT NULL,
+                recomendacion_id INTEGER NOT NULL,
+                updated_at TEXT,
+                PRIMARY KEY (etapa_cultivo_id, recomendacion_id),
+                FOREIGN KEY (etapa_cultivo_id)
+                    REFERENCES etapas_cultivo(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (recomendacion_id)
+                    REFERENCES recomendaciones(id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS etapa_enfermedad (
+                etapa_cultivo_id INTEGER NOT NULL,
+                enfermedad_id INTEGER NOT NULL,
+                nivel_riesgo TEXT,
+                updated_at TEXT,
+                PRIMARY KEY (etapa_cultivo_id, enfermedad_id),
+                FOREIGN KEY (etapa_cultivo_id)
+                    REFERENCES etapas_cultivo(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (enfermedad_id)
+                    REFERENCES enfermedades(id)
+                    ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS etapa_plaga (
+                etapa_cultivo_id INTEGER NOT NULL,
+                plaga_id INTEGER NOT NULL,
+                nivel_riesgo TEXT,
+                updated_at TEXT,
+                PRIMARY KEY (etapa_cultivo_id, plaga_id),
+                FOREIGN KEY (etapa_cultivo_id)
+                    REFERENCES etapas_cultivo(id)
+                    ON DELETE CASCADE,
+                FOREIGN KEY (plaga_id)
+                    REFERENCES plagas(id)
                     ON DELETE CASCADE
             );
 
