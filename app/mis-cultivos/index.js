@@ -368,6 +368,18 @@ export default function MisCultivosScreen() {
                             </View>
 
                             <TouchableOpacity
+                                style={[styles.verButton, { backgroundColor: 'rgba(10,132,255,0.12)', borderColor: 'rgba(10,132,255,0.3)', borderWidth: 1, marginTop: 12 }]}
+                                onPress={() => router.push(`/proyectos/${proyectoDetalle.uuid_movil || proyectoDetalle.id}/seguimiento`)}
+                                activeOpacity={0.7}
+                            >
+                                <MaterialCommunityIcons name="timeline-clock" size={20} color="#0A84FF" />
+                                <Text style={[styles.verButtonText, { color: '#0A84FF', fontWeight: '700' }]}>
+                                    Línea de Tiempo y Etapas
+                                </Text>
+                                <MaterialCommunityIcons name="chevron-right" size={18} color="#0A84FF" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
                                 style={styles.verButton}
                                 onPress={() => router.push(`/proyectos/${proyectoDetalle.uuid_movil || proyectoDetalle.id}`)}
                             >
