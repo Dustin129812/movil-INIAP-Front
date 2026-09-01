@@ -6,7 +6,7 @@ import RegistrarEventoUI from '../../../../components/seguimiento/ui/RegistrarEv
 import { seguimientoLocalService, seguimientoService } from '../../../../services/seguimiento';
 
 export default function EventoScreen() {
-    const { id, seguimientoUuid, etapaCultivoId } = useLocalSearchParams();
+    const { seguimientoUuid, etapaCultivoId } = useLocalSearchParams();
     const [etapaNombre, setEtapaNombre] = useState('');
 
     const {
@@ -20,6 +20,9 @@ export default function EventoScreen() {
         catalogoRecomendaciones,
         TIPOS_EVENTO,
         SEVERIDADES,
+        isListening,
+        startListening,
+        stopListening,
     } = useRegistrarEvento(etapaCultivoId);
 
     useEffect(() => {
@@ -82,6 +85,9 @@ export default function EventoScreen() {
             TIPOS_EVENTO={TIPOS_EVENTO}
             SEVERIDADES={SEVERIDADES}
             etapaNombre={etapaNombre}
+            isListening={isListening}
+            startListening={startListening}
+            stopListening={stopListening}
         />
     );
 }

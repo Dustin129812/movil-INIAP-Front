@@ -25,6 +25,9 @@ export default function RegistrarEventoUI({
     TIPOS_EVENTO = [],
     SEVERIDADES = [],
     etapaNombre,
+    isListening = false,
+    startListening,
+    stopListening,
 }) {
     const insets = useSafeAreaInsets();
     const { isDark } = useTheme();
@@ -86,7 +89,36 @@ export default function RegistrarEventoUI({
 
                 {/* Título */}
                 <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Título / Evento *</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={styles.inputLabel}>Título / Evento *</Text>
+                        <TouchableOpacity
+                            style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 6,
+                                backgroundColor: isListening && startListening.toString().includes('titulo') ? '#FF453A' : '#0A84FF',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4,
+                            }}
+                            onPress={() => {
+                                if (isListening) {
+                                    stopListening();
+                                } else {
+                                    startListening('titulo');
+                                }
+                            }}
+                        >
+                            <MaterialCommunityIcons
+                                name={isListening ? 'stop' : 'microphone'}
+                                size={16}
+                                color="#FFFFFF"
+                            />
+                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
+                                {isListening ? 'Pausar' : 'Grabar'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                     <TextInput
                         style={styles.input}
                         value={form.titulo}
@@ -98,7 +130,36 @@ export default function RegistrarEventoUI({
 
                 {/* Descripción */}
                 <View style={styles.inputContainer}>
-                    <Text style={styles.inputLabel}>Descripción / Observaciones</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                        <Text style={styles.inputLabel}>Descripción / Observaciones</Text>
+                        <TouchableOpacity
+                            style={{
+                                paddingHorizontal: 10,
+                                paddingVertical: 6,
+                                borderRadius: 6,
+                                backgroundColor: isListening && startListening.toString().includes('descripcion') ? '#FF453A' : '#0A84FF',
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                gap: 4,
+                            }}
+                            onPress={() => {
+                                if (isListening) {
+                                    stopListening();
+                                } else {
+                                    startListening('descripcion');
+                                }
+                            }}
+                        >
+                            <MaterialCommunityIcons
+                                name={isListening ? 'stop' : 'microphone'}
+                                size={16}
+                                color="#FFFFFF"
+                            />
+                            <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '600' }}>
+                                {isListening ? 'Pausar' : 'Grabar'}
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
                     <TextInput
                         style={[styles.input, styles.textArea]}
                         value={form.descripcion}
