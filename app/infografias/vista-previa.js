@@ -19,7 +19,6 @@ import {
     TarjetaInfografia,
 } from "../../components/infografias/ui";
 import {
-    abrirPdf,
     guardarArchivoLocal,
 } from "../../services/pdfService";
 import { useTheme } from "../../services/theme/ThemeContext";
@@ -171,24 +170,6 @@ export default function VistaPreviaInfografiaScreen() {
         }
 
         return await generarPdfDocumento(documento);
-    }
-
-    async function verPdf() {
-        try {
-            const resultado = await obtenerPdfActual();
-
-            if (!resultado?.uri) {
-                throw new Error("El archivo PDF no fue generado.");
-            }
-
-            await abrirPdf(resultado);
-        } catch (errorPdf) {
-            Alert.alert(
-                "No se pudo abrir el PDF",
-                errorPdf?.message ||
-                    "Ocurrio un problema al abrir el PDF."
-            );
-        }
     }
 
     async function guardarPdf() {
@@ -416,7 +397,7 @@ export default function VistaPreviaInfografiaScreen() {
                                     ]}
                                     numberOfLines={1}
                                 >
-                                    PDF listo para visualizar o guardar
+                                    PDF listo para guardar
                                 </Text>
                             </View>
                         </View>
@@ -428,7 +409,6 @@ export default function VistaPreviaInfografiaScreen() {
                         generandoImagen={generandoImagen}
                         generandoPdf={generandoPdf}
                         onGuardarImagen={guardarImagen}
-                        onVerPdf={verPdf}
                         onGuardarPdf={guardarPdf}
                     />
                 </ScrollView>

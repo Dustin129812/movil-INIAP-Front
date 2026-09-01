@@ -1,8 +1,9 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
     ActivityIndicator,
+    Alert,
     ScrollView,
     StyleSheet,
     Text,
@@ -11,12 +12,18 @@ import {
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import ViewShot from "react-native-view-shot";
 
 import { useInfografias } from "../../components/infografias/hooks/useInfografias";
 import {
     CultivoSeleccionado,
     ImagenAgricola,
+    OpcionesDescarga,
+    TarjetaInfografia,
 } from "../../components/infografias/ui";
+import {
+    guardarArchivoLocal,
+} from "../../services/pdfService";
 import { useTheme } from "../../services/theme/ThemeContext";
 
 const COLORES = {
@@ -56,7 +63,7 @@ const PASOS = [
     "Cultivo",
     "Etapa",
     "Resumen",
-    "Generar",
+    "Vista previa",
 ];
 
 function PasoProgreso({ pasoActivo, colors }) {
@@ -603,6 +610,8 @@ export default function InfografiasScreen() {
     const { isDark } = useTheme();
     const colors = isDark ? COLORES.dark : COLORES.light;
     const [paso, setPaso] = useState(0);
+    const [generandoImagen, setGenerandoImagen] = useState(false);
+    const viewShotRef = useRef(null);
 
     const {
         cultivosFiltrados,
@@ -611,10 +620,13 @@ export default function InfografiasScreen() {
         etapaSeleccionada,
         busquedaCultivo,
         busquedaEtapa,
+        documento,
         resumenEtapa,
         cargando,
         cargandoEtapas,
         generando,
+        generandoPdf,
+        resultadoGeneracion,
         error,
         setBusquedaCultivo,
         setBusquedaEtapa,
@@ -622,6 +634,7 @@ export default function InfografiasScreen() {
         seleccionarCultivo,
         seleccionarEtapa,
         generarVistaPrevia,
+        generarPdfDocumento,
     } = useInfografias();
 
     const tituloPaso = useMemo(() => {
@@ -652,7 +665,9 @@ export default function InfografiasScreen() {
         (paso === 0 && !!cultivoSeleccionado?.id) ||
         (paso === 1 && !!etapaSeleccionada?.id) ||
         paso === 2;
-    const pasoVisual = paso === 2 && generando ? 3 : paso;
+    const tieneVistaPrevia = !!documento?.secciones?.length;
+    const totalVistaPrevia = tieneVistaPrevia ? 1 : 0;
+    const pasoVisual = paso === 2 && (generando || tieneVistaPrevia) ? 3 : paso;
 
     function volver() {
         if (paso > 0) {
@@ -694,19 +709,69 @@ export default function InfografiasScreen() {
             return;
         }
 
-        const documento = await generarVistaPrevia();
+        await generarVistaPrevia();
+    }
 
-        if (!documento) {
-            return;
+    async function capturarImagen() {
+        if (!viewShotRef.current?.capture) {
+            throw new Error("No fue posible capturar la infografia.");
         }
 
-        router.push({
-            pathname: "/infografias/vista-previa",
-            params: {
-                cultivoId: String(cultivoSeleccionado.id),
-                etapaId: String(etapaSeleccionada.id),
-            },
-        });
+        return await viewShotRef.current.capture();
+    }
+
+    async function guardarImagen() {
+        try {
+            setGenerandoImagen(true);
+
+            const uri = await capturarImagen();
+
+            await guardarArchivoLocal({
+                uri,
+                dialogTitle: "Guardar o compartir infografia AgroDecide",
+                mimeType: "image/png",
+                uti: "public.png",
+            });
+        } catch (errorImagen) {
+            Alert.alert(
+                "No se pudo guardar la imagen",
+                errorImagen?.message ||
+                    "Ocurrio un problema al generar la imagen."
+            );
+        } finally {
+            setGenerandoImagen(false);
+        }
+    }
+
+    async function obtenerPdfActual() {
+        if (resultadoGeneracion?.uri) {
+            return resultadoGeneracion;
+        }
+
+        return await generarPdfDocumento(documento);
+    }
+
+    async function guardarPdf() {
+        try {
+            const resultado = await obtenerPdfActual();
+
+            if (!resultado?.uri) {
+                throw new Error("El archivo PDF no fue generado.");
+            }
+
+            await guardarArchivoLocal({
+                uri: resultado.uri,
+                dialogTitle: "Guardar o compartir PDF AgroDecide",
+                mimeType: "application/pdf",
+                uti: "com.adobe.pdf",
+            });
+        } catch (errorPdf) {
+            Alert.alert(
+                "No se pudo guardar el PDF",
+                errorPdf?.message ||
+                    "Ocurrio un problema al guardar el PDF."
+            );
+        }
     }
 
     return (
@@ -873,7 +938,9 @@ export default function InfografiasScreen() {
                         ) : (
                             <Text style={styles.primaryButtonText}>
                                 {paso === 2
-                                    ? "Generar infografia"
+                                    ? tieneVistaPrevia
+                                        ? "Actualizar vista previa"
+                                        : "Vista previa"
                                     : "Continuar"}
                             </Text>
                         )}
@@ -886,6 +953,120 @@ export default function InfografiasScreen() {
                         ) : null}
                     </TouchableOpacity>
                 </View>
+
+                {paso === 2 && tieneVistaPrevia ? (
+                    <View style={styles.previewSection}>
+                        <View style={styles.inlinePreviewHeader}>
+                            <View
+                                style={[
+                                    styles.inlinePreviewIcon,
+                                    { backgroundColor: colors.primarySoft },
+                                ]}
+                            >
+                                <MaterialCommunityIcons
+                                    name="eye-outline"
+                                    size={21}
+                                    color={colors.primary}
+                                />
+                            </View>
+                            <View style={styles.inlinePreviewText}>
+                                <Text
+                                    style={[
+                                        styles.inlinePreviewTitle,
+                                        { color: colors.text },
+                                    ]}
+                                >
+                                    Vista previa
+                                </Text>
+                                <Text
+                                    style={[
+                                        styles.inlinePreviewSubtitle,
+                                        { color: colors.secondaryText },
+                                    ]}
+                                >
+                                    Revisa la infografia antes de descargar imagen o PDF.
+                                </Text>
+                            </View>
+                        </View>
+
+                        <ViewShot
+                            ref={viewShotRef}
+                            options={{
+                                format: "png",
+                                quality: 1,
+                                result: "tmpfile",
+                            }}
+                            style={styles.captureArea}
+                        >
+                            <TarjetaInfografia
+                                documento={documento}
+                                indice={0}
+                                total={totalVistaPrevia || 1}
+                            />
+                        </ViewShot>
+
+                        {resultadoGeneracion?.uri ? (
+                            <View
+                                style={[
+                                    styles.pdfCard,
+                                    {
+                                        backgroundColor: colors.card,
+                                        borderColor: colors.border,
+                                    },
+                                ]}
+                            >
+                                <View
+                                    style={[
+                                        styles.pdfIcon,
+                                        {
+                                            backgroundColor:
+                                                colors.primarySoft,
+                                        },
+                                    ]}
+                                >
+                                    <MaterialCommunityIcons
+                                        name="file-pdf-box"
+                                        size={27}
+                                        color={colors.primary}
+                                    />
+                                </View>
+                                <View style={styles.pdfText}>
+                                    <Text
+                                        style={[
+                                            styles.pdfTitle,
+                                            { color: colors.text },
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        {documento?.titulo ||
+                                            "Infografia del cultivo"}
+                                    </Text>
+                                    <Text
+                                        style={[
+                                            styles.pdfSub,
+                                            {
+                                                color:
+                                                    colors.secondaryText,
+                                            },
+                                        ]}
+                                        numberOfLines={1}
+                                    >
+                                        PDF listo para guardar
+                                    </Text>
+                                </View>
+                            </View>
+                        ) : null}
+
+                        <OpcionesDescarga
+                            colors={colors}
+                            disabled={!tieneVistaPrevia}
+                            generandoImagen={generandoImagen}
+                            generandoPdf={generandoPdf}
+                            onGuardarImagen={guardarImagen}
+                            onGuardarPdf={guardarPdf}
+                        />
+                    </View>
+                ) : null}
             </ScrollView>
         </SafeAreaView>
     );
@@ -1180,6 +1361,71 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         gap: 10,
         marginTop: 16,
+    },
+    previewSection: {
+        marginTop: 18,
+    },
+    inlinePreviewHeader: {
+        alignItems: "center",
+        flexDirection: "row",
+        marginBottom: 12,
+    },
+    inlinePreviewIcon: {
+        alignItems: "center",
+        borderRadius: 10,
+        height: 42,
+        justifyContent: "center",
+        marginRight: 12,
+        width: 42,
+    },
+    inlinePreviewText: {
+        flex: 1,
+        minWidth: 0,
+    },
+    inlinePreviewTitle: {
+        fontSize: 16,
+        fontWeight: "900",
+    },
+    inlinePreviewSubtitle: {
+        fontSize: 11,
+        fontWeight: "700",
+        lineHeight: 16,
+        marginTop: 4,
+    },
+    captureArea: {
+        alignItems: "center",
+        backgroundColor: "transparent",
+    },
+    pdfCard: {
+        alignItems: "center",
+        borderRadius: 10,
+        borderWidth: 1,
+        flexDirection: "row",
+        marginBottom: 12,
+        marginTop: 12,
+        padding: 12,
+        width: "100%",
+    },
+    pdfIcon: {
+        alignItems: "center",
+        borderRadius: 10,
+        height: 46,
+        justifyContent: "center",
+        marginRight: 12,
+        width: 46,
+    },
+    pdfText: {
+        flex: 1,
+        minWidth: 0,
+    },
+    pdfTitle: {
+        fontSize: 13,
+        fontWeight: "900",
+    },
+    pdfSub: {
+        fontSize: 11,
+        fontWeight: "700",
+        marginTop: 4,
     },
     secondaryButton: {
         alignItems: "center",

@@ -70,7 +70,6 @@ function OpcionesDescarga({
     generandoPdf = false,
     disabled = false,
     onGuardarImagen,
-    onVerPdf,
     onGuardarPdf,
 }) {
     return (
@@ -82,14 +81,6 @@ function OpcionesDescarga({
                 disabled={disabled}
                 loading={generandoImagen}
                 onPress={onGuardarImagen}
-            />
-            <BotonAccion
-                icon="file-eye-outline"
-                label="Ver PDF"
-                colors={colors}
-                disabled={disabled}
-                loading={generandoPdf}
-                onPress={onVerPdf}
             />
             <BotonAccion
                 icon="file-download-outline"
