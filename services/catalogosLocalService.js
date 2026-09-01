@@ -5,17 +5,16 @@ import {
     enfermedades,
     plagas,
     recomendaciones,
+    etapasCultivo,
     cultivoEnfermedad,
     cultivoPlaga,
     enfermedadRecomendacion,
     plagaRecomendacion,
+    etapaRecomendacion,
+    etapaEnfermedad,
+    etapaPlaga,
     catalogosSyncControl,
-    etapasCultivo,
 } from "../db/schema";
-import {
-    guardarEtapasCatalogo,
-    guardarRelacionesEtapas,
-} from "./seguimiento/seguimientoLocalService";
 
 /**
  * Inserta o actualiza los registros de un catálogo.
@@ -53,6 +52,22 @@ async function guardarRegistros(
 /**
  * Guarda los catálogos y reemplaza sus relaciones locales.
  */
+function serializarJsonSiHaceFalta(valor) {
+    if (valor == null || valor === "") {
+        return null;
+    }
+
+    if (typeof valor === "string") {
+        return valor;
+    }
+
+    try {
+        return JSON.stringify(valor);
+    } catch {
+        return null;
+    }
+}
+
 export async function guardarCatalogosLocales(payload) {
     if (!payload || typeof payload !== "object") {
         throw new Error(
@@ -70,6 +85,8 @@ export async function guardarCatalogosLocales(payload) {
     plagas: payload.plagas?.length || 0,
     recomendaciones:
         payload.recomendaciones?.length || 0,
+    etapas_cultivo:
+        payload.etapas_cultivo?.length || 0,
     cultivo_enfermedad:
         relaciones.cultivo_enfermedad?.length || 0,
     cultivo_plaga:
@@ -78,6 +95,12 @@ export async function guardarCatalogosLocales(payload) {
         relaciones.enfermedad_recomendacion?.length || 0,
     plaga_recomendacion:
         relaciones.plaga_recomendacion?.length || 0,
+    etapa_recomendacion:
+        relaciones.etapa_recomendacion?.length || 0,
+    etapa_enfermedad:
+        relaciones.etapa_enfermedad?.length || 0,
+    etapa_plaga:
+        relaciones.etapa_plaga?.length || 0,
 });
 
     const resultado = await db.transaction(async (tx) => {
@@ -166,10 +189,31 @@ export async function guardarCatalogosLocales(payload) {
             })
         );
 
-        // Guardar etapas del cultivo
-        if (payload.etapas_cultivo) {
-            await guardarEtapasCatalogo(payload.etapas_cultivo);
-        }
+        await guardarRegistros(
+            tx,
+            etapasCultivo,
+            etapasCultivo.id,
+            payload.etapas_cultivo,
+            (item) => ({
+                id: Number(item.id),
+                cultivo_id: Number(item.cultivo_id),
+                nombre: item.nombre,
+                descripcion: item.descripcion || null,
+                orden: Number(item.orden),
+                duracion_dias_estimada:
+                    item.duracion_dias_estimada == null
+                        ? null
+                        : Number(item.duracion_dias_estimada),
+                indicadores_clave:
+                    serializarJsonSiHaceFalta(
+                        item.indicadores_clave
+                    ),
+                estado: item.estado || "activo",
+                created_at: item.created_at || null,
+                updated_at: item.updated_at || null,
+                deleted_at: item.deleted_at || null,
+            })
+        );
 
         /*
          * El backend devuelve todas las relaciones.
@@ -181,7 +225,14 @@ export async function guardarCatalogosLocales(payload) {
             payload.enfermedades?.length > 0 ||
             payload.plagas?.length > 0 ||
             payload.recomendaciones?.length > 0 ||
-            payload.etapas_cultivo?.length > 0;
+            payload.etapas_cultivo?.length > 0 ||
+            relaciones.cultivo_enfermedad?.length > 0 ||
+            relaciones.cultivo_plaga?.length > 0 ||
+            relaciones.enfermedad_recomendacion?.length > 0 ||
+            relaciones.plaga_recomendacion?.length > 0 ||
+            relaciones.etapa_recomendacion?.length > 0 ||
+            relaciones.etapa_enfermedad?.length > 0 ||
+            relaciones.etapa_plaga?.length > 0;
 
         if (!hayCatalogos) {
             console.log("[Catálogos] No hay catálogos disponibles, omitiendo relaciones");
@@ -219,6 +270,9 @@ export async function guardarCatalogosLocales(payload) {
         await tx.delete(cultivoPlaga);
         await tx.delete(enfermedadRecomendacion);
         await tx.delete(plagaRecomendacion);
+        await tx.delete(etapaRecomendacion);
+        await tx.delete(etapaEnfermedad);
+        await tx.delete(etapaPlaga);
 
         const relacionesCultivoEnfermedad =
             relaciones.cultivo_enfermedad || [];
@@ -276,9 +330,53 @@ export async function guardarCatalogosLocales(payload) {
             );
         }
 
-        // Guardar relaciones de etapas
-        if (relaciones.etapa_recomendacion || relaciones.etapa_enfermedad || relaciones.etapa_plaga) {
-            await guardarRelacionesEtapas(relaciones);
+        const relacionesEtapaRecomendacion =
+            relaciones.etapa_recomendacion || [];
+
+        if (relacionesEtapaRecomendacion.length > 0) {
+            await tx.insert(etapaRecomendacion).values(
+                relacionesEtapaRecomendacion.map((item) => ({
+                    etapa_cultivo_id: Number(
+                        item.etapa_cultivo_id
+                    ),
+                    recomendacion_id: Number(
+                        item.recomendacion_id
+                    ),
+                    updated_at: item.updated_at || null,
+                }))
+            );
+        }
+
+        const relacionesEtapaEnfermedad =
+            relaciones.etapa_enfermedad || [];
+
+        if (relacionesEtapaEnfermedad.length > 0) {
+            await tx.insert(etapaEnfermedad).values(
+                relacionesEtapaEnfermedad.map((item) => ({
+                    etapa_cultivo_id: Number(
+                        item.etapa_cultivo_id
+                    ),
+                    enfermedad_id: Number(item.enfermedad_id),
+                    nivel_riesgo: item.nivel_riesgo || null,
+                    updated_at: item.updated_at || null,
+                }))
+            );
+        }
+
+        const relacionesEtapaPlaga =
+            relaciones.etapa_plaga || [];
+
+        if (relacionesEtapaPlaga.length > 0) {
+            await tx.insert(etapaPlaga).values(
+                relacionesEtapaPlaga.map((item) => ({
+                    etapa_cultivo_id: Number(
+                        item.etapa_cultivo_id
+                    ),
+                    plaga_id: Number(item.plaga_id),
+                    nivel_riesgo: item.nivel_riesgo || null,
+                    updated_at: item.updated_at || null,
+                }))
+            );
         }
 
         await tx
@@ -312,20 +410,28 @@ export async function guardarCatalogosLocales(payload) {
             enfermedadesLocales,
             plagasLocales,
             recomendacionesLocales,
+            etapasLocales,
             cultivoEnfermedadLocal,
             cultivoPlagaLocal,
             enfermedadRecomendacionLocal,
             plagaRecomendacionLocal,
+            etapaRecomendacionLocal,
+            etapaEnfermedadLocal,
+            etapaPlagaLocal,
         ] = await Promise.all([
             db.select().from(cultivos),
             db.select().from(variedades),
             db.select().from(enfermedades),
             db.select().from(plagas),
             db.select().from(recomendaciones),
+            db.select().from(etapasCultivo),
             db.select().from(cultivoEnfermedad),
             db.select().from(cultivoPlaga),
             db.select().from(enfermedadRecomendacion),
             db.select().from(plagaRecomendacion),
+            db.select().from(etapaRecomendacion),
+            db.select().from(etapaEnfermedad),
+            db.select().from(etapaPlaga),
         ]);
 
         console.log("[Catálogos] Datos guardados:", {
@@ -334,6 +440,7 @@ export async function guardarCatalogosLocales(payload) {
             enfermedades: enfermedadesLocales.length,
             plagas: plagasLocales.length,
             recomendaciones: recomendacionesLocales.length,
+            etapas_cultivo: etapasLocales.length,
             cultivo_enfermedad:
                 cultivoEnfermedadLocal.length,
             cultivo_plaga:
@@ -342,6 +449,12 @@ export async function guardarCatalogosLocales(payload) {
                 enfermedadRecomendacionLocal.length,
             plaga_recomendacion:
                 plagaRecomendacionLocal.length,
+            etapa_recomendacion:
+                etapaRecomendacionLocal.length,
+            etapa_enfermedad:
+                etapaEnfermedadLocal.length,
+            etapa_plaga:
+                etapaPlagaLocal.length,
         });
 
         return {

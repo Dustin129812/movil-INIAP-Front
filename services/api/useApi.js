@@ -162,7 +162,10 @@ export function useApi() {
     try {
       const respuesta = await fetch(`${URL_API}/agrodecide/user/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({
           email: credenciales.email,
           password: credenciales.password,
@@ -206,7 +209,10 @@ export function useApi() {
     try {
       const respuesta = await fetch(`${URL_API}/agrodecide/guest/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({
           device_uuid: uuid,
           modelo: modelo || null,
@@ -251,6 +257,7 @@ export function useApi() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
+              'Accept': 'application/json',
               'Authorization': `Bearer ${token}`,
             },
           });

@@ -10,7 +10,14 @@ import {
 } from "./catalogosLocalService";
 
 import { db, initDb } from "../db/client";
-import { catalogosSyncControl } from "../db/schema";
+import {
+    catalogosSyncControl,
+    cultivos,
+    enfermedades,
+    etapasCultivo,
+    plagas,
+    recomendaciones,
+} from "../db/schema";
 
 const TOKEN_SECURE_STORE = "userToken";
 const TOKEN_ASYNC_STORAGE = "token_acceso";
@@ -49,6 +56,182 @@ async function obtenerUltimaSincronizacion() {
         .limit(1);
 
     return resultados[0]?.ultima_sincronizacion || null;
+}
+
+function lista(payload, clave) {
+    return Array.isArray(payload?.[clave]) ? payload[clave] : [];
+}
+
+function relaciones(payload, clave) {
+    const relacionesPayload = payload?.relaciones || {};
+
+    return Array.isArray(relacionesPayload[clave])
+        ? relacionesPayload[clave]
+        : [];
+}
+
+function normalizarId(valor) {
+    const id = Number(valor);
+
+    return Number.isInteger(id) && id > 0 ? id : null;
+}
+
+function agregarIds(set, registros, campo) {
+    for (const registro of registros) {
+        const id = normalizarId(registro?.[campo]);
+
+        if (id) {
+            set.add(id);
+        }
+    }
+}
+
+function faltanIds(registros, campo, idsDisponibles) {
+    return registros.some((registro) => {
+        const id = normalizarId(registro?.[campo]);
+
+        return id && !idsDisponibles.has(id);
+    });
+}
+
+async function obtenerIdsLocales(tabla, columna) {
+    const registros = await db.select({ id: columna }).from(tabla);
+
+    return new Set(
+        registros
+            .map((registro) => normalizarId(registro.id))
+            .filter(Boolean)
+    );
+}
+
+async function crearMapaIdsDisponibles(payload) {
+    const [
+        cultivosLocales,
+        enfermedadesLocales,
+        plagasLocales,
+        recomendacionesLocales,
+        etapasLocales,
+    ] = await Promise.all([
+        obtenerIdsLocales(cultivos, cultivos.id),
+        obtenerIdsLocales(enfermedades, enfermedades.id),
+        obtenerIdsLocales(plagas, plagas.id),
+        obtenerIdsLocales(recomendaciones, recomendaciones.id),
+        obtenerIdsLocales(etapasCultivo, etapasCultivo.id),
+    ]);
+
+    agregarIds(cultivosLocales, lista(payload, "cultivos"), "id");
+    agregarIds(enfermedadesLocales, lista(payload, "enfermedades"), "id");
+    agregarIds(plagasLocales, lista(payload, "plagas"), "id");
+    agregarIds(
+        recomendacionesLocales,
+        lista(payload, "recomendaciones"),
+        "id"
+    );
+    agregarIds(etapasLocales, lista(payload, "etapas_cultivo"), "id");
+
+    return {
+        cultivos: cultivosLocales,
+        enfermedades: enfermedadesLocales,
+        plagas: plagasLocales,
+        recomendaciones: recomendacionesLocales,
+        etapas: etapasLocales,
+    };
+}
+
+async function requiereSincronizacionCompleta(payload) {
+    if (payload?.es_incremental !== true) {
+        return false;
+    }
+
+    const disponibles = await crearMapaIdsDisponibles(payload);
+    const etapasPayload = lista(payload, "etapas_cultivo");
+
+    if (
+        faltanIds(
+            etapasPayload,
+            "cultivo_id",
+            disponibles.cultivos
+        )
+    ) {
+        return true;
+    }
+
+    const checks = [
+        [
+            relaciones(payload, "cultivo_enfermedad"),
+            "cultivo_id",
+            disponibles.cultivos,
+        ],
+        [
+            relaciones(payload, "cultivo_enfermedad"),
+            "enfermedad_id",
+            disponibles.enfermedades,
+        ],
+        [
+            relaciones(payload, "cultivo_plaga"),
+            "cultivo_id",
+            disponibles.cultivos,
+        ],
+        [
+            relaciones(payload, "cultivo_plaga"),
+            "plaga_id",
+            disponibles.plagas,
+        ],
+        [
+            relaciones(payload, "enfermedad_recomendacion"),
+            "enfermedad_id",
+            disponibles.enfermedades,
+        ],
+        [
+            relaciones(payload, "enfermedad_recomendacion"),
+            "recomendacion_id",
+            disponibles.recomendaciones,
+        ],
+        [
+            relaciones(payload, "plaga_recomendacion"),
+            "plaga_id",
+            disponibles.plagas,
+        ],
+        [
+            relaciones(payload, "plaga_recomendacion"),
+            "recomendacion_id",
+            disponibles.recomendaciones,
+        ],
+        [
+            relaciones(payload, "etapa_recomendacion"),
+            "etapa_cultivo_id",
+            disponibles.etapas,
+        ],
+        [
+            relaciones(payload, "etapa_recomendacion"),
+            "recomendacion_id",
+            disponibles.recomendaciones,
+        ],
+        [
+            relaciones(payload, "etapa_enfermedad"),
+            "etapa_cultivo_id",
+            disponibles.etapas,
+        ],
+        [
+            relaciones(payload, "etapa_enfermedad"),
+            "enfermedad_id",
+            disponibles.enfermedades,
+        ],
+        [
+            relaciones(payload, "etapa_plaga"),
+            "etapa_cultivo_id",
+            disponibles.etapas,
+        ],
+        [
+            relaciones(payload, "etapa_plaga"),
+            "plaga_id",
+            disponibles.plagas,
+        ],
+    ];
+
+    return checks.some(([registros, campo, idsDisponibles]) =>
+        faltanIds(registros, campo, idsDisponibles)
+    );
 }
 
 /**
@@ -127,6 +310,17 @@ export async function sincronizarCatalogos({
             throw new Error(
                 "El servidor no devolvió los catálogos."
             );
+        }
+
+        if (
+            !forzarCompleta &&
+            await requiereSincronizacionCompleta(contenido.data)
+        ) {
+            console.log(
+                "[Catalogos] Incremental con relaciones sin base local. Ejecutando sincronizacion completa."
+            );
+
+            return await forzarSincronizacionCatalogos();
         }
 
         const resultadoLocal =

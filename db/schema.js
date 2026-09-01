@@ -198,6 +198,20 @@ export const recomendaciones = sqliteTable('recomendaciones', {
     deleted_at: text('deleted_at'),
 });
 
+export const etapasCultivo = sqliteTable('etapas_cultivo', {
+    id: integer('id').primaryKey(),
+    cultivo_id: integer('cultivo_id').notNull(),
+    nombre: text('nombre').notNull(),
+    descripcion: text('descripcion'),
+    orden: integer('orden').notNull(),
+    duracion_dias_estimada: integer('duracion_dias_estimada'),
+    indicadores_clave: text('indicadores_clave'),
+    estado: text('estado').default('activo'),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+    deleted_at: text('deleted_at'),
+});
+
 export const cultivoEnfermedad = sqliteTable(
     'cultivo_enfermedad',
     {
@@ -266,22 +280,6 @@ export const plagaRecomendacion = sqliteTable(
     ]
 );
 
-// ============================================
-// TABLAS DE SEGUIMIENTO POR ETAPAS
-// ============================================
-
-export const etapasCultivo = sqliteTable('etapas_cultivo', {
-    id: integer('id').primaryKey(),
-    cultivo_id: integer('cultivo_id'),
-    nombre: text('nombre').notNull(),
-    descripcion: text('descripcion'),
-    orden: integer('orden').notNull(),
-    duracion_dias_estimada: integer('duracion_dias_estimada'),
-    indicadores_clave: text('indicadores_clave'),
-    estado: text('estado').default('activo'),
-    updated_at: text('updated_at'),
-});
-
 export const etapaRecomendacion = sqliteTable(
     'etapa_recomendacion',
     {
@@ -334,6 +332,10 @@ export const etapaPlaga = sqliteTable(
         }),
     ]
 );
+
+// ============================================
+// TABLAS DE SEGUIMIENTO POR ETAPAS
+// ============================================
 
 export const seguimientos = sqliteTable('seguimientos', {
     id: integer('id').primaryKey({ autoIncrement: true }),

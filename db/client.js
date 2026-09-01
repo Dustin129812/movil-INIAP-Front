@@ -152,7 +152,8 @@ export const initDb = async () => {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cultivo_id INTEGER,
                 nombre TEXT NOT NULL,
-                caracteristicas_base TEXT
+                caracteristicas_base TEXT,
+                deleted_at TEXT
             );
 
             CREATE TABLE IF NOT EXISTS enfermedades (
@@ -189,6 +190,23 @@ export const initDb = async () => {
                 created_at TEXT,
                 updated_at TEXT,
                 deleted_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS etapas_cultivo (
+                id INTEGER PRIMARY KEY,
+                cultivo_id INTEGER NOT NULL,
+                nombre TEXT NOT NULL,
+                descripcion TEXT,
+                orden INTEGER NOT NULL,
+                duracion_dias_estimada INTEGER,
+                indicadores_clave TEXT,
+                estado TEXT DEFAULT 'activo',
+                created_at TEXT,
+                updated_at TEXT,
+                deleted_at TEXT,
+                FOREIGN KEY (cultivo_id)
+                    REFERENCES cultivos(id)
+                    ON DELETE CASCADE
             );
 
             CREATE TABLE IF NOT EXISTS cultivo_enfermedad (
@@ -243,54 +261,6 @@ export const initDb = async () => {
                     ON DELETE CASCADE
             );
 
-            CREATE TABLE IF NOT EXISTS catalogos_sync_control (
-                clave TEXT PRIMARY KEY,
-                ultima_sincronizacion TEXT,
-                servidor_fecha TEXT,
-                estado TEXT DEFAULT 'pendiente',
-                ultimo_error TEXT,
-                updated_at TEXT
-            );
-
-            INSERT OR IGNORE INTO catalogos_sync_control (
-                clave,
-                estado
-            ) VALUES (
-                'catalogos',
-                'pendiente'
-            );
-
-            CREATE TABLE IF NOT EXISTS proyecto_lotes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                proyecto_uuid TEXT NOT NULL,
-                lote_uuid TEXT NOT NULL,
-                sync_status TEXT DEFAULT 'draft',
-                created_at TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS proyecto_colaboradores (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                proyecto_uuid TEXT NOT NULL,
-                usuario_id INTEGER NOT NULL,
-                sync_status TEXT DEFAULT 'draft',
-                created_at TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS etapas_cultivo (
-                id INTEGER PRIMARY KEY,
-                cultivo_id INTEGER,
-                nombre TEXT NOT NULL,
-                descripcion TEXT,
-                orden INTEGER NOT NULL,
-                duracion_dias_estimada INTEGER,
-                indicadores_clave TEXT,
-                estado TEXT DEFAULT 'activo',
-                updated_at TEXT,
-                FOREIGN KEY (cultivo_id)
-                    REFERENCES cultivos(id)
-                    ON DELETE CASCADE
-            );
-
             CREATE TABLE IF NOT EXISTS etapa_recomendacion (
                 etapa_cultivo_id INTEGER NOT NULL,
                 recomendacion_id INTEGER NOT NULL,
@@ -330,6 +300,39 @@ export const initDb = async () => {
                 FOREIGN KEY (plaga_id)
                     REFERENCES plagas(id)
                     ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS catalogos_sync_control (
+                clave TEXT PRIMARY KEY,
+                ultima_sincronizacion TEXT,
+                servidor_fecha TEXT,
+                estado TEXT DEFAULT 'pendiente',
+                ultimo_error TEXT,
+                updated_at TEXT
+            );
+
+            INSERT OR IGNORE INTO catalogos_sync_control (
+                clave,
+                estado
+            ) VALUES (
+                'catalogos',
+                'pendiente'
+            );
+
+            CREATE TABLE IF NOT EXISTS proyecto_lotes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                proyecto_uuid TEXT NOT NULL,
+                lote_uuid TEXT NOT NULL,
+                sync_status TEXT DEFAULT 'draft',
+                created_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS proyecto_colaboradores (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                proyecto_uuid TEXT NOT NULL,
+                usuario_id INTEGER NOT NULL,
+                sync_status TEXT DEFAULT 'draft',
+                created_at TEXT
             );
 
             CREATE TABLE IF NOT EXISTS seguimientos (
@@ -414,6 +417,15 @@ export const initDb = async () => {
             try {
                 await expoDb.execAsync(`
                     ALTER TABLE cultivos
+                    ADD COLUMN deleted_at TEXT;
+                `);
+            } catch (e) {
+                // La columna ya existe
+            }
+
+            try {
+                await expoDb.execAsync(`
+                    ALTER TABLE variedades
                     ADD COLUMN deleted_at TEXT;
                 `);
             } catch (e) {
