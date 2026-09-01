@@ -9,6 +9,7 @@ import { db } from "../db/client";
 
 import {
     cultivos,
+    variedades,
     enfermedades,
     plagas,
     recomendaciones,
@@ -170,6 +171,28 @@ export async function obtenerEnfermedadesPorCultivo(
             )
         )
         .orderBy(asc(enfermedades.nombre));
+}
+
+/**
+ * Obtiene variedades activas de un cultivo específico.
+ */
+export async function obtenerVariedadesPorCultivo(cultivoId) {
+    const id = normalizarId(cultivoId);
+
+    if (!id) {
+        return [];
+    }
+
+    return await db
+        .select({
+            id: variedades.id,
+            nombre: variedades.nombre,
+            cultivo_id: variedades.cultivo_id,
+            caracteristicas_base: variedades.caracteristicas_base,
+        })
+        .from(variedades)
+        .where(eq(variedades.cultivo_id, id))
+        .orderBy(asc(variedades.nombre));
 }
 
 /**
@@ -447,6 +470,7 @@ export default {
     obtenerCultivosActivos,
     obtenerEtapasPorCultivo,
     obtenerEtapaPorId,
+    obtenerVariedadesPorCultivo,
     obtenerEnfermedadesPorCultivo,
     obtenerPlagasPorCultivo,
     obtenerEnfermedadesPorEtapa,

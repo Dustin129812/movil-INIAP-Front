@@ -14,9 +14,11 @@ import {
     actualizarProyectoLocal,
     actualizarLotesDelProyecto,
     crearProyectoLoteRelacion,
+    crearProyectoColaboradorRelacion,
     obtenerLotesPorProyecto,
     SYNC_STATUS,
     proyectos,
+    proyecto_colaboradores,
 } from '../../db';
 import { eq } from 'drizzle-orm';
 
@@ -124,29 +126,50 @@ export const crearProyectoLocal = async (datosProyecto) => {
         // Asegurar que la BD local esté inicializada
         await initDb();
 
+        // Obtener lote_uuid del primer lote de lotes_ids para backward compatibility
+        const loteUuidPrincipal = datosProyecto.lote_uuid ||
+            (datosProyecto.lotes_ids && datosProyecto.lotes_ids.length > 0 ? datosProyecto.lotes_ids[0] : null);
+
         // Primero guardar localmente
-        const proyectoLocal = await crearProyectoLocalDb(datosProyecto, { loteUuid: datosProyecto.lote_uuid || null });
+        const proyectoLocal = await crearProyectoLocalDb(datosProyecto, { loteUuid: loteUuidPrincipal });
 
         // Crear relaciones N:M con lotes si hay múltiples lotes
-        if (datosProyecto.lotes_uuids && Array.isArray(datosProyecto.lotes_uuids)) {
-            for (const loteUuid of datosProyecto.lotes_uuids) {
+        const lotesUuids = datosProyecto.lotes_uuids || datosProyecto.lotes_ids || [];
+        if (Array.isArray(lotesUuids) && lotesUuids.length > 0) {
+            for (const loteUuid of lotesUuids) {
                 await crearProyectoLoteRelacion(proyectoLocal.uuid_movil, loteUuid);
+            }
+        }
+
+        // Crear relaciones N:M con colaboradores si hay múltiples
+        const colaboradoresIds = datosProyecto.colaboradores_ids || [];
+        if (Array.isArray(colaboradoresIds) && colaboradoresIds.length > 0) {
+            for (const usuarioId of colaboradoresIds) {
+                await crearProyectoColaboradorRelacion(proyectoLocal.uuid_movil, usuarioId);
             }
         }
 
         // Intentar guardar en servidor
         try {
             if (token) {
+                // Preparar datos para el servidor (sin variedad_id, con variedad como texto)
+                const { variedad_id, colaboradores_ids, ...datosSinVariedadId } = datosProyecto;
+                const datosParaServidor = {
+                    ...datosSinVariedadId,
+                    uuid_movil: proyectoLocal.uuid_movil,
+                    lote_uuid: loteUuidPrincipal,
+                    variedad: datosProyecto.variedad_nombre || datosProyecto.variedad || null,
+                    // Backend espera 'colaboradores', no 'colaboradores_ids'
+                    colaboradores: colaboradores_ids || [],
+                };
+
                 const respuesta = await fetch(`${URL_API}/agrodecide/proyectos`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`,
                     },
-                    body: JSON.stringify({
-                        ...datosProyecto,
-                        uuid_movil: proyectoLocal.uuid_movil,
-                    }),
+                    body: JSON.stringify(datosParaServidor),
                 });
 
                 if (respuesta.ok) {
@@ -168,7 +191,7 @@ export const crearProyectoLocal = async (datosProyecto) => {
         return { success: true, proyecto: proyectoLocal, pendingSync: true };
     } catch (error) {
         // console removed
-        return { success: false, message: 'Error al crear proyecto' };
+        return { success: false, message: 'Error al crear proyecto: ' + (error.message || error.toString()) };
     }
 };
 
@@ -251,13 +274,28 @@ export const sincronizarProyectosPendientes = async () => {
 
         for (const proyecto of proyectosPendientes) {
             try {
+                // Obtener colaboradores del proyecto desde la BD local
+                const colaboradoresIds = await db
+                    .select()
+                    .from(proyecto_colaboradores)
+                    .where(eq(proyecto_colaboradores.proyecto_uuid, proyecto.uuid_movil));
+
+                const colaboradores = colaboradoresIds.map(c => c.usuario_id);
+
+                // Preparar datos para el servidor (excluir variedad_id que ya no existe en backend)
+                const { variedad_id, ...datosParaServidor } = proyecto;
+                const datosCompletos = {
+                    ...datosParaServidor,
+                    colaboradores: colaboradores,
+                };
+
                 const respuesta = await fetch(`${URL_API}/agrodecide/proyectos`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`,
                     },
-                    body: JSON.stringify(proyecto),
+                    body: JSON.stringify(datosCompletos),
                 });
 
                 if (respuesta.ok) {

@@ -24,14 +24,13 @@ function ListaProblemas({
     const { isDark } = useTheme();
 
     const colors = {
-        card: isDark ? "#171D1B" : "#FFFFFF",
-        input: isDark ? "#222927" : "#EDF3F1",
-        border: isDark ? "#303936" : "#DDE8E4",
-        text: isDark ? "#F8FAF9" : "#18231F",
-        secondary: isDark ? "#AAB7B2" : "#687771",
-        primary: "#159A70",
-        primarySoft: isDark ? "#143C31" : "#DDF5EB",
-        empty: isDark ? "#121715" : "#F8FAF9",
+        card: isDark ? "#1E1E24" : "#FFFFFF",
+        input: isDark ? "#2C2C2E" : "#F2F2F7",
+        text: isDark ? "#FFFFFF" : "#000000",
+        secondary: isDark ? "#98989F" : "#69736F",
+        primary: "#34C759",
+        primarySoft: isDark ? "rgba(52,199,89,0.15)" : "rgba(52,199,89,0.1)",
+        empty: isDark ? "#1E1E24" : "#F8FAF9",
     };
 
     const esEnfermedad = tipo === "enfermedad";
@@ -199,8 +198,7 @@ function ListaProblemas({
                     style={[
                         styles.empty,
                         {
-                            backgroundColor: colors.empty,
-                            borderColor: colors.border,
+                            backgroundColor: colors.card,
                         },
                     ]}
                 >
@@ -258,11 +256,6 @@ function ListaProblemas({
                                             activo
                                                 ? colors.primarySoft
                                                 : colors.card,
-
-                                        borderColor:
-                                            activo
-                                                ? colors.primary
-                                                : colors.border,
                                     },
                                 ]}
                                 activeOpacity={0.82}
@@ -413,10 +406,14 @@ const styles = StyleSheet.create({
     card: {
         minHeight: 78,
         padding: 12,
-        borderWidth: 1,
         borderRadius: 16,
         flexDirection: "row",
         alignItems: "center",
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 1,
     },
     icon: {
         width: 44,
@@ -456,8 +453,7 @@ const styles = StyleSheet.create({
     empty: {
         minHeight: 150,
         padding: 22,
-        borderWidth: 1,
-        borderRadius: 18,
+        borderRadius: 16,
         alignItems: "center",
         justifyContent: "center",
     },

@@ -145,6 +145,34 @@ export default function ProyectoDetalleUI({
                 )}
             </View>
 
+            {/* Card de Seguimiento por Etapas */}
+            <TouchableOpacity
+                style={[proyectosStyles.card, { marginTop: 12 }]}
+                onPress={() => router.push(`/proyectos/${proyecto?.uuid_movil || proyecto?.id}/seguimiento`)}
+                activeOpacity={0.7}
+            >
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                        <View style={{
+                            width: 44, height: 44, borderRadius: 22,
+                            backgroundColor: 'rgba(48, 209, 88, 0.15)',
+                            alignItems: 'center', justifyContent: 'center',
+                        }}>
+                            <MaterialCommunityIcons name="sprout" size={24} color="#30D158" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={{ fontSize: 16, fontWeight: '600', color: '#FFFFFF' }}>
+                                Seguimiento por Etapas
+                            </Text>
+                            <Text style={{ fontSize: 13, color: '#8E8E93', marginTop: 2 }}>
+                                Línea de tiempo, avances y registro de eventos
+                            </Text>
+                        </View>
+                    </View>
+                    <MaterialCommunityIcons name="chevron-right" size={22} color="#636366" />
+                </View>
+            </TouchableOpacity>
+
             <View style={styles.visitasSection}>
                 <View style={styles.visitasSectionHeader}>
                     <Text style={styles.sectionTitle}>Visitas de Seguimiento</Text>

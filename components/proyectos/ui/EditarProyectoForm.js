@@ -36,6 +36,7 @@ import Animated, {
 import { useTheme } from '../../../services/theme';
 import DatePickerWheel from '../../../components/calendario/ui/DatePickerWheel';
 import ColaboradoresModal from './ColaboradoresModal';
+import SelectorCultivoVariedad from './SelectorCultivoVariedad';
 
 // --- ESTILOS ---
 // Origen: app/styles/editarProyectoStyles.js
@@ -108,30 +109,37 @@ export default function EditarProyectoForm({
     onGuardar,
     isNewProject = false,
     cargarLotes,
+    colaboradores = [],
 }) {
     const { isDark } = useTheme();
     const insets = useSafeAreaInsets();
 
     const [mostrarSelectorLote, setMostrarSelectorLote] = useState(false);
-    const [loteSeleccionado, setLoteSeleccionado] = useState(null);
+    const [lotesSeleccionados, setLotesSeleccionados] = useState([]); // Array of selected lots
     const [mostrarDatePicker, setMostrarDatePicker] = useState(false);
     const [mostrarColaboradoresModal, setMostrarColaboradoresModal] = useState(false);
     const [mostrarSelectorTipoEnsayo, setMostrarSelectorTipoEnsayo] = useState(false);
     const [mostrarSelectorTipoAcolchado, setMostrarSelectorTipoAcolchado] = useState(false);
     const [mostrarSelectorEstado, setMostrarSelectorEstado] = useState(false);
+    const [mostrarSelectorCultivoVariedad, setMostrarSelectorCultivoVariedad] = useState(false);
+    const [cultivoSeleccionado, setCultivoSeleccionado] = useState(null);
+    const [variedadSeleccionada, setVariedadSeleccionada] = useState(null);
+    const [colaboradoresSeleccionados, setColaboradoresSeleccionados] = useState([]);
 
     const [formData, setFormData] = useState({
         titulo: '',
         descripcion: '',
-        variedad: '',
+        cultivo_id: null,
+        cultivo_nombre: '',
+        variedad_id: null,
+        variedad_nombre: '',
         fecha_siembra: '',
         estado: 'activo',
         tipo_ensayo: '',
         tipo_acolchado: '',
         financiamiento: '',
-        colaborador_nombre: '',
-        colaborador_celular: '',
-        lote_uuid: null,
+        lotes_ids: [],
+        colaboradores_ids: [],
     });
 
     // Cargar lotes al inicio
@@ -147,28 +155,77 @@ export default function EditarProyectoForm({
             setFormData({
                 titulo: proyecto.titulo || '',
                 descripcion: proyecto.descripcion || '',
-                variedad: proyecto.variedad || '',
+                cultivo_id: proyecto.cultivo_id || null,
+                cultivo_nombre: proyecto.cultivo_nombre || '',
+                variedad_id: null,
+                variedad_nombre: proyecto.variedad || '',
                 fecha_siembra: proyecto.fecha_siembra || '',
                 estado: proyecto.estado || 'activo',
                 tipo_ensayo: proyecto.tipo_ensayo || '',
                 tipo_acolchado: proyecto.tipo_acolchado || '',
                 financiamiento: proyecto.financiamiento || '',
-                colaborador_nombre: proyecto.colaborador_nombre || '',
-                colaborador_celular: proyecto.colaborador_celular || '',
-                lote_uuid: proyecto.lote_uuid || null,
+                lotes_ids: proyecto.lotes_ids || [],
+                colaboradores_ids: proyecto.colaboradores_ids || [],
             });
-            // Buscar lote seleccionado en la lista
-            if (proyecto.lote_uuid && lotes.length > 0) {
-                const lote = lotes.find(l => l.uuid_movil === proyecto.lote_uuid);
-                setLoteSeleccionado(lote || null);
+            // Set selected cultivo/variedad
+            if (proyecto.cultivo_id) {
+                setCultivoSeleccionado({ id: proyecto.cultivo_id, nombre: proyecto.cultivo_nombre });
+            }
+            if (proyecto.variedad) {
+                setVariedadSeleccionada({ id: null, nombre: proyecto.variedad });
+            } else {
+                setVariedadSeleccionada(null);
+            }
+            // Buscar lotes seleccionados en la lista
+            if ((proyecto.lotes_ids || proyecto.lote_uuid) && lotes.length > 0) {
+                const ids = proyecto.lotes_ids || (proyecto.lote_uuid ? [proyecto.lote_uuid] : []);
+                const selected = lotes.filter(l => ids.includes(l.uuid_movil) || ids.includes(l.id));
+                setLotesSeleccionados(selected);
             }
         }
     }, [proyecto, lotes]);
 
+    // Inicializar colaboradores cuando cambia el proyecto o los colaboradores del hook
+    useEffect(() => {
+        if (!proyecto) return;
+        // Solo cargar si hay colaboradores del hook Y aun no se han seleccionado
+        if (Array.isArray(colaboradores) && colaboradores.length > 0 && colaboradoresSeleccionados.length === 0) {
+            // Los colaboradores del hook pueden tener { id, usuario_id } de la BD local
+            // o { id, nombre, correo } del API. Usar tal como vienen.
+            setColaboradoresSeleccionados(colaboradores.map(c => ({
+                id: c.usuario_id || c.id,
+                nombre: c.nombre || c.name || null,
+                correo: c.correo || c.email || null,
+            })));
+        }
+        // Si colaboradoresSeleccionados ya tiene datos, no sobreescribir
+    }, [proyecto, colaboradores]);
+
     const seleccionarLote = (lote) => {
-        setLoteSeleccionado(lote);
-        setFormData(prev => ({ ...prev, lote_uuid: lote?.uuid_movil || null }));
+        const isAlreadySelected = lotesSeleccionados.some(l => l.uuid_movil === lote.uuid_movil);
+        let newSelected;
+        if (isAlreadySelected) {
+            newSelected = lotesSeleccionados.filter(l => l.uuid_movil !== lote.uuid_movil);
+        } else {
+            newSelected = [...lotesSeleccionados, lote];
+        }
+        setLotesSeleccionados(newSelected);
+        setFormData(prev => ({ ...prev, lotes_ids: newSelected.map(l => l.uuid_movil) }));
+    };
+
+    const agregarLote = (lote) => {
+        if (!lotesSeleccionados.some(l => l.uuid_movil === lote.uuid_movil)) {
+            const newSelected = [...lotesSeleccionados, lote];
+            setLotesSeleccionados(newSelected);
+            setFormData(prev => ({ ...prev, lotes_ids: newSelected.map(l => l.uuid_movil) }));
+        }
         setMostrarSelectorLote(false);
+    };
+
+    const quitarLote = (loteUuid) => {
+        const newSelected = lotesSeleccionados.filter(l => l.uuid_movil !== loteUuid);
+        setLotesSeleccionados(newSelected);
+        setFormData(prev => ({ ...prev, lotes_ids: newSelected.map(l => l.uuid_movil) }));
     };
 
     const updateField = (field, value) => {
@@ -357,19 +414,45 @@ export default function EditarProyectoForm({
                 {/* ============================================ */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                        Lote
+                        Lotes ({lotesSeleccionados.length})
                     </Text>
                     <View style={[styles.card, isDark && styles.cardDark]}>
+                        {/* Lotes seleccionados como chips */}
+                        {lotesSeleccionados.length > 0 && (
+                            <View style={styles.selectedLotesContainer}>
+                                {lotesSeleccionados.map((lote) => (
+                                    <View
+                                        key={lote.uuid_movil || lote.id}
+                                        style={[styles.loteChip, isDark && styles.loteChipDark]}
+                                    >
+                                        <MaterialCommunityIcons name="map-marker-radius" size={14} color="#34C759" />
+                                        <Text style={[styles.loteChipText, isDark && styles.loteChipTextDark]} numberOfLines={1}>
+                                            {lote.nombre_lote}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => quitarLote(lote.uuid_movil)}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <MaterialCommunityIcons name="close-circle" size={16} color="#FF3B30" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Botón para agregar más lotes */}
                         <TouchableOpacity
                             style={styles.inputContainer}
                             onPress={() => setMostrarSelectorLote(true)}
                         >
-                            <Text style={styles.inputLabel}>Seleccionar Lote</Text>
+                            <Text style={styles.inputLabel}>
+                                {lotesSeleccionados.length === 0 ? 'Seleccionar Lotes' : 'Agregar más lotes'}
+                            </Text>
                             <View style={[styles.dateInput, isDark && styles.dateInputDark]}>
-                                <Text style={[styles.dateText, !loteSeleccionado && styles.dateTextPlaceholder, isDark && styles.dateTextDark]}>
-                                    {loteSeleccionado?.nombre_lote || 'Toca para seleccionar'}
+                                <Text style={[styles.dateText, isDark && styles.dateTextDark]}>
+                                    {lotesSeleccionados.length === 0 ? 'Toca para seleccionar' : `${lotesSeleccionados.length} lote${lotesSeleccionados.length > 1 ? 's' : ''} seleccionado${lotesSeleccionados.length > 1 ? 's' : ''}`}
                                 </Text>
-                                <MaterialCommunityIcons name="chevron-down" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                                <MaterialCommunityIcons name={lotesSeleccionados.length === 0 ? 'chevron-down' : 'plus'} size={20} color="#34C759" />
                             </View>
                         </TouchableOpacity>
                     </View>
@@ -409,14 +492,26 @@ export default function EditarProyectoForm({
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <Text style={styles.inputLabel}>Variedad</Text>
-                            <TextInput
-                                style={[styles.input, isDark && styles.inputDark]}
-                                placeholder="Ej: INIAP-123, Shelli"
-                                placeholderTextColor={isDark ? '#636366' : '#999'}
-                                value={formData.variedad}
-                                onChangeText={(v) => updateField('variedad', v)}
-                            />
+                            <Text style={styles.inputLabel}>Cultivo y Variedad</Text>
+                            <TouchableOpacity
+                                style={[styles.dateInput, isDark && styles.dateInputDark]}
+                                onPress={() => setMostrarSelectorCultivoVariedad(true)}
+                            >
+                                <View style={styles.cultivoVariedadRow}>
+                                    <MaterialCommunityIcons name="leaf" size={18} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                                    {cultivoSeleccionado ? (
+                                        <Text style={[styles.dateText, isDark && styles.dateTextDark]}>
+                                            {cultivoSeleccionado.nombre}
+                                            {variedadSeleccionada ? ` → ${variedadSeleccionada.nombre}` : ' → Sin variedad'}
+                                        </Text>
+                                    ) : (
+                                        <Text style={[styles.dateText, styles.dateTextPlaceholder, isDark && styles.dateTextDark]}>
+                                            Toca para seleccionar
+                                        </Text>
+                                    )}
+                                </View>
+                                <MaterialCommunityIcons name="chevron-down" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.inputContainer}>
@@ -504,26 +599,55 @@ export default function EditarProyectoForm({
                 </View>
 
                 {/* ============================================ */}
-                {/* SECCION: COLABORADOR */}
+                {/* SECCION: COLABORADORES */}
                 {/* ============================================ */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
-                        Información del Colaborador
+                        Colaboradores ({colaboradoresSeleccionados.length})
                     </Text>
                     <View style={[styles.card, isDark && styles.cardDark]}>
+                        {/* Lista de colaboradores seleccionados */}
+                        {colaboradoresSeleccionados.length > 0 && (
+                            <View style={styles.selectedLotesContainer}>
+                                {colaboradoresSeleccionados.map((colab) => (
+                                    <View
+                                        key={colab.id}
+                                        style={[styles.loteChip, isDark && styles.loteChipDark]}
+                                    >
+                                        <MaterialCommunityIcons name="account" size={14} color="#34C759" />
+                                        <Text style={[styles.loteChipText, isDark && styles.loteChipTextDark]} numberOfLines={1}>
+                                            {colab.nombre || `Usuario ${colab.id}`}
+                                        </Text>
+                                        <TouchableOpacity
+                                            onPress={() => {
+                                                const newSelected = colaboradoresSeleccionados.filter(c => c.id !== colab.id);
+                                                setColaboradoresSeleccionados(newSelected);
+                                                updateField('colaboradores_ids', newSelected.map(c => c.id));
+                                            }}
+                                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                        >
+                                            <MaterialCommunityIcons name="close-circle" size={16} color="#FF3B30" />
+                                        </TouchableOpacity>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
                         <TouchableOpacity
                             style={styles.inputContainer}
                             onPress={() => setMostrarColaboradoresModal(true)}
                         >
-                            <Text style={styles.inputLabel}>Colaborador</Text>
+                            <Text style={styles.inputLabel}>
+                                {colaboradoresSeleccionados.length === 0 ? 'Agregar Colaboradores' : 'Agregar más'}
+                            </Text>
                             <View style={[styles.dateInput, isDark && styles.dateInputDark]}>
                                 <View style={styles.colaboradorRow}>
                                     <MaterialCommunityIcons name="account-multiple" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
-                                    <Text style={[styles.dateText, !formData.colaborador_nombre && styles.dateTextPlaceholder, isDark && styles.dateTextDark, { marginLeft: 8 }]}>
-                                        {formData.colaborador_nombre || 'Toca para agregar'}
+                                    <Text style={[styles.dateText, isDark && styles.dateTextDark, { marginLeft: 8 }]}>
+                                        {colaboradoresSeleccionados.length === 0 ? 'Toca para seleccionar' : `${colaboradoresSeleccionados.length} seleccionado${colaboradoresSeleccionados.length > 1 ? 's' : ''}`}
                                     </Text>
                                 </View>
-                                <MaterialCommunityIcons name="chevron-right" size={20} color={isDark ? '#8E8E93' : '#8E8E93'} />
+                                <MaterialCommunityIcons name="plus" size={20} color="#34C759" />
                             </View>
                         </TouchableOpacity>
                     </View>
@@ -540,7 +664,7 @@ export default function EditarProyectoForm({
                 <View style={modalStyles.overlay}>
                     <View style={[modalStyles.content, { paddingBottom: insets.bottom + 16 }]}>
                         <View style={modalStyles.header}>
-                            <Text style={modalStyles.title}>Seleccionar Lote</Text>
+                            <Text style={modalStyles.title}>Seleccionar Lotes</Text>
                             <TouchableOpacity onPress={() => setMostrarSelectorLote(false)}>
                                 <MaterialCommunityIcons name="close" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
                             </TouchableOpacity>
@@ -555,32 +679,44 @@ export default function EditarProyectoForm({
                             <FlatList
                                 data={lotes}
                                 keyExtractor={(item) => item.uuid_movil || item.id?.toString()}
-                                renderItem={({ item }) => (
-                                    <TouchableOpacity
-                                        style={[
-                                            modalStyles.loteItem,
-                                            loteSeleccionado?.id === item.id && modalStyles.loteItemSelected,
-                                        ]}
-                                        onPress={() => seleccionarLote(item)}
-                                    >
-                                        <MaterialCommunityIcons
-                                            name="map-marker-radius"
-                                            size={22}
-                                            color={loteSeleccionado?.id === item.id ? '#34C759' : '#34C759'}
-                                        />
-                                        <View style={modalStyles.loteInfo}>
-                                            <Text style={modalStyles.loteName}>{item.nombre_lote}</Text>
-                                            {item.ubicacion_manual && (
-                                                <Text style={modalStyles.loteLocation}>{item.ubicacion_manual}</Text>
-                                            )}
-                                        </View>
-                                        {loteSeleccionado?.id === item.id && (
-                                            <MaterialCommunityIcons name="check-circle" size={22} color="#34C759" />
-                                        )}
-                                    </TouchableOpacity>
-                                )}
+                                renderItem={({ item }) => {
+                                    const isSelected = lotesSeleccionados.some(l => l.uuid_movil === item.uuid_movil);
+                                    return (
+                                        <TouchableOpacity
+                                            style={[
+                                                modalStyles.loteItem,
+                                                isSelected && modalStyles.loteItemSelected,
+                                            ]}
+                                            onPress={() => seleccionarLote(item)}
+                                        >
+                                            <MaterialCommunityIcons
+                                                name={isSelected ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
+                                                size={22}
+                                                color={isSelected ? '#34C759' : '#8E8E93'}
+                                            />
+                                            <View style={modalStyles.loteInfo}>
+                                                <Text style={modalStyles.loteName}>{item.nombre_lote}</Text>
+                                                {item.ubicacion_manual && (
+                                                    <Text style={modalStyles.loteLocation}>{item.ubicacion_manual}</Text>
+                                                )}
+                                            </View>
+                                        </TouchableOpacity>
+                                    );
+                                }}
                                 ItemSeparatorComponent={() => <View style={modalStyles.separator} />}
                             />
+                        )}
+                        {lotesSeleccionados.length > 0 && (
+                            <View style={modalStyles.footer}>
+                                <TouchableOpacity
+                                    style={modalStyles.doneButton}
+                                    onPress={() => setMostrarSelectorLote(false)}
+                                >
+                                    <Text style={modalStyles.doneButtonText}>
+                                        Listo ({lotesSeleccionados.length} seleccionado{lotesSeleccionados.length > 1 ? 's' : ''})
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         )}
                     </View>
                 </View>
@@ -714,10 +850,26 @@ export default function EditarProyectoForm({
                 visible={mostrarColaboradoresModal}
                 onClose={() => setMostrarColaboradoresModal(false)}
                 proyectoId={proyecto?.uuid_movil}
-                onColaboradorSelect={(colaborador) => {
-                    updateField('colaborador_nombre', colaborador.nombre || colaborador.colaborador_nombre || '');
-                    updateField('colaborador_celular', colaborador.celular || colaborador.colaborador_celular || '');
+                onSelectMultiple={(colaboradores) => {
+                    setColaboradoresSeleccionados(colaboradores);
+                    updateField('colaboradores_ids', colaboradores.map(c => c.id));
                     setMostrarColaboradoresModal(false);
+                }}
+            />
+
+            {/* Modal Selector Cultivo/Variedad */}
+            <SelectorCultivoVariedad
+                visible={mostrarSelectorCultivoVariedad}
+                onClose={() => setMostrarSelectorCultivoVariedad(false)}
+                cultivo_seleccionado={cultivoSeleccionado}
+                variedad_seleccionada={variedadSeleccionada}
+                onSelect={({ cultivo_id, cultivo_nombre, variedad_id, variedad_nombre }) => {
+                    setCultivoSeleccionado(cultivo_id ? { id: cultivo_id, nombre: cultivo_nombre } : null);
+                    setVariedadSeleccionada(variedad_nombre ? { id: null, nombre: variedad_nombre } : null);
+                    updateField('cultivo_id', cultivo_id);
+                    updateField('cultivo_nombre', cultivo_nombre);
+                    updateField('variedad_id', null);
+                    updateField('variedad_nombre', variedad_nombre);
                 }}
             />
         </KeyboardAvoidingView>
@@ -795,5 +947,21 @@ const modalStyles = StyleSheet.create({
         height: 1,
         backgroundColor: '#3A3A3C',
         marginLeft: 54,
+    },
+    footer: {
+        padding: 16,
+        borderTopWidth: 1,
+        borderTopColor: '#3A3A3C',
+    },
+    doneButton: {
+        backgroundColor: '#34C759',
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    doneButtonText: {
+        color: '#FFFFFF',
+        fontSize: 16,
+        fontWeight: '700',
     },
 });

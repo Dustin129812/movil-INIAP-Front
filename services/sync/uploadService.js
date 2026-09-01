@@ -2,10 +2,85 @@ import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
 import { db } from '../../db/client';
 import {
-    lotes, ciclos_cultivo, visitas, hojas_datos, proyectos, configuracion, SYNC_STATUS
+    lotes, ciclos_cultivo, visitas, hojas_datos, proyectos, proyecto_lotes, configuracion, SYNC_STATUS
 } from '../../db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { fetchApi } from '../api/apiClient';
+
+/**
+ * Valida si las coordenadas de un lote tienen al menos 3 puntos únicos.
+ * @param {array} coordenadas - Array de puntos {latitude, longitude}
+ * @returns {boolean} true si son válidas, false si son inválidas
+ */
+const validarCoordenadasLote = (coordenadas) => {
+    if (!coordenadas || !Array.isArray(coordenadas) || coordenadas.length < 3) {
+        return false;
+    }
+    // Filtrar puntos sin lat/lng válidos
+    const puntosValidos = coordenadas.filter(p =>
+        p && typeof p.latitude === 'number' && typeof p.longitude === 'number' &&
+        !isNaN(p.latitude) && !isNaN(p.longitude) &&
+        Math.abs(p.latitude) <= 90 && Math.abs(p.longitude) <= 180
+    );
+    if (puntosValidos.length < 3) {
+        return false;
+    }
+    // Verificar que haya al menos 3 puntos únicos
+    const uniqueKeys = new Set();
+    puntosValidos.forEach(p => {
+        uniqueKeys.add(`${p.latitude.toFixed(7)},${p.longitude.toFixed(7)}`);
+    });
+    return uniqueKeys.size >= 3;
+};
+
+/**
+ * Obtiene los lotes pendientes de sync que tienen coordenadas válidas.
+ * Los lotes con coordenadas inválidas se marcan como 'error_geometria'.
+ */
+const obtenerLotesValidosParaSync = async () => {
+    const [lotesDraft, lotesPending] = await Promise.all([
+        db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.DRAFT)),
+        db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING)),
+    ]);
+
+    const allLotes = [...(lotesDraft || []), ...(lotesPending || [])];
+    const lotesValidos = [];
+    const lotesInvalidos = [];
+
+    for (const lote of allLotes) {
+        // Parsear coordenadas si es string JSON
+        let coordenadas = lote.coordenadas;
+        if (typeof coordenadas === 'string') {
+            try {
+                coordenadas = JSON.parse(coordenadas);
+            } catch {
+                coordenadas = null;
+            }
+        }
+
+        if (validarCoordenadasLote(coordenadas)) {
+            lotesValidos.push(lote);
+        } else {
+            lotesInvalidos.push(lote);
+        }
+    }
+
+    // Marcar lotes inválidos para que el usuario los corrija
+    for (const lote of lotesInvalidos) {
+        try {
+            await db.update(lotes)
+                .set({
+                    sync_status: 'error_geometria',
+                    updated_at: new Date().toISOString(),
+                })
+                .where(eq(lotes.uuid_movil, lote.uuid_movil));
+        } catch (e) {
+            // Error silencioso
+        }
+    }
+
+    return { lotesValidos, lotesInvalidos };
+};
 
 /**
  * Construye el payload anidado de sincronización.
@@ -14,6 +89,9 @@ import { fetchApi } from '../api/apiClient';
  * NOTA: Incluye tanto DRAFT como PENDING para asegurar que todos los
  * registros pendientes se sincronicen. Los DRAFT se marcan como PENDING
  * antes de incluirse en el payload.
+ *
+ * IMPORTANTE: Los lotes con coordenadas inválidas (menos de 3 puntos únicos)
+ * son marcados como 'error_geometria' y NO se incluyen en el payload.
  */
 const construirPayloadSync = async () => {
     // Obtener DRAFT y PENDING por separado
@@ -45,12 +123,54 @@ const construirPayloadSync = async () => {
     const allVisitas = [...(visitasDraft || []), ...(visitasPending || [])];
     const allHojas = [...(hojasDraft || []), ...(hojasPending || [])];
 
+    // Obtener relaciones N:M de proyecto_lotes
+    const proyectoLotesRelaciones = await db.select().from(proyecto_lotes);
+    const lotesPorProyectoMap = {};
+    proyectoLotesRelaciones.forEach(pl => {
+        if (!lotesPorProyectoMap[pl.proyecto_uuid]) {
+            lotesPorProyectoMap[pl.proyecto_uuid] = [];
+        }
+        lotesPorProyectoMap[pl.proyecto_uuid].push(pl.lote_uuid);
+    });
+
+    // FILTRAR LOTES CON COORDENADAS INVÁLIDAS
+    // Los lotes con coordenadas inválidas se marcan como 'error_geometria'
+    // para que el usuario los corrija antes de sincronizar
+    const allLotesValidos = [];
+    for (const lote of allLotes) {
+        // Parsear coordenadas si es string JSON
+        let coordenadas = lote.coordenadas;
+        if (typeof coordenadas === 'string') {
+            try {
+                coordenadas = JSON.parse(coordenadas);
+            } catch {
+                coordenadas = null;
+            }
+        }
+
+        if (!validarCoordenadasLote(coordenadas)) {
+            // Marcar lote con error de geometría para que el usuario lo corrija
+            try {
+                await db.update(lotes)
+                    .set({
+                        sync_status: 'error_geometria',
+                        updated_at: new Date().toISOString(),
+                    })
+                    .where(eq(lotes.uuid_movil, lote.uuid_movil));
+            } catch (e) {
+                // Error silencioso
+            }
+            continue; // Skip this lote, don't add to payload
+        }
+        allLotesValidos.push(lote);
+    }
+
     // Los proyectos del frontend usan 'lote_uuid', no lote_id
     // Agrupar proyectos por lote_uuid cuando sea posible
     // El lote local tiene uuid_movil - los proyectos tienen lote_uuid (referencia al uuid_movil del lote)
     const lotesFlat = [];
 
-    for (const lote of allLotes) {
+    for (const lote of allLotesValidos) {
         const loteUuid = lote.uuid_movil;
 
         // Proyectos de este lote (por lote_uuid en proyecto)
@@ -104,7 +224,11 @@ const construirPayloadSync = async () => {
                 uuid_movil: proyectoUuid,
                 titulo: proyecto.titulo || 'Proyecto',
                 descripcion: proyecto.descripcion || '',
-                variedad: proyecto.variedad || 'Sin variedad',
+                variedad: proyecto.variedad || proyecto.variedad_nombre || 'Sin variedad',
+                variedad_id: proyecto.variedad_id || null,
+                cultivo_id: proyecto.cultivo_id || null,
+                // Include lotes_ids from N:M relationship
+                lotes_ids: lotesPorProyectoMap[proyectoUuid] || [],
                 // Validar fecha: solo enviar si es una fecha válida YYYY-MM-DD
                 fecha_siembra: (() => {
                     const fs = proyecto.fecha_siembra;
@@ -167,10 +291,13 @@ const construirPayloadSync = async () => {
  * se siguen contando por separado (útiles para depuración/otros usos),
  * pero deliberadamente NO se suman a `total` para que el número del badge
  * siempre coincida con la suma de lo que el usuario ve en pantalla.
+ *
+ * NOTA: Los lotes con sync_status 'error_geometria' NO se cuentan como pendientes
+ * porque requieren corrección manual del usuario, no sincronización.
  */
 export const obtenerConteoPendientes = async () => {
     try {
-        // Contar tanto DRAFT como PENDING
+        // Contar tanto DRAFT como PENDING (excluyendo error_geometria)
         const [lotesD, lotesP, proyectosD, proyectosP, ciclosD, ciclosP, visitasD, visitasP, hojasD, hojasP] = await Promise.all([
             db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.DRAFT)),
             db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING)),
@@ -197,6 +324,22 @@ export const obtenerConteoPendientes = async () => {
     } catch (error) {
         // console removed
         return { lotes: 0, proyectos: 0, ciclos: 0, visitas: 0, hojas: 0, total: 0 };
+    }
+};
+
+/**
+ * Obtiene el conteo de lotes que necesitan corrección de geometría.
+ * Estos lotes tienen coordenadas inválidas y no pueden sincronizarse.
+ */
+export const obtenerConteoLotesConErrorGeometria = async () => {
+    try {
+        const lotesError = await db
+            .select()
+            .from(lotes)
+            .where(eq(lotes.sync_status, 'error_geometria'));
+        return lotesError?.length || 0;
+    } catch (error) {
+        return 0;
     }
 };
 

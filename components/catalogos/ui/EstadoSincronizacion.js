@@ -29,20 +29,21 @@ function EstadoSincronizacion({
     estado = null,
     sincronizando = false,
     onSincronizar,
+    isDark = false,
 }) {
-    const { isDark } = useTheme();
+    const { isDark: themeIsDark } = useTheme();
+    const dark = isDark || themeIsDark;
 
     const colors = {
-        card: isDark ? "#171D1B" : "#FFFFFF",
-        border: isDark ? "#303936" : "#DDE8E4",
-        text: isDark ? "#F8FAF9" : "#18231F",
-        secondary: isDark ? "#AAB7B2" : "#687771",
-        primary: "#159A70",
-        primarySoft: isDark ? "#143C31" : "#DDF5EB",
-        warning: "#D98516",
-        warningSoft: isDark ? "#49331A" : "#FFF0DC",
-        danger: "#D94A4A",
-        dangerSoft: isDark ? "#482020" : "#FDE7E7",
+        card: dark ? "#1E1E24" : "#FFFFFF",
+        text: dark ? "#FFFFFF" : "#000000",
+        secondary: dark ? "#98989F" : "#69736F",
+        primary: "#34C759",
+        primarySoft: dark ? "rgba(52,199,89,0.15)" : "rgba(52,199,89,0.1)",
+        warning: "#FF9500",
+        warningSoft: dark ? "rgba(255,149,0,0.15)" : "rgba(255,149,0,0.1)",
+        danger: "#FF453A",
+        dangerSoft: dark ? "rgba(255,69,58,0.15)" : "rgba(255,69,58,0.1)",
     };
 
     const configuracion = useMemo(() => {
@@ -91,7 +92,6 @@ function EstadoSincronizacion({
                 styles.container,
                 {
                     backgroundColor: colors.card,
-                    borderColor: colors.border,
                 },
             ]}
         >
@@ -184,12 +184,16 @@ export default memo(EstadoSincronizacion);
 
 const styles = StyleSheet.create({
     container: {
-        minHeight: 82,
-        padding: 13,
-        borderWidth: 1,
-        borderRadius: 18,
+        minHeight: 72,
+        padding: 14,
+        borderRadius: 16,
         flexDirection: "row",
         alignItems: "center",
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 1,
     },
     icon: {
         width: 48,

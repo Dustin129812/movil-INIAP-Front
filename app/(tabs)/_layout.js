@@ -25,6 +25,7 @@ import Animated, {
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useTheme } from '../../services/theme';
 import { SearchProvider, useSearch } from '../../components/lotes/context/SearchContext';
+import { sincronizarCatalogos } from '../../services/catalogosSyncService';
 
 // --- TEMA DEL TAB BAR ---
 // Origen: services/theme/tabBarTheme.js
@@ -483,6 +484,18 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
 // ============================================
 
 export default function TabLayout() {
+  // Auto-sync de catálogos al iniciar la app
+  useEffect(() => {
+    const syncOnStart = async () => {
+      try {
+        await sincronizarCatalogos({ forzarCompleta: false });
+      } catch (e) {
+        // Silenciar errores de sync automático
+      }
+    };
+    syncOnStart();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <SearchProvider>

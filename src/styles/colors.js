@@ -69,6 +69,7 @@ export const STATUS_STYLES = {
   pendiente: { color: '#FF9500', bgColor: 'rgba(255, 149, 0, 0.15)', text: 'Pendiente' },
   verificado: { color: '#34C759', bgColor: 'rgba(52, 199, 89, 0.15)', text: 'Activo' },
   borrador: { color: '#8E8E93', bgColor: 'rgba(142, 142, 147, 0.15)', text: 'Borrador' },
+  error_geometria: { color: '#FF3B30', bgColor: 'rgba(255, 59, 48, 0.15)', text: 'Sin área' },
 };
 
 export const STATUS_OPTIONS = [

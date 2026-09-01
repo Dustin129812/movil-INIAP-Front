@@ -136,7 +136,7 @@ const UsuarioSeleccionable = ({ usuario, onSeleccionar, yaEsColaborador, selecci
   </TouchableOpacity>
 );
 
-export default function ColaboradoresModal({ visible, onClose, proyectoId, onSelectSingle }) {
+export default function ColaboradoresModal({ visible, onClose, proyectoId, onSelectSingle, onSelectMultiple }) {
   const insets = useSafeAreaInsets();
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
   const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
@@ -243,6 +243,18 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId, onSel
       cerrarPanel();
       return;
     }
+    if (onSelectMultiple) {
+      // Modo directo: agregar a seleccionados y retornar al confirmar
+      setSeleccionados((prev) => {
+        const yaExiste = prev.find((u) => u.id === usuario.id);
+        if (yaExiste) {
+          return prev.filter((u) => u.id !== usuario.id);
+        }
+        return [...prev, usuario];
+      });
+      return;
+    }
+    // Modo normal (guardar en BD): agregar a seleccionados
     setSeleccionados((prev) => {
       const yaExiste = prev.find((u) => u.id === usuario.id);
       if (yaExiste) {
@@ -250,10 +262,18 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId, onSel
       }
       return [...prev, usuario];
     });
-  }, [onSelectSingle, cerrarPanel]);
+  }, [onSelectSingle, onSelectMultiple, cerrarPanel]);
 
   const handleAgregarSeleccionados = useCallback(async () => {
     if (!seleccionados.length) return;
+
+    // Si onSelectMultiple está definido, retornar los seleccionados directamente
+    if (onSelectMultiple) {
+      onSelectMultiple(seleccionados);
+      cerrarPanel();
+      return;
+    }
+
     if (!proyectoId) {
       Alert.alert('Error', 'No hay proyecto seleccionado');
       return;
@@ -271,7 +291,7 @@ export default function ColaboradoresModal({ visible, onClose, proyectoId, onSel
     } else {
       Alert.alert('Error', resultado.message || 'No se pudieron agregar los colaboradores');
     }
-  }, [seleccionados, agregarColaboradores, cerrarPanel, notifyColaboradorAgregado, proyectoId]);
+  }, [seleccionados, onSelectMultiple, agregarColaboradores, cerrarPanel, notifyColaboradorAgregado, proyectoId]);
 
   const handleEliminar = useCallback(async (userId) => {
     Alert.alert(

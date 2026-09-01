@@ -28,6 +28,9 @@ function AuthNavigator() {
                 <Stack.Screen name="lotes/nuevo/index" />
                 <Stack.Screen name="proyectos/nuevo/index" />
                 <Stack.Screen name="proyectos/[id]/index" />
+                <Stack.Screen name="proyectos/[id]/seguimiento/index" />
+                <Stack.Screen name="proyectos/[id]/seguimiento/etapa" />
+                <Stack.Screen name="proyectos/[id]/seguimiento/evento" />
                 <Stack.Screen name="configuracion/dispositivo" />
                 <Stack.Screen name="configuracion/colaboradores" />
             </Stack>

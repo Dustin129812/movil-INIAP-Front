@@ -53,10 +53,14 @@ export const estaciones = sqliteTable('estaciones', {
 export const proyectos = sqliteTable('proyectos', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     uuid_movil: text('uuid_movil').unique(),
-    lote_uuid: text('lote_uuid'),           // UUID del lote al que pertenece
+    lote_uuid: text('lote_uuid'),           // UUID del lote al que pertenece (principal)
     titulo: text('titulo').notNull(),
     descripcion: text('descripcion'),
-    variedad: text('variedad'),
+    variedad_id: integer('variedad_id'),     // ID de la variedad seleccionada
+    variedad: text('variedad'),             // Nombre de la variedad (texto)
+    variedad_nombre: text('variedad_nombre'), // Alias para variedad
+    cultivo_id: integer('cultivo_id'),       // ID del cultivo
+    cultivo_nombre: text('cultivo_nombre'),  // Nombre del cultivo
     fecha_siembra: text('fecha_siembra'),
     estado: text('estado').default('activo'),
     tipo_acolchado: text('tipo_acolchado'),
@@ -77,6 +81,15 @@ export const proyecto_lotes = sqliteTable('proyecto_lotes', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     proyecto_uuid: text('proyecto_uuid').notNull(),
     lote_uuid: text('lote_uuid').notNull(),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
+});
+
+// Tabla intermedia para relacion N:M proyectos-colaboradores
+export const proyecto_colaboradores = sqliteTable('proyecto_colaboradores', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    proyecto_uuid: text('proyecto_uuid').notNull(),
+    usuario_id: integer('usuario_id').notNull(),
     sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
     created_at: text('created_at'),
 });
@@ -146,6 +159,7 @@ export const variedades = sqliteTable('variedades', {
     cultivo_id: integer('cultivo_id'),
     nombre: text('nombre').notNull(),
     caracteristicas_base: text('caracteristicas_base'),
+    deleted_at: text('deleted_at'),
 });
 
 export const enfermedades = sqliteTable('enfermedades', {
@@ -288,7 +302,7 @@ export const etapaEnfermedad = sqliteTable(
     {
         etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
         enfermedad_id: integer('enfermedad_id').notNull(),
-        nivel_riesgo: text('nivel_riesgo'),
+        nivel_riesgo: text('nivel_riesgo').default('medio'),
         updated_at: text('updated_at'),
     },
     (tabla) => [
@@ -306,7 +320,7 @@ export const etapaPlaga = sqliteTable(
     {
         etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
         plaga_id: integer('plaga_id').notNull(),
-        nivel_riesgo: text('nivel_riesgo'),
+        nivel_riesgo: text('nivel_riesgo').default('medio'),
         updated_at: text('updated_at'),
     },
     (tabla) => [
@@ -318,6 +332,44 @@ export const etapaPlaga = sqliteTable(
         }),
     ]
 );
+
+// ============================================
+// TABLAS DE SEGUIMIENTO POR ETAPAS
+// ============================================
+
+export const seguimientos = sqliteTable('seguimientos', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server_id: integer('server_id'),
+    uuid_movil: text('uuid_movil').unique(),
+    proyecto_uuid: text('proyecto_uuid').notNull(),
+    etapa_cultivo_id: integer('etapa_cultivo_id').notNull(),
+    fecha_inicio: text('fecha_inicio').notNull(),
+    fecha_fin: text('fecha_fin'),
+    estado: text('estado').default('en_progreso'),
+    observaciones: text('observaciones'),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+});
+
+export const eventosSeguimiento = sqliteTable('eventos_seguimiento', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server_id: integer('server_id'),
+    uuid_movil: text('uuid_movil').unique(),
+    seguimiento_uuid: text('seguimiento_uuid').notNull(),
+    tipo_evento: text('tipo_evento').notNull(),
+    titulo: text('titulo').notNull(),
+    descripcion: text('descripcion'),
+    fecha_evento: text('fecha_evento').notNull(),
+    enfermedad_id: integer('enfermedad_id'),
+    plaga_id: integer('plaga_id'),
+    recomendacion_id: integer('recomendacion_id'),
+    severidad: text('severidad'),
+    datos_adicionales: text('datos_adicionales'),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+});
 
 export const catalogosSyncControl = sqliteTable(
     'catalogos_sync_control',

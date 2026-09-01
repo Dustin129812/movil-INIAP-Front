@@ -49,7 +49,7 @@ import {
 import VerticesMap from './VerticesMap';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES'];
+const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'ERROR'];
 
 const CAMPOS_EDITABLES = [
     { key: 'nombre_lote', label: 'Nombre del lote', icon: 'tag-outline', autoCapitalize: 'sentences' },

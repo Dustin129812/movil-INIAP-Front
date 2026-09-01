@@ -63,6 +63,9 @@ export function SearchProvider({ children }) {
                     return lote.estado_verificacion === 'pendiente';
                 } else if (filtroEstado === 'ACTIVOS') {
                     return lote.estado_verificacion === 'verificado';
+                } else if (filtroEstado === 'ERROR') {
+                    // Mostrar lotes con error de geometría (no se pueden sincronizar)
+                    return lote.sync_status === 'error_geometria';
                 }
                 return true;
             });
@@ -88,6 +91,8 @@ export function SearchProvider({ children }) {
                 matchesStatus = lote.estado_verificacion === 'pendiente';
             } else if (filtroEstado === 'ACTIVOS') {
                 matchesStatus = lote.estado_verificacion === 'verificado';
+            } else if (filtroEstado === 'ERROR') {
+                matchesStatus = lote.sync_status === 'error_geometria';
             }
 
             return matchesSearch && matchesStatus;

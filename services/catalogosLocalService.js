@@ -1,6 +1,7 @@
 import { db } from "../db/client";
 import {
     cultivos,
+    variedades,
     enfermedades,
     plagas,
     recomendaciones,
@@ -79,6 +80,7 @@ export async function guardarCatalogosLocales(payload) {
 
     console.log("[Catálogos] Datos recibidos:", {
     cultivos: payload.cultivos?.length || 0,
+    variedades: payload.variedades?.length || 0,
     enfermedades: payload.enfermedades?.length || 0,
     plagas: payload.plagas?.length || 0,
     recomendaciones:
@@ -115,6 +117,20 @@ export async function guardarCatalogosLocales(payload) {
                 estado: item.estado || "activo",
                 created_at: item.created_at || null,
                 updated_at: item.updated_at || null,
+                deleted_at: item.deleted_at || null,
+            })
+        );
+
+        await guardarRegistros(
+            tx,
+            variedades,
+            variedades.id,
+            payload.variedades,
+            (item) => ({
+                id: Number(item.id),
+                cultivo_id: Number(item.cultivo_id) || null,
+                nombre: item.nombre,
+                caracteristicas_base: item.caracteristicas_base ? JSON.stringify(item.caracteristicas_base) : null,
                 deleted_at: item.deleted_at || null,
             })
         );
@@ -390,6 +406,7 @@ export async function guardarCatalogosLocales(payload) {
 
         const [
             cultivosLocales,
+            variedadesLocales,
             enfermedadesLocales,
             plagasLocales,
             recomendacionesLocales,
@@ -403,6 +420,7 @@ export async function guardarCatalogosLocales(payload) {
             etapaPlagaLocal,
         ] = await Promise.all([
             db.select().from(cultivos),
+            db.select().from(variedades),
             db.select().from(enfermedades),
             db.select().from(plagas),
             db.select().from(recomendaciones),
@@ -418,6 +436,7 @@ export async function guardarCatalogosLocales(payload) {
 
         console.log("[Catálogos] Datos guardados:", {
             cultivos: cultivosLocales.length,
+            variedades: variedadesLocales.length,
             enfermedades: enfermedadesLocales.length,
             plagas: plagasLocales.length,
             recomendaciones: recomendacionesLocales.length,

@@ -14,32 +14,32 @@ const TIPOS = {
     manejo: {
         label: "Manejo",
         icon: "clipboard-check-outline",
-        color: "#2474C6",
-        background: "#E7F1FC",
+        color: "#0A84FF",
+        background: "rgba(10,132,255,0.1)",
     },
     prevencion: {
         label: "Prevención",
         icon: "shield-check-outline",
-        color: "#159A70",
-        background: "#DDF5EB",
+        color: "#34C759",
+        background: "rgba(52,199,89,0.1)",
     },
     control_biologico: {
         label: "Control biológico",
         icon: "leaf-circle-outline",
-        color: "#4C8C2B",
-        background: "#EAF5E3",
+        color: "#30D158",
+        background: "rgba(48,209,88,0.1)",
     },
     control_quimico: {
         label: "Control químico",
         icon: "flask-outline",
-        color: "#C56B14",
-        background: "#FFF0DE",
+        color: "#FF9500",
+        background: "rgba(255,149,0,0.1)",
     },
     control_cultural: {
         label: "Control cultural",
         icon: "shovel",
-        color: "#8A5BC2",
-        background: "#F0E8FA",
+        color: "#AF52DE",
+        background: "rgba(175,82,222,0.1)",
     },
 };
 
@@ -47,8 +47,8 @@ function obtenerTipo(tipo) {
     return TIPOS[tipo] || {
         label: tipo || "Recomendación",
         icon: "lightbulb-on-outline",
-        color: "#159A70",
-        background: "#DDF5EB",
+        color: "#34C759",
+        background: "rgba(52,199,89,0.1)",
     };
 }
 
@@ -61,14 +61,13 @@ function DetalleRecomendaciones({
     const { isDark } = useTheme();
 
     const colors = {
-        card: isDark ? "#171D1B" : "#FFFFFF",
-        input: isDark ? "#222927" : "#F2F6F4",
-        border: isDark ? "#303936" : "#DDE8E4",
-        text: isDark ? "#F8FAF9" : "#18231F",
-        secondary: isDark ? "#AAB7B2" : "#687771",
-        primary: "#159A70",
-        primarySoft: isDark ? "#143C31" : "#DDF5EB",
-        empty: isDark ? "#121715" : "#F8FAF9",
+        card: isDark ? "#1E1E24" : "#FFFFFF",
+        input: isDark ? "#2C2C2E" : "#F2F2F7",
+        text: isDark ? "#FFFFFF" : "#000000",
+        secondary: isDark ? "#98989F" : "#69736F",
+        primary: "#34C759",
+        primarySoft: isDark ? "rgba(52,199,89,0.15)" : "rgba(52,199,89,0.1)",
+        empty: isDark ? "#1E1E24" : "#F8FAF9",
     };
 
     if (!problema) {
@@ -77,8 +76,7 @@ function DetalleRecomendaciones({
                 style={[
                     styles.empty,
                     {
-                        backgroundColor: colors.empty,
-                        borderColor: colors.border,
+                        backgroundColor: colors.card,
                     },
                 ]}
             >
@@ -204,8 +202,7 @@ function DetalleRecomendaciones({
                     style={[
                         styles.empty,
                         {
-                            backgroundColor: colors.empty,
-                            borderColor: colors.border,
+                            backgroundColor: colors.card,
                         },
                     ]}
                 >
@@ -257,8 +254,6 @@ function DetalleRecomendaciones({
                                         {
                                             backgroundColor:
                                                 colors.card,
-                                            borderColor:
-                                                colors.border,
                                         },
                                     ]}
                                 >
@@ -406,10 +401,11 @@ export default memo(DetalleRecomendaciones);
 const styles = StyleSheet.create({
     problemSummary: {
         padding: 14,
-        borderWidth: 1,
-        borderRadius: 17,
+        borderRadius: 16,
         flexDirection: "row",
         marginBottom: 13,
+        borderWidth: 1,
+        borderColor: 'rgba(52,199,89,0.3)',
     },
     problemIcon: {
         width: 48,
@@ -442,8 +438,12 @@ const styles = StyleSheet.create({
     },
     card: {
         padding: 16,
-        borderWidth: 1,
-        borderRadius: 18,
+        borderRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+        elevation: 1,
     },
     cardHeader: {
         flexDirection: "row",
