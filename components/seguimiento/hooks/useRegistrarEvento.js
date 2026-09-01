@@ -9,6 +9,7 @@ import {
     etapaPlaga,
     etapaRecomendacion,
 } from '../../../db/schema';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 
 export const TIPOS_EVENTO = [
     { key: 'avance', label: 'Avance', icon: 'trending-up', color: '#30D158' },
@@ -35,6 +36,85 @@ export const useRegistrarEvento = (etapaCultivoId) => {
         recomendacion_id: null,
         severidad: null,
     });
+
+    // ========================
+    // Speech Recognition
+    // ========================
+    const [isListening, setIsListening] = useState(false);
+    const [transcript, setTranscript] = useState('');
+    const [targetField, setTargetField] = useState(null); // 'titulo' o 'descripcion'
+
+    // Escuchar evento de resultado
+    useSpeechRecognitionEvent('result', (event) => {
+        if (event?.results && event.results.length > 0) {
+            const result = event.results[0];
+            const text = result?.transcript || '';
+            setTranscript(text);
+
+            // Si es un resultado final, agregar al campo
+            if (event.isFinal && targetField) {
+                setForm((prev) => {
+                    if (targetField === 'titulo') {
+                        return {
+                            ...prev,
+                            titulo: prev.titulo + (prev.titulo ? ' ' : '') + text,
+                        };
+                    } else if (targetField === 'descripcion') {
+                        return {
+                            ...prev,
+                            descripcion: prev.descripcion + (prev.descripcion ? ' ' : '') + text,
+                        };
+                    }
+                    return prev;
+                });
+                setTranscript('');
+            }
+        }
+    });
+
+    useSpeechRecognitionEvent('end', () => {
+        setIsListening(false);
+        setTargetField(null);
+    });
+
+    useSpeechRecognitionEvent('error', (event) => {
+        console.error('[Speech] Error:', event.message);
+        setIsListening(false);
+    });
+
+    const startListening = useCallback(async (field) => {
+        try {
+            setTargetField(field);
+            setTranscript('');
+            
+            // Solicitar permisos
+            const permResult = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+            if (!permResult.granted) {
+                console.warn('Speech permissions not granted');
+                return;
+            }
+
+            setIsListening(true);
+            ExpoSpeechRecognitionModule.start({
+                lang: 'es-ES',
+                interimResults: true,
+                continuous: false,
+            });
+        } catch (err) {
+            console.error('[Speech] Error starting:', err);
+            setIsListening(false);
+        }
+    }, []);
+
+    const stopListening = useCallback(async () => {
+        try {
+            ExpoSpeechRecognitionModule.stop();
+            setIsListening(false);
+        } catch (err) {
+            console.error('[Speech] Error stopping:', err);
+            setIsListening(false);
+        }
+    }, []);
 
     const [catalogoEnfermedades, setCatalogoEnfermedades] = useState([]);
     const [catalogoPlagas, setCatalogoPlagas] = useState([]);
@@ -171,6 +251,11 @@ export const useRegistrarEvento = (etapaCultivoId) => {
         catalogoRecomendaciones,
         TIPOS_EVENTO,
         SEVERIDADES,
+        // Speech Recognition
+        isListening,
+        startListening,
+        stopListening,
+        transcript,
     };
 };
 
