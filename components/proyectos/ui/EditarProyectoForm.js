@@ -36,6 +36,7 @@ import Animated, {
 import { useTheme } from '../../../services/theme';
 import DatePickerWheel from '../../../components/calendario/ui/DatePickerWheel';
 import ColaboradoresModal from './ColaboradoresModal';
+import PersonalColaboradorExterno from './PersonalColaboradorExterno';
 import SelectorCultivoVariedad from './SelectorCultivoVariedad';
 
 // --- ESTILOS ---
@@ -312,6 +313,7 @@ export default function EditarProyectoForm({
         HEADER_ANIMATION.HEADER_ROW_MARGIN_TOP +
         HEADER_ANIMATION.HEADER_ROW_HEIGHT +
         20;
+    const proyectoIdPersonalExterno = proyecto?.uuid_movil || proyecto?.id;
 
     // ============================================
     // RENDER: LOADING
@@ -652,6 +654,12 @@ export default function EditarProyectoForm({
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                <PersonalColaboradorExterno
+                    proyectoId={proyectoIdPersonalExterno}
+                    disabled={isNewProject || !proyectoIdPersonalExterno}
+                    isDark={isDark}
+                />
             </Animated.ScrollView>
 
             {/* Modal Selector de Lote */}
