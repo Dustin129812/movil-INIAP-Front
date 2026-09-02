@@ -20,6 +20,7 @@ export default function EtapaDetalleUI({
     seguimiento,
     etapa,
     eventos = [],
+    recomendaciones = [],
     onFinalizarEtapa,
     proyectoId,
 }) {
@@ -146,6 +147,28 @@ export default function EtapaDetalleUI({
                                 <Text style={{ fontSize: 14, color: colors.textPrimary, flex: 1, lineHeight: 20 }}>
                                     {ind}
                                 </Text>
+                            </View>
+                        ))}
+                    </View>
+                ) : null}
+
+                {/* Recomendaciones Agronómicas */}
+                {recomendaciones.length > 0 ? (
+                    <View style={styles.detalleCard}>
+                        <Text style={styles.detalleSeccionTitulo}>💡 Recomendaciones Agronómicas</Text>
+                        {recomendaciones.map((rec, i) => (
+                            <View key={rec.recomendacion_id || i} style={styles.recomendacionItem}>
+                                <Text style={styles.recomendacionTitulo}>{rec.titulo}</Text>
+                                {rec.tipo ? (
+                                    <Text style={styles.recomendacionTipo}>
+                                        Tipo: {rec.tipo}
+                                    </Text>
+                                ) : null}
+                                {rec.descripcion ? (
+                                    <Text style={{ fontSize: 13, color: colors.textSecondary, marginTop: 4, lineHeight: 19 }}>
+                                        {rec.descripcion}
+                                    </Text>
+                                ) : null}
                             </View>
                         ))}
                     </View>

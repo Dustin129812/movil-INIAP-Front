@@ -191,6 +191,40 @@ export default function RegistrarEventoUI({
                     </View>
                 ) : null}
 
+                {/* Selector de recomendación (si tipo es tratamiento_aplicado) */}
+                {form.tipo_evento === 'tratamiento_aplicado' && catalogoRecomendaciones.length > 0 ? (
+                    <View style={styles.inputContainer}>
+                        <Text style={styles.inputLabel}>Recomendación Aplicada</Text>
+                        <View style={styles.chipRow}>
+                            {catalogoRecomendaciones.map((rec) => (
+                                <TouchableOpacity
+                                    key={rec.id}
+                                    style={[
+                                        styles.chip,
+                                        form.recomendacion_id === rec.id && {
+                                            borderColor: '#30D158',
+                                            backgroundColor: 'rgba(48, 209, 88, 0.1)',
+                                        },
+                                    ]}
+                                    onPress={() => setField('recomendacion_id', form.recomendacion_id === rec.id ? null : rec.id)}
+                                >
+                                    <Text style={[
+                                        styles.chipText,
+                                        form.recomendacion_id === rec.id && { color: '#30D158', fontWeight: '600' },
+                                    ]}>
+                                        {rec.titulo}
+                                    </Text>
+                                    {rec.tipo ? (
+                                        <Text style={{ fontSize: 11, color: colors.textTertiary, marginTop: 2 }}>
+                                            {rec.tipo}
+                                        </Text>
+                                    ) : null}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                ) : null}
+
                 {/* Botón guardar */}
                 <TouchableOpacity
                     style={[
