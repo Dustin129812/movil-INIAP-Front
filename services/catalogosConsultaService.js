@@ -9,6 +9,7 @@ import { db } from "../db/client";
 
 import {
     cultivos,
+    variedades,
     enfermedades,
     plagas,
     recomendaciones,
@@ -16,6 +17,10 @@ import {
     cultivoPlaga,
     enfermedadRecomendacion,
     plagaRecomendacion,
+    etapasCultivo,
+    etapaRecomendacion,
+    etapaEnfermedad,
+    etapaPlaga,
     catalogosSyncControl,
 } from "../db/schema";
 
@@ -121,6 +126,76 @@ export async function obtenerVariedadesPorCultivo(cultivoId) {
 }
 
 /**
+ * Obtiene etapas fenológicas activas de un cultivo.
+ */
+export async function obtenerEtapasPorCultivo(cultivoId) {
+    const id = normalizarId(cultivoId);
+
+    if (!id) {
+        return [];
+    }
+
+    return await db
+        .select({
+            id: etapasCultivo.id,
+            cultivo_id: etapasCultivo.cultivo_id,
+            nombre: etapasCultivo.nombre,
+            descripcion: etapasCultivo.descripcion,
+            orden: etapasCultivo.orden,
+            duracion_dias_estimada:
+                etapasCultivo.duracion_dias_estimada,
+            indicadores_clave:
+                etapasCultivo.indicadores_clave,
+            estado: etapasCultivo.estado,
+            updated_at: etapasCultivo.updated_at,
+        })
+        .from(etapasCultivo)
+        .where(
+            and(
+                eq(etapasCultivo.cultivo_id, id),
+                eq(etapasCultivo.estado, "activo")
+            )
+        )
+        .orderBy(asc(etapasCultivo.orden));
+}
+
+/**
+ * Obtiene una etapa fenológica activa por ID.
+ */
+export async function obtenerEtapaPorId(etapaId) {
+    const id = normalizarId(etapaId);
+
+    if (!id) {
+        return null;
+    }
+
+    const resultados = await db
+        .select({
+            id: etapasCultivo.id,
+            cultivo_id: etapasCultivo.cultivo_id,
+            nombre: etapasCultivo.nombre,
+            descripcion: etapasCultivo.descripcion,
+            orden: etapasCultivo.orden,
+            duracion_dias_estimada:
+                etapasCultivo.duracion_dias_estimada,
+            indicadores_clave:
+                etapasCultivo.indicadores_clave,
+            estado: etapasCultivo.estado,
+            updated_at: etapasCultivo.updated_at,
+        })
+        .from(etapasCultivo)
+        .where(
+            and(
+                eq(etapasCultivo.id, id),
+                eq(etapasCultivo.estado, "activo")
+            )
+        )
+        .limit(1);
+
+    return resultados[0] || null;
+}
+
+/**
  * Obtiene plagas relacionadas con un cultivo.
  */
 export async function obtenerPlagasPorCultivo(
@@ -153,6 +228,90 @@ export async function obtenerPlagasPorCultivo(
         .where(
             and(
                 eq(cultivoPlaga.cultivo_id, id),
+                eq(plagas.estado, "activo"),
+                isNull(plagas.deleted_at)
+            )
+        )
+        .orderBy(asc(plagas.nombre));
+}
+
+/**
+ * Obtiene enfermedades relacionadas con una etapa.
+ */
+export async function obtenerEnfermedadesPorEtapa(etapaId) {
+    const id = normalizarId(etapaId);
+
+    if (!id) {
+        return [];
+    }
+
+    return await db
+        .select({
+            id: enfermedades.id,
+            nombre: enfermedades.nombre,
+            nombre_cientifico:
+                enfermedades.nombre_cientifico,
+            descripcion: enfermedades.descripcion,
+            sintomas: enfermedades.sintomas,
+            estado: enfermedades.estado,
+            nivel_riesgo: etapaEnfermedad.nivel_riesgo,
+        })
+        .from(enfermedades)
+        .innerJoin(
+            etapaEnfermedad,
+            eq(
+                enfermedades.id,
+                etapaEnfermedad.enfermedad_id
+            )
+        )
+        .where(
+            and(
+                eq(
+                    etapaEnfermedad.etapa_cultivo_id,
+                    id
+                ),
+                eq(enfermedades.estado, "activo"),
+                isNull(enfermedades.deleted_at)
+            )
+        )
+        .orderBy(asc(enfermedades.nombre));
+}
+
+/**
+ * Obtiene plagas relacionadas con una etapa.
+ */
+export async function obtenerPlagasPorEtapa(etapaId) {
+    const id = normalizarId(etapaId);
+
+    if (!id) {
+        return [];
+    }
+
+    return await db
+        .select({
+            id: plagas.id,
+            nombre: plagas.nombre,
+            nombre_cientifico:
+                plagas.nombre_cientifico,
+            descripcion: plagas.descripcion,
+            danos: plagas.danos,
+            estado: plagas.estado,
+            nivel_riesgo: etapaPlaga.nivel_riesgo,
+        })
+        .from(plagas)
+        .innerJoin(
+            etapaPlaga,
+            eq(
+                plagas.id,
+                etapaPlaga.plaga_id
+            )
+        )
+        .where(
+            and(
+                eq(
+                    etapaPlaga.etapa_cultivo_id,
+                    id
+                ),
                 eq(plagas.estado, "activo"),
                 isNull(plagas.deleted_at)
             )
@@ -247,6 +406,47 @@ export async function obtenerRecomendacionesPorPlaga(
 }
 
 /**
+ * Obtiene recomendaciones relacionadas con una etapa.
+ */
+export async function obtenerRecomendacionesPorEtapa(etapaId) {
+    const id = normalizarId(etapaId);
+
+    if (!id) {
+        return [];
+    }
+
+    return await db
+        .select({
+            id: recomendaciones.id,
+            titulo: recomendaciones.titulo,
+            descripcion: recomendaciones.descripcion,
+            tipo: recomendaciones.tipo,
+            instrucciones:
+                recomendaciones.instrucciones,
+            estado: recomendaciones.estado,
+        })
+        .from(recomendaciones)
+        .innerJoin(
+            etapaRecomendacion,
+            eq(
+                recomendaciones.id,
+                etapaRecomendacion.recomendacion_id
+            )
+        )
+        .where(
+            and(
+                eq(
+                    etapaRecomendacion.etapa_cultivo_id,
+                    id
+                ),
+                eq(recomendaciones.estado, "activo"),
+                isNull(recomendaciones.deleted_at)
+            )
+        )
+        .orderBy(asc(recomendaciones.titulo));
+}
+
+/**
  * Obtiene el estado de la última sincronización.
  */
 export async function obtenerEstadoCatalogos() {
@@ -274,9 +474,14 @@ export async function obtenerEstadoCatalogos() {
 export default {
     obtenerCultivosActivos,
     obtenerVariedadesPorCultivo,
+    obtenerEtapasPorCultivo,
+    obtenerEtapaPorId,
     obtenerEnfermedadesPorCultivo,
+    obtenerEnfermedadesPorEtapa,
     obtenerPlagasPorCultivo,
+    obtenerPlagasPorEtapa,
     obtenerRecomendacionesPorEnfermedad,
+    obtenerRecomendacionesPorEtapa,
     obtenerRecomendacionesPorPlaga,
     obtenerEstadoCatalogos,
 };
