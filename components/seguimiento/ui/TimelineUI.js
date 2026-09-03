@@ -54,10 +54,10 @@ const TimelineNode = ({ seguimiento, etapa, isLast, onPress, isDark }) => {
 
     const dias = calcDias();
     const estadoLabel = {
-        completada: '✅ Completada',
-        en_progreso: '🔄 En progreso',
-        pendiente: '⏳ Pendiente',
-        omitida: '⏭️ Omitida',
+        completada: 'Completada',
+        en_progreso: 'En progreso',
+        pendiente: 'Pendiente',
+        omitida: 'Omitida',
     };
 
     return (
@@ -265,7 +265,7 @@ export default function TimelineUI({
                             />
                         </TouchableOpacity>
                         <View style={{ flex: 1 }}>
-                            <Text style={styles.headerTitle}>🌱 Seguimiento</Text>
+                            <Text style={styles.headerTitle}>Seguimiento</Text>
                             <Text style={styles.headerSubtitle} numberOfLines={1}>
                                 {proyecto?.titulo || 'Proyecto'}
                                 {proyecto?.variedad ? ` · ${proyecto.variedad}` : ''}
