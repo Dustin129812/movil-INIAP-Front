@@ -12,24 +12,178 @@ import {
     obtenerCiclosPorProyecto,
     obtenerHojaDatosPorVisita,
     actualizarProyectoLocal,
-    actualizarLotesDelProyecto,
     crearProyectoLoteRelacion,
     crearProyectoColaboradorRelacion,
-    obtenerLotesPorProyecto,
+    registrarColaboradorExternoLocal,
+    crearProyectoColaboradorExternoRelacion,
+    obtenerColaboradoresExternosPorProyecto,
+    marcarColaboradorExternoComoSincronizado,
+    marcarProyectoColaboradorExternoRelacionComoSincronizada,
     SYNC_STATUS,
     proyectos,
     proyecto_colaboradores,
 } from '../../db';
 import { eq } from 'drizzle-orm';
+import { colaboradoresExternosService } from '../colaboradoresExternos/colaboradoresExternosService';
 
 const URL_API = process.env.EXPO_PUBLIC_API_URL;
+const CI_REGEX = /^\d{10}$/;
 
 const obtenerToken = async () => {
     try {
-        return await AsyncStorage.getItem('token_acceso');
+        const usuarioRaw = await AsyncStorage.getItem('datos_usuario');
+        const usuario = usuarioRaw ? JSON.parse(usuarioRaw) : null;
+
+        if (usuario?.esInvitado) {
+            return null;
+        }
+
+        return (
+            await AsyncStorage.getItem('token_acceso') ||
+            await AsyncStorage.getItem('token') ||
+            await AsyncStorage.getItem('access_token') ||
+            await AsyncStorage.getItem('userToken')
+        );
     } catch {
         return null;
     }
+};
+
+const normalizarColaboradoresExternos = (colaboradoresExternos = []) => {
+    if (!Array.isArray(colaboradoresExternos)) return [];
+
+    const unicosPorCi = new Map();
+
+    for (const colaborador of colaboradoresExternos) {
+        const ci = String(colaborador?.ci || '').trim();
+        const nombreCompleto = String(
+            colaborador?.nombre_completo ||
+            colaborador?.nombre ||
+            ''
+        ).trim();
+        const participacion = String(colaborador?.participacion || '').trim();
+
+        if (!CI_REGEX.test(ci) || !nombreCompleto || !participacion || unicosPorCi.has(ci)) {
+            continue;
+        }
+
+        unicosPorCi.set(ci, {
+            ...colaborador,
+            ci,
+            nombre_completo: nombreCompleto,
+            participacion,
+            server_id: colaborador?.server_id ??
+                (colaborador?.origen === 'server' ? colaborador?.id : null),
+            local_id: colaborador?.local_id ??
+                (colaborador?.origen === 'local' ? colaborador?.id : null),
+        });
+    }
+
+    return Array.from(unicosPorCi.values());
+};
+
+const extraerColaboradorExternoIdServidor = (registro) => (
+    registro?.server_id ??
+    registro?.colaborador_externo_id ??
+    registro?.id ??
+    registro?.data?.server_id ??
+    registro?.data?.colaborador_externo_id ??
+    registro?.data?.id ??
+    registro?.data?.colaborador_externo?.id ??
+    null
+);
+
+const buscarColaboradorExternoServidorPorCi = async (ci) => {
+    const resultados = await colaboradoresExternosService.buscarColaboradoresExternos(ci);
+    if (!Array.isArray(resultados)) return null;
+
+    return resultados.find((item) => String(item?.ci || '').trim() === ci) || null;
+};
+
+const resolverColaboradorExternoServidor = async (colaborador) => {
+    const serverIdExistente = colaborador?.server_id ??
+        (colaborador?.origen === 'server' ? colaborador?.id : null);
+
+    if (serverIdExistente) {
+        return serverIdExistente;
+    }
+
+    const registro = await colaboradoresExternosService.registrarColaboradorExterno({
+        ci: colaborador.ci,
+        nombre_completo: colaborador.nombre_completo,
+    });
+
+    if (registro.success) {
+        const idRegistro = extraerColaboradorExternoIdServidor(registro);
+        if (idRegistro) return idRegistro;
+    }
+
+    const colaboradorExistente = await buscarColaboradorExternoServidorPorCi(colaborador.ci);
+    return extraerColaboradorExternoIdServidor(colaboradorExistente);
+};
+
+const guardarColaboradoresExternosLocales = async (proyectoUuid, colaboradoresExternos = []) => {
+    const guardados = [];
+
+    for (const colaborador of colaboradoresExternos) {
+        const colaboradorLocal = await registrarColaboradorExternoLocal({
+            ci: colaborador.ci,
+            nombre_completo: colaborador.nombre_completo,
+            server_id: colaborador.server_id || null,
+        });
+
+        await crearProyectoColaboradorExternoRelacion(
+            proyectoUuid,
+            colaboradorLocal.id,
+            colaborador.participacion
+        );
+
+        guardados.push({
+            ...colaborador,
+            id: colaboradorLocal.id,
+            local_id: colaboradorLocal.id,
+            server_id: colaboradorLocal.server_id || colaborador.server_id || null,
+        });
+    }
+
+    return guardados;
+};
+
+const sincronizarColaboradoresExternosServidor = async (proyectoUuid, colaboradoresExternos = []) => {
+    let sincronizados = true;
+
+    for (const colaborador of colaboradoresExternos) {
+        const colaboradorExternoId = await resolverColaboradorExternoServidor(colaborador);
+
+        if (!colaboradorExternoId) {
+            sincronizados = false;
+            continue;
+        }
+
+        const asociacion = await colaboradoresExternosService.asociarColaboradorExterno(
+            proyectoUuid,
+            {
+                colaborador_externo_id: colaboradorExternoId,
+                participacion: colaborador.participacion,
+            }
+        );
+
+        if (!asociacion.success) {
+            sincronizados = false;
+            continue;
+        }
+
+        await marcarColaboradorExternoComoSincronizado(
+            colaborador.local_id || colaborador.id,
+            colaboradorExternoId
+        );
+        await marcarProyectoColaboradorExternoRelacionComoSincronizada(
+            proyectoUuid,
+            colaborador.local_id || colaborador.id
+        );
+    }
+
+    return sincronizados;
 };
 
 // Inicializar base de datos local
@@ -122,6 +276,9 @@ export const obtenerProyectos = async () => {
 export const crearProyectoLocal = async (datosProyecto) => {
     try {
         const token = await obtenerToken();
+        const colaboradoresExternos = normalizarColaboradoresExternos(
+            datosProyecto.colaboradores_externos || []
+        );
 
         // Asegurar que la BD local esté inicializada
         await initDb();
@@ -148,12 +305,16 @@ export const crearProyectoLocal = async (datosProyecto) => {
                 await crearProyectoColaboradorRelacion(proyectoLocal.uuid_movil, usuarioId);
             }
         }
+        const colaboradoresExternosLocales = await guardarColaboradoresExternosLocales(
+            proyectoLocal.uuid_movil,
+            colaboradoresExternos
+        );
 
         // Intentar guardar en servidor
         try {
             if (token) {
                 // Preparar datos para el servidor (sin variedad_id, con variedad como texto)
-                const { variedad_id, colaboradores_ids, ...datosSinVariedadId } = datosProyecto;
+                const { variedad_id, colaboradores_ids, colaboradores_externos, ...datosSinVariedadId } = datosProyecto;
                 const datosParaServidor = {
                     ...datosSinVariedadId,
                     uuid_movil: proyectoLocal.uuid_movil,
@@ -175,8 +336,21 @@ export const crearProyectoLocal = async (datosProyecto) => {
                 if (respuesta.ok) {
                     const datos = await respuesta.json();
                     if (datos.success || respuesta.status === 201) {
-                        await marcarProyectoComoSincronizado(proyectoLocal.uuid_movil);
-                        return { success: true, proyecto: datos.data || proyectoLocal };
+                        const externosSincronizados = await sincronizarColaboradoresExternosServidor(
+                            proyectoLocal.uuid_movil,
+                            colaboradoresExternosLocales
+                        );
+
+                        if (externosSincronizados) {
+                            await marcarProyectoComoSincronizado(proyectoLocal.uuid_movil);
+                        }
+
+                        return {
+                            success: true,
+                            proyecto: datos.data || proyectoLocal,
+                            pendingSync: !externosSincronizados,
+                            externalSyncPending: !externosSincronizados,
+                        };
                     }
                     // console removed
                 } else {
@@ -264,10 +438,12 @@ export const sincronizarProyectosPendientes = async () => {
         const token = await obtenerToken();
         if (!token) return { success: false, message: 'No autenticado' };
 
-        const proyectosPendientes = await db
+        const proyectosLocales = await db
             .select()
-            .from(proyectos)
-            .where(eq(proyectos.sync_status, SYNC_STATUS.PENDING));
+            .from(proyectos);
+        const proyectosPendientes = proyectosLocales.filter((proyecto) =>
+            [SYNC_STATUS.DRAFT, SYNC_STATUS.PENDING].includes(proyecto.sync_status)
+        );
 
         let sincronizados = 0;
         let errores = 0;
@@ -299,8 +475,20 @@ export const sincronizarProyectosPendientes = async () => {
                 });
 
                 if (respuesta.ok) {
-                    await marcarProyectoComoSincronizado(proyecto.uuid_movil);
-                    sincronizados++;
+                    const colaboradoresExternos = await obtenerColaboradoresExternosPorProyecto(
+                        proyecto.uuid_movil
+                    );
+                    const externosSincronizados = await sincronizarColaboradoresExternosServidor(
+                        proyecto.uuid_movil,
+                        colaboradoresExternos
+                    );
+
+                    if (externosSincronizados) {
+                        await marcarProyectoComoSincronizado(proyecto.uuid_movil);
+                        sincronizados++;
+                    } else {
+                        errores++;
+                    }
                 } else {
                     errores++;
                 }

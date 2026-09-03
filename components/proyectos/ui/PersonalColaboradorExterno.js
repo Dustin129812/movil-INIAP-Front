@@ -34,7 +34,7 @@ const extraerColaboradorCreado = (data) => (
   data?.colaborador_externo || data?.colaboradorExterno || data?.colaborador || data
 );
 
-const PersonalColaboradorExterno = ({ proyectoId, disabled = false, isDark = false }) => {
+const PersonalColaboradorExterno = ({ proyectoId, syncStatus = null, disabled = false, isDark = false }) => {
   const insets = useSafeAreaInsets();
   const [modalVisible, setModalVisible] = useState(false);
   const [terminoBusqueda, setTerminoBusqueda] = useState('');
@@ -58,7 +58,7 @@ const PersonalColaboradorExterno = ({ proyectoId, disabled = false, isDark = fal
     registrarColaboradorExterno,
     asociarColaboradorExterno,
     eliminarColaboradorExterno,
-  } = useColaboradoresExternos(proyectoId);
+  } = useColaboradoresExternos(proyectoId, syncStatus);
 
   const puedeGestionar = Boolean(proyectoId) && !disabled;
 
@@ -193,6 +193,12 @@ const PersonalColaboradorExterno = ({ proyectoId, disabled = false, isDark = fal
     const resultado = await asociarColaboradorExterno(colaboradorId, participacion.trim());
 
     if (resultado.success) {
+      if (resultado.pendingSync) {
+        Alert.alert(
+          'Sincronizacion pendiente',
+          resultado.message || 'El proyecto esta pendiente de sincronizacion.'
+        );
+      }
       cerrarModal();
       return;
     }
@@ -219,6 +225,12 @@ const PersonalColaboradorExterno = ({ proyectoId, disabled = false, isDark = fal
               const resultado = await eliminarColaboradorExterno(colaborador.id);
               if (!resultado?.success) {
                 Alert.alert('Error', resultado?.message || 'No se pudo eliminar la asociación.');
+              }
+              if (resultado?.success && resultado.pendingSync) {
+                Alert.alert(
+                  'Sincronizacion pendiente',
+                  resultado.message || 'El proyecto esta pendiente de sincronizacion.'
+                );
               }
             } finally {
               setColaboradorEliminandoId(null);

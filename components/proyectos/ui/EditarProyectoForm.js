@@ -314,6 +314,7 @@ export default function EditarProyectoForm({
         HEADER_ANIMATION.HEADER_ROW_HEIGHT +
         20;
     const proyectoIdPersonalExterno = proyecto?.uuid_movil || proyecto?.id;
+    const proyectoSyncStatus = proyecto?.sync_status || proyecto?.syncStatus || null;
 
     // ============================================
     // RENDER: LOADING
@@ -657,6 +658,7 @@ export default function EditarProyectoForm({
 
                 <PersonalColaboradorExterno
                     proyectoId={proyectoIdPersonalExterno}
+                    syncStatus={proyectoSyncStatus}
                     disabled={isNewProject || !proyectoIdPersonalExterno}
                     isDark={isDark}
                 />
