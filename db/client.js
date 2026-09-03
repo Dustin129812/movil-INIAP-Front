@@ -276,6 +276,27 @@ export const initDb = async () => {
                 created_at TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS colaboradores_externos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                server_id INTEGER,
+                ci TEXT NOT NULL UNIQUE,
+                nombre_completo TEXT NOT NULL,
+                sync_status TEXT DEFAULT 'draft',
+                created_at TEXT,
+                updated_at TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS proyecto_colaborador_externo (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                proyecto_uuid TEXT NOT NULL,
+                colaborador_externo_id INTEGER NOT NULL,
+                participacion TEXT NOT NULL,
+                sync_status TEXT DEFAULT 'draft',
+                created_at TEXT,
+                updated_at TEXT,
+                UNIQUE(proyecto_uuid, colaborador_externo_id)
+            );
+
             CREATE TABLE IF NOT EXISTS etapas_cultivo (
                 id INTEGER PRIMARY KEY,
                 cultivo_id INTEGER,
@@ -729,7 +750,7 @@ export const obtenerProyectosEliminados = async () => {
 
 export const actualizarProyectoLocal = async (uuid_movil, datos) => {
     // Excluir campos de relación N:M y variedad_id que no son columnas de proyectos
-    const { lotes_ids, lotes_uuids, variedad_id, colaboradores_ids, ...proyectoData } = datos;
+    const { lotes_ids, lotes_uuids, variedad_id, colaboradores_ids, colaboradores_externos, ...proyectoData } = datos;
     await db
         .update(schema.proyectos)
         .set({
@@ -821,6 +842,267 @@ export const actualizarColaboradoresDelProyecto = async (proyectoUuid, usuarioId
     }
 };
 
+
+// ============================================
+// COLABORADORES EXTERNOS - LOCAL / INVITADO
+// ============================================
+
+// Buscar colaboradores externos guardados localmente
+export const buscarColaboradoresExternosLocales = async (termino = '') => {
+    const colaboradores = await db
+        .select()
+        .from(schema.colaboradores_externos);
+
+    const texto = String(termino || '').trim().toLowerCase();
+
+    if (!texto) {
+        return colaboradores;
+    }
+
+    return colaboradores.filter((colaborador) =>
+        String(colaborador.ci || '').toLowerCase().includes(texto) ||
+        String(colaborador.nombre_completo || '').toLowerCase().includes(texto)
+    );
+};
+
+// Registrar colaborador externo local.
+// Si la CI ya existe, reutiliza a la misma persona.
+export const registrarColaboradorExternoLocal = async ({
+    ci,
+    nombre_completo,
+    server_id = null,
+}) => {
+    const ciLimpia = String(ci || '').trim();
+    const nombreLimpio = String(nombre_completo || '').trim();
+
+    const existentes = await db
+        .select()
+        .from(schema.colaboradores_externos)
+        .where(eq(schema.colaboradores_externos.ci, ciLimpia));
+
+    if (existentes.length > 0) {
+        const existente = existentes[0];
+
+        if (
+            server_id &&
+            (
+                Number(existente.server_id) !== Number(server_id) ||
+                existente.sync_status !== SYNC_STATUS.SYNCED
+            )
+        ) {
+            const resultado = await db
+                .update(schema.colaboradores_externos)
+                .set({
+                    server_id,
+                    nombre_completo: nombreLimpio || existente.nombre_completo,
+                    sync_status: SYNC_STATUS.SYNCED,
+                    updated_at: new Date().toISOString(),
+                })
+                .where(eq(schema.colaboradores_externos.id, existente.id))
+                .returning();
+
+            return resultado[0] || existente;
+        }
+
+        return existente;
+    }
+
+    const now = new Date().toISOString();
+
+    const nuevoColaborador = {
+        server_id,
+        ci: ciLimpia,
+        nombre_completo: nombreLimpio,
+        sync_status: SYNC_STATUS.DRAFT,
+        created_at: now,
+        updated_at: now,
+    };
+
+    const resultado = await db
+        .insert(schema.colaboradores_externos)
+        .values(nuevoColaborador)
+        .returning();
+
+    return resultado[0];
+};
+
+export const marcarColaboradorExternoComoSincronizado = async (colaboradorLocalId, serverId) => {
+    if (!colaboradorLocalId || !serverId) return;
+
+    await db
+        .update(schema.colaboradores_externos)
+        .set({
+            server_id: serverId,
+            sync_status: SYNC_STATUS.SYNCED,
+            updated_at: new Date().toISOString(),
+        })
+        .where(eq(schema.colaboradores_externos.id, colaboradorLocalId));
+};
+
+export const marcarProyectoColaboradorExternoRelacionComoSincronizada = async (
+    proyectoUuid,
+    colaboradorExternoId
+) => {
+    if (!proyectoUuid || !colaboradorExternoId) return;
+
+    const relaciones = await db
+        .select()
+        .from(schema.proyecto_colaborador_externo)
+        .where(eq(schema.proyecto_colaborador_externo.proyecto_uuid, proyectoUuid));
+
+    const relacion = relaciones.find(
+        (item) =>
+            Number(item.colaborador_externo_id) ===
+            Number(colaboradorExternoId)
+    );
+
+    if (!relacion) return;
+
+    await db
+        .update(schema.proyecto_colaborador_externo)
+        .set({
+            sync_status: SYNC_STATUS.SYNCED,
+            updated_at: new Date().toISOString(),
+        })
+        .where(eq(schema.proyecto_colaborador_externo.id, relacion.id));
+};
+
+// Asociar un colaborador externo a un proyecto con su participación
+export const crearProyectoColaboradorExternoRelacion = async (
+    proyectoUuid,
+    colaboradorExternoId,
+    participacion
+) => {
+    const existentes = await db
+        .select()
+        .from(schema.proyecto_colaborador_externo)
+        .where(eq(
+            schema.proyecto_colaborador_externo.proyecto_uuid,
+            proyectoUuid
+        ));
+
+    const yaExiste = existentes.some(
+        (item) =>
+            Number(item.colaborador_externo_id) ===
+            Number(colaboradorExternoId)
+    );
+
+    if (yaExiste) {
+        return existentes.find(
+            (item) =>
+                Number(item.colaborador_externo_id) ===
+                Number(colaboradorExternoId)
+        );
+    }
+
+    const now = new Date().toISOString();
+
+    const relacion = {
+        proyecto_uuid: proyectoUuid,
+        colaborador_externo_id: colaboradorExternoId,
+        participacion: String(participacion || '').trim(),
+        sync_status: SYNC_STATUS.DRAFT,
+        created_at: now,
+        updated_at: now,
+    };
+
+    const resultado = await db
+        .insert(schema.proyecto_colaborador_externo)
+        .values(relacion)
+        .returning();
+
+    return resultado[0];
+};
+
+// Obtener colaboradores externos de un proyecto
+export const obtenerColaboradoresExternosPorProyecto = async (proyectoUuid) => {
+    const relaciones = await db
+        .select()
+        .from(schema.proyecto_colaborador_externo)
+        .where(eq(
+            schema.proyecto_colaborador_externo.proyecto_uuid,
+            proyectoUuid
+        ));
+
+    const colaboradores = await db
+        .select()
+        .from(schema.colaboradores_externos);
+
+    return relaciones
+        .map((relacion) => {
+            const colaborador = colaboradores.find(
+                (item) =>
+                    Number(item.id) ===
+                    Number(relacion.colaborador_externo_id)
+            );
+
+            if (!colaborador) return null;
+
+            return {
+                ...colaborador,
+                colaborador_externo_id: colaborador.id,
+                participacion: relacion.participacion,
+            };
+        })
+        .filter(Boolean);
+};
+
+// Eliminar solamente la asociación con un proyecto.
+// La persona externa permanece disponible para otros proyectos.
+export const eliminarProyectoColaboradorExternoRelacion = async (
+    proyectoUuid,
+    colaboradorExternoId
+) => {
+    const relaciones = await db
+        .select()
+        .from(schema.proyecto_colaborador_externo)
+        .where(eq(
+            schema.proyecto_colaborador_externo.proyecto_uuid,
+            proyectoUuid
+        ));
+
+    const relacion = relaciones.find(
+        (item) =>
+            Number(item.colaborador_externo_id) ===
+            Number(colaboradorExternoId)
+    );
+
+    if (!relacion) {
+        return false;
+    }
+
+    await db
+        .delete(schema.proyecto_colaborador_externo)
+        .where(eq(schema.proyecto_colaborador_externo.id, relacion.id));
+
+    return true;
+};
+
+// ============================================
+// CICLOS DE CULTIVO
+// ============================================
+export const crearCicloLocal = async (cicloData, { loteUuid, proyectoUuid }) => {
+    const uuid = Crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const nuevoCiclo = {
+        uuid_movil: uuid,
+        lote_uuid: loteUuid || null,
+        proyecto_uuid: proyectoUuid || null,
+        cultivo_variedad: cicloData.cultivo_variedad,
+        distancia_siembra: cicloData.distancia_siembra || null,
+        fecha_siembra: cicloData.fecha_siembra || null,
+        fecha_fin: cicloData.fecha_fin || null,
+        metricas_siembra: cicloData.metricas_siembra ? JSON.stringify(cicloData.metricas_siembra) : null,
+        es_actual: cicloData.es_actual !== false,
+        sync_status: SYNC_STATUS.DRAFT,
+        created_at: now,
+        updated_at: now,
+    };
+
+    await db.insert(schema.ciclos_cultivo).values(nuevoCiclo);
+    return { ...nuevoCiclo, uuid_movil: uuid };
+};
 
 export const obtenerCiclosPorProyectoUuid = async (proyectoUuid) => {
     return await db

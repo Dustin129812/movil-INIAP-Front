@@ -94,6 +94,27 @@ export const proyecto_colaboradores = sqliteTable('proyecto_colaboradores', {
     created_at: text('created_at'),
 });
 
+// Catálogo local de colaboradores externos
+export const colaboradores_externos = sqliteTable('colaboradores_externos', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    server_id: integer('server_id'),
+    ci: text('ci').notNull().unique(),
+    nombre_completo: text('nombre_completo').notNull(),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+});
+
+// Relación N:M proyectos-colaboradores externos
+export const proyecto_colaborador_externo = sqliteTable('proyecto_colaborador_externo', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    proyecto_uuid: text('proyecto_uuid').notNull(),
+    colaborador_externo_id: integer('colaborador_externo_id').notNull(),
+    participacion: text('participacion').notNull(),
+    sync_status: text('sync_status').default(SYNC_STATUS.DRAFT),
+    created_at: text('created_at'),
+    updated_at: text('updated_at'),
+});
 export const ciclos_cultivo = sqliteTable('ciclos_cultivo', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     uuid_movil: text('uuid_movil').unique(),

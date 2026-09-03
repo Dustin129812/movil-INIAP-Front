@@ -1,8 +1,21 @@
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { db } from '../../db/client';
 import {
-    lotes, ciclos_cultivo, visitas, hojas_datos, proyectos, proyecto_lotes, configuracion, SYNC_STATUS
+    db,
+    marcarColaboradorExternoComoSincronizado,
+    marcarProyectoColaboradorExternoRelacionComoSincronizada,
+} from '../../db/client';
+import {
+    lotes,
+    ciclos_cultivo,
+    visitas,
+    hojas_datos,
+    proyectos,
+    proyecto_lotes,
+    colaboradores_externos,
+    proyecto_colaborador_externo,
+    configuracion,
+    SYNC_STATUS,
 } from '../../db/schema';
 import { eq, inArray, isNull, and } from 'drizzle-orm';
 import { fetchApi } from '../api/apiClient';
@@ -343,6 +356,138 @@ export const obtenerConteoLotesConErrorGeometria = async () => {
     }
 };
 
+const leerJsonSeguro = async (response) => {
+    try {
+        return await response.json();
+    } catch {
+        return null;
+    }
+};
+
+const extraerLista = (datos) => {
+    if (Array.isArray(datos)) return datos;
+    if (Array.isArray(datos?.data)) return datos.data;
+    if (Array.isArray(datos?.data?.data)) return datos.data.data;
+    return [];
+};
+
+const extraerColaboradorExternoIdServidor = (datos) => (
+    datos?.server_id ??
+    datos?.colaborador_externo_id ??
+    datos?.id ??
+    datos?.data?.server_id ??
+    datos?.data?.colaborador_externo_id ??
+    datos?.data?.id ??
+    datos?.data?.colaborador_externo?.id ??
+    null
+);
+
+const headersAutenticados = (token) => ({
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+});
+
+const buscarColaboradorExternoServidorPorCi = async (ci, token) => {
+    const response = await fetchApi(
+        `/colaboradores-externos/buscar?termino=${encodeURIComponent(ci)}`,
+        { headers: headersAutenticados(token) }
+    );
+
+    if (!response.ok) return null;
+
+    const datos = await leerJsonSeguro(response);
+    return extraerLista(datos).find((item) => String(item?.ci || '').trim() === ci) || null;
+};
+
+const resolverColaboradorExternoServidor = async (colaborador, token) => {
+    if (colaborador?.server_id) {
+        return colaborador.server_id;
+    }
+
+    const response = await fetchApi('/colaboradores-externos', {
+        method: 'POST',
+        headers: headersAutenticados(token),
+        body: JSON.stringify({
+            ci: colaborador.ci,
+            nombre_completo: colaborador.nombre_completo,
+        }),
+    });
+
+    if (response.ok) {
+        const datos = await leerJsonSeguro(response);
+        const serverId = extraerColaboradorExternoIdServidor(datos);
+        if (serverId) return serverId;
+    }
+
+    const existente = await buscarColaboradorExternoServidorPorCi(colaborador.ci, token);
+    return extraerColaboradorExternoIdServidor(existente);
+};
+
+const obtenerColaboradoresExternosLocalesPorProyecto = async (proyectoUuid) => {
+    const relaciones = await db
+        .select()
+        .from(proyecto_colaborador_externo)
+        .where(eq(proyecto_colaborador_externo.proyecto_uuid, proyectoUuid));
+
+    if (!relaciones.length) return [];
+
+    const colaboradoresLocales = await db
+        .select()
+        .from(colaboradores_externos);
+
+    return relaciones
+        .map((relacion) => {
+            const colaborador = colaboradoresLocales.find(
+                (item) => Number(item.id) === Number(relacion.colaborador_externo_id)
+            );
+
+            if (!colaborador) return null;
+
+            return {
+                ...colaborador,
+                local_id: colaborador.id,
+                participacion: relacion.participacion,
+            };
+        })
+        .filter(Boolean);
+};
+
+const sincronizarColaboradoresExternosDelProyecto = async (proyectoUuid, token) => {
+    const colaboradoresExternos = await obtenerColaboradoresExternosLocalesPorProyecto(proyectoUuid);
+
+    for (const colaborador of colaboradoresExternos) {
+        const colaboradorExternoId = await resolverColaboradorExternoServidor(colaborador, token);
+
+        if (!colaboradorExternoId) {
+            return false;
+        }
+
+        const response = await fetchApi(`/proyectos/${proyectoUuid}/colaboradores-externos`, {
+            method: 'POST',
+            headers: headersAutenticados(token),
+            body: JSON.stringify({
+                colaborador_externo_id: colaboradorExternoId,
+                participacion: colaborador.participacion,
+            }),
+        });
+
+        if (!response.ok) {
+            return false;
+        }
+
+        await marcarColaboradorExternoComoSincronizado(
+            colaborador.local_id,
+            colaboradorExternoId
+        );
+        await marcarProyectoColaboradorExternoRelacionComoSincronizada(
+            proyectoUuid,
+            colaborador.local_id
+        );
+    }
+
+    return true;
+};
+
 /**
  * Motor de sincronización principal — sube datos pendientes al servidor.
  */
@@ -400,10 +545,26 @@ export const syncEngine = async () => {
             throw new Error(errorDetail);
         }
 
-        const jsonResponse = await response.json();
+        await response.json();
+
+        const loteUuids = payload.lotes.map(l => l.uuid_movil).filter(Boolean);
+        const proyectoUuids = payload.lotes
+            .flatMap(l => l.proyectos || [])
+            .map(p => p.uuid_movil)
+            .filter(Boolean);
+
+        for (const proyectoUuid of proyectoUuids) {
+            const externosSincronizados = await sincronizarColaboradoresExternosDelProyecto(
+                proyectoUuid,
+                token
+            );
+
+            if (!externosSincronizados) {
+                throw new Error('No se pudieron sincronizar colaboradores externos');
+            }
+        }
 
         // Marcar lotes como sincronizados
-        const loteUuids = payload.lotes.map(l => l.uuid_movil).filter(Boolean);
         if (loteUuids.length > 0) {
             await db.update(lotes)
                 .set({ sync_status: SYNC_STATUS.SYNCED })
@@ -411,10 +572,6 @@ export const syncEngine = async () => {
         }
 
         // Marcar proyectos como sincronizados
-        const proyectoUuids = payload.lotes
-            .flatMap(l => l.proyectos || [])
-            .map(p => p.uuid_movil)
-            .filter(Boolean);
         if (proyectoUuids.length > 0) {
             await db.update(proyectos)
                 .set({ sync_status: SYNC_STATUS.SYNCED })

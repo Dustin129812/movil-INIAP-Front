@@ -30,6 +30,7 @@ import Animated, {
 import { useTheme } from '../../../services/theme';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import ColaboradoresModal from './ColaboradoresModal';
+import PersonalColaboradorExterno from './PersonalColaboradorExterno';
 import SelectorCultivoVariedad from './SelectorCultivoVariedad';
 
 // --- ESTILOS ---
@@ -306,6 +307,8 @@ export default function EditarProyectoForm({
         HEADER_ANIMATION.HEADER_ROW_MARGIN_TOP +
         HEADER_ANIMATION.HEADER_ROW_HEIGHT +
         20;
+    const proyectoIdPersonalExterno = proyecto?.uuid_movil || proyecto?.id;
+    const proyectoSyncStatus = proyecto?.sync_status || proyecto?.syncStatus || null;
 
     // ============================================
     // RENDER: LOADING
@@ -646,6 +649,13 @@ export default function EditarProyectoForm({
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                <PersonalColaboradorExterno
+                    proyectoId={proyectoIdPersonalExterno}
+                    syncStatus={proyectoSyncStatus}
+                    disabled={isNewProject || !proyectoIdPersonalExterno}
+                    isDark={isDark}
+                />
             </Animated.ScrollView>
 
             {/* Modal Selector de Lote */}

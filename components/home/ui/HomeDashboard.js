@@ -28,6 +28,7 @@ const AnimatedTouchable =
 
 const CALC_ROUTE = '/calculadora/calculadora';
 const CATALOGOS_ROUTE = '/catalogos';
+const INFOGRAFIAS_ROUTE = '/infografias';
 
 const REVEAL_DURATION = 260;
 const HIDE_DURATION = 160;
@@ -437,6 +438,43 @@ export default function HomeDashboard() {
                         </TouchableOpacity>
                     </View>
                 </View>
+
+             {/* tarjeta infografia y pdf */}
+
+<View style={styles.featureCardWrapper}>
+    <View style={[styles.featureCard, { backgroundColor: '#E6F7F0' }]}>
+        <View style={[styles.featureIconBox, { backgroundColor: '#C2EBDD' }]}>
+            <MaterialCommunityIcons
+                name="file-image-outline"
+                size={22}
+                color="#1F8A70"
+            />
+        </View>
+
+        <View style={styles.featureLabelRow}>
+            <Text style={[styles.featureTitle, { color: '#16624F' }]}>
+                Infografías y PDF
+            </Text>
+
+            <Text style={[styles.featureSubtitle, { color: '#3AA17E' }]}>
+                Reportes offline
+            </Text>
+        </View>
+
+        <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push(INFOGRAFIAS_ROUTE)}
+            style={[styles.featureArrowBtn, { backgroundColor: '#3AA17E' }]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+            <MaterialCommunityIcons
+                name="arrow-right"
+                size={20}
+                color="#FFFFFF"
+            />
+        </TouchableOpacity>
+    </View>
+</View>
 
                 {/* Tarjeta de estado — resumen de lotes y última revisión */}
                 <View style={[styles.stateCard, { backgroundColor: cardBg }]}>

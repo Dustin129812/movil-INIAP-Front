@@ -39,6 +39,7 @@ import { crearProyectoStyles as styles } from '../../../src/styles/crearProyecto
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalNotifications } from '../../../components/notifications/hooks/useLocalNotifications';
 import ColaboradoresModal from '../../../components/proyectos/ui/ColaboradoresModal';
+import ColaboradoresExternosModal from '../../../components/proyectos/ui/ColaboradoresExternosModal';
 
 const ACCENT = '#34C759';
 const DANGER = '#FF3B30';
@@ -209,6 +210,32 @@ const RemovableChip = ({ label, icon, onRemove, isDark }) => (
     </View>
 );
 
+const ExternalCollaboratorCard = ({ colaborador, onRemove, isDark }) => (
+    <View style={[wiz.externalCard, isDark && wiz.externalCardDark]}>
+        <View style={[wiz.externalIconWrap, isDark && wiz.externalIconWrapDark]}>
+            <MaterialCommunityIcons name="account-outline" size={18} color={ACCENT} />
+        </View>
+        <View style={wiz.externalInfo}>
+            <Text style={[wiz.externalName, isDark && wiz.textWhite]} numberOfLines={1}>
+                {colaborador.nombre_completo}
+            </Text>
+            <Text style={[wiz.externalMeta, isDark && wiz.externalMetaDark]} numberOfLines={1}>
+                CI: {colaborador.ci}
+            </Text>
+            <Text style={[wiz.externalParticipation, isDark && wiz.externalParticipationDark]} numberOfLines={2}>
+                Participación: {colaborador.participacion}
+            </Text>
+        </View>
+        <TouchableOpacity
+            onPress={onRemove}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            style={wiz.externalRemove}
+        >
+            <MaterialCommunityIcons name="close-circle" size={18} color={DANGER} />
+        </TouchableOpacity>
+    </View>
+);
+
 export default function NuevoProyectoScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
@@ -227,6 +254,8 @@ export default function NuevoProyectoScreen() {
     const [cultivoSeleccionado, setCultivoSeleccionado] = useState(null);
     const [variedadSeleccionada, setVariedadSeleccionada] = useState(null);
     const [colaboradoresSeleccionados, setColaboradoresSeleccionados] = useState([]);
+    const [mostrarColaboradoresExternosModal, setMostrarColaboradoresExternosModal] = useState(false);
+    const [colaboradoresExternosSeleccionados, setColaboradoresExternosSeleccionados] = useState([]);
 
     // ---- Estado del WIZARD ----
     const [currentStep, setCurrentStep] = useState(0);
@@ -381,6 +410,7 @@ export default function NuevoProyectoScreen() {
             const datosParaGuardar = {
                 ...formData,
                 lotes_uuids: formData.lotes_ids,
+                colaboradores_externos: colaboradoresExternosSeleccionados,
             };
             const resultado = await proyectosLocalService.crearProyectoLocal(datosParaGuardar);
             if (resultado.success) {
@@ -638,6 +668,42 @@ export default function NuevoProyectoScreen() {
                                 </TouchableOpacity>
                             </SectionCard>
 
+                            <SectionCard
+                                icon="account-multiple-plus-outline"
+                                title="Colaboradores externos"
+                                subtitle="Agrega personal externo que participará"
+                                isDark={isDark}
+                            >
+                                {colaboradoresExternosSeleccionados.length > 0 && (
+                                    <View style={wiz.externalList}>
+                                        {colaboradoresExternosSeleccionados.map((colab) => (
+                                            <ExternalCollaboratorCard
+                                                key={`${colab.ci}-${colab.server_id || colab.local_id || colab.id}`}
+                                                colaborador={colab}
+                                                isDark={isDark}
+                                                onRemove={() => {
+                                                    setColaboradoresExternosSeleccionados(
+                                                        colaboradoresExternosSeleccionados.filter(c => c.ci !== colab.ci)
+                                                    );
+                                                }}
+                                            />
+                                        ))}
+                                    </View>
+                                )}
+                                <TouchableOpacity
+                                    style={[wiz.addButton, isDark && wiz.addButtonDark]}
+                                    onPress={() => setMostrarColaboradoresExternosModal(true)}
+                                    activeOpacity={0.7}
+                                >
+                                    <MaterialCommunityIcons name="plus-circle" size={18} color={ACCENT} />
+                                    <Text style={wiz.addButtonText}>
+                                        {colaboradoresExternosSeleccionados.length === 0
+                                            ? 'Agregar colaboradores externos'
+                                            : 'Agregar más'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </SectionCard>
+
                             {/* Resumen final antes de guardar */}
                             <SectionCard
                                 icon="clipboard-check-outline"
@@ -654,6 +720,11 @@ export default function NuevoProyectoScreen() {
                                 <SummaryRow
                                     label="Lotes"
                                     value={lotesSeleccionados.length ? `${lotesSeleccionados.length} seleccionado(s)` : '—'}
+                                    isDark={isDark}
+                                />
+                                <SummaryRow
+                                    label="Colaboradores externos"
+                                    value={colaboradoresExternosSeleccionados.length ? `${colaboradoresExternosSeleccionados.length} seleccionado(s)` : '—'}
                                     isDark={isDark}
                                 />
                                 <SummaryRow
@@ -850,6 +921,16 @@ export default function NuevoProyectoScreen() {
                     setColaboradoresSeleccionados(colaboradores);
                     updateField('colaboradores_ids', colaboradores.map(c => c.id));
                     setMostrarColaboradoresModal(false);
+                }}
+            />
+
+            <ColaboradoresExternosModal
+                visible={mostrarColaboradoresExternosModal}
+                onClose={() => setMostrarColaboradoresExternosModal(false)}
+                seleccionados={colaboradoresExternosSeleccionados}
+                onSelectMultiple={(colaboradores) => {
+                    setColaboradoresExternosSeleccionados(colaboradores);
+                    setMostrarColaboradoresExternosModal(false);
                 }}
             />
 
@@ -1052,6 +1133,38 @@ const wiz = StyleSheet.create({
     },
     addButtonDark: { borderColor: ACCENT },
     addButtonText: { fontSize: 14, fontWeight: '700', color: ACCENT },
+
+    externalList: { gap: 10, marginBottom: 12 },
+    externalCard: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        borderWidth: 1,
+        borderColor: '#E5E5EA',
+        borderRadius: 14,
+        padding: 12,
+        backgroundColor: '#F9F9FB',
+    },
+    externalCardDark: {
+        borderColor: '#3A3A3C',
+        backgroundColor: '#2C2C2E',
+    },
+    externalIconWrap: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        backgroundColor: 'rgba(52,199,89,0.12)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: 10,
+    },
+    externalIconWrapDark: { backgroundColor: 'rgba(52,199,89,0.18)' },
+    externalInfo: { flex: 1 },
+    externalName: { fontSize: 14, fontWeight: '700', color: '#1C1C1E' },
+    externalMeta: { fontSize: 12, color: '#8E8E93', marginTop: 3 },
+    externalMetaDark: { color: '#AEAEB2' },
+    externalParticipation: { fontSize: 12.5, color: '#3C3C43', marginTop: 5, lineHeight: 17 },
+    externalParticipationDark: { color: '#D1D1D6' },
+    externalRemove: { marginLeft: 8 },
 
     hintRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
     hintText: { fontSize: 12, color: '#8E8E93' },
