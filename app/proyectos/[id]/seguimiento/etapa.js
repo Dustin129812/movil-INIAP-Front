@@ -12,6 +12,7 @@ export default function EtapaScreen() {
     const [seguimiento, setSeguimiento] = useState(null);
     const [etapa, setEtapa] = useState(null);
     const [eventos, setEventos] = useState([]);
+    const [recomendaciones, setRecomendaciones] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const cargarDatos = useCallback(async () => {
@@ -28,9 +29,17 @@ export default function EtapaScreen() {
                 const etapas = await seguimientoLocalService.obtenerEtapasLocal();
                 const et = etapas.find((e) => e.id === Number(targetEtapaId));
                 setEtapa(et || null);
+
+                // 3. Obtener recomendaciones asociadas a la etapa
+                try {
+                    const relaciones = await seguimientoLocalService.obtenerRelacionesEtapa(targetEtapaId);
+                    setRecomendaciones(relaciones?.recomendaciones || []);
+                } catch (relErr) {
+                    console.warn('[EtapaScreen] Error cargando relaciones:', relErr?.message);
+                }
             }
 
-            // 3. Obtener eventos del seguimiento
+            // 4. Obtener eventos del seguimiento
             if (seguimientoUuid) {
                 const evts = await seguimientoLocalService.obtenerEventosLocal(seguimientoUuid);
                 setEventos(evts || []);
@@ -76,6 +85,7 @@ export default function EtapaScreen() {
             seguimiento={seguimiento}
             etapa={etapa}
             eventos={eventos}
+            recomendaciones={recomendaciones}
             onFinalizarEtapa={handleFinalizarEtapa}
             proyectoId={id}
         />
