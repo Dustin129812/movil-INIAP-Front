@@ -10,12 +10,11 @@ import {
 } from "react";
 import {
   ActivityIndicator,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import {
   SafeAreaView,
@@ -351,10 +350,11 @@ export default function DetalleHistorialScreen() {
 
   return (
     <SafeAreaView
+      edges={["top"]}
       style={[
         styles.safe,
         {
-          backgroundColor: colors.bg,
+          backgroundColor: colors.dimGradientEnd,
         },
       ]}
     >
@@ -370,18 +370,8 @@ export default function DetalleHistorialScreen() {
             backgroundColor: colors.bg,
           },
         ]}
-        contentContainerStyle={[
-          styles.contenido,
-          {
-            paddingBottom:
-              Platform.OS === "web"
-                ? 110
-                : 190 + insets.bottom,
-          },
-        ]}
-        showsVerticalScrollIndicator={
-          false
-        }
+        contentContainerStyle={styles.contenido}
+        showsVerticalScrollIndicator={false}
       >
         <View
           style={[
@@ -506,14 +496,11 @@ export default function DetalleHistorialScreen() {
         style={[
           styles.footer,
           {
-            bottom:
-              Platform.OS === "web"
-                ? 0
-                : 92 + insets.bottom,
             backgroundColor:
               colors.cardBg,
             borderColor:
               colors.dividerColor,
+            paddingBottom: Math.max(insets.bottom, 12),
           },
         ]}
       >
@@ -619,6 +606,7 @@ const styles = StyleSheet.create({
 
   contenido: {
     padding: 14,
+    paddingBottom: 24,
   },
 
   informacion: {
@@ -678,9 +666,6 @@ const styles = StyleSheet.create({
   },
 
   footer: {
-    position: "absolute",
-    left: 0,
-    right: 0,
     borderTopWidth: 1,
     padding: 10,
     flexDirection: "row",
