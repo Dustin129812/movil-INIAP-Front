@@ -26,7 +26,7 @@ import { useTheme } from "../../services/theme";
 import { useAuth } from "../../services/auth";
 
 const RUTA_CALCULADORA =
-  "/(tabs)/calculadora";
+  "/calculadora/calculadora";
 
 const formatearNumero = (
   valor,

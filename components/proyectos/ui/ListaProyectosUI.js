@@ -371,13 +371,6 @@ export default function ListaProyectosUI({
                     </Animated.Text>
 
                     <View style={styles.headerButtons}>
-                        <TouchableOpacity
-                            style={[styles.misCultivosButton, { backgroundColor: isDark ? 'rgba(106,153,78,0.2)' : 'rgba(106,153,78,0.15)' }]}
-                            onPress={() => router.push('/mis-cultivos')}
-                        >
-                            <MaterialCommunityIcons name="leaf" size={16} color="#6A994E" />
-                            <Text style={[styles.misCultivosText, { color: '#6A994E' }]}>Seguimiento</Text>
-                        </TouchableOpacity>
 
                         <Animated.View style={counterAnimatedStyle}>
                             <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.counterGlassPill}>
