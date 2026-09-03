@@ -1,10 +1,3 @@
-// ============================================
-// EDITAR PROYECTO - Formulario de Edicion
-// ============================================
-// Permite editar: nombre, fecha, estado, tipo ensayo, tipo acolchado, colaborador, lote
-// Diseño: Apple-style con header animado, secciones, verde (#34C759)
-// Origen: app/proyectos/[id]/index.js
-
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
@@ -20,6 +13,7 @@ import {
     StatusBar,
     Modal,
     FlatList,
+    Pressable,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,7 +28,7 @@ import Animated, {
     Easing,
 } from 'react-native-reanimated';
 import { useTheme } from '../../../services/theme';
-import DatePickerWheel from '../../../components/calendario/ui/DatePickerWheel';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import ColaboradoresModal from './ColaboradoresModal';
 import SelectorCultivoVariedad from './SelectorCultivoVariedad';
 
@@ -722,14 +716,64 @@ export default function EditarProyectoForm({
                 </View>
             </Modal>
 
-            {/* Date Picker */}
-            <DatePickerWheel
-                visible={mostrarDatePicker}
-                value={formData.fecha_siembra}
-                onChange={(date) => updateField('fecha_siembra', date)}
-                onClose={() => setMostrarDatePicker(false)}
-                isDark={isDark}
-            />
+            {/* Date Picker - Android native picker (ya es un dialogo del sistema, no necesita wrapper) */}
+            {Platform.OS === 'android' && mostrarDatePicker && (
+                <DateTimePicker
+                    value={formData.fecha_siembra ? new Date(formData.fecha_siembra.split('-')[0], formData.fecha_siembra.split('-')[1] - 1, formData.fecha_siembra.split('-')[2]) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, date) => {
+                        setMostrarDatePicker(false);
+                        if (date) {
+                            const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            updateField('fecha_siembra', formatted);
+                        }
+                    }}
+                />
+            )}
+
+            {/* Date Picker - iOS: spinner envuelto en bottom sheet propio, sin huecos en blanco */}
+            {Platform.OS === 'ios' && (
+                <Modal
+                    visible={mostrarDatePicker}
+                    transparent
+                    animationType="slide"
+                    onRequestClose={() => setMostrarDatePicker(false)}
+                >
+                    <View style={modalStyles.overlay}>
+                        <Pressable style={{ flex: 1 }} onPress={() => setMostrarDatePicker(false)} />
+                        <View style={[modalStyles.content, modalStyles.datePickerContent, { paddingBottom: insets.bottom + 16 }]}>
+                            <View style={modalStyles.header}>
+                                <Text style={modalStyles.title}>Fecha de Siembra</Text>
+                                <TouchableOpacity onPress={() => setMostrarDatePicker(false)}>
+                                    <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+                                </TouchableOpacity>
+                            </View>
+                            <DateTimePicker
+                                value={formData.fecha_siembra ? new Date(formData.fecha_siembra.split('-')[0], formData.fecha_siembra.split('-')[1] - 1, formData.fecha_siembra.split('-')[2]) : new Date()}
+                                mode="date"
+                                display="spinner"
+                                textColor="#FFFFFF"
+                                style={modalStyles.datePicker}
+                                onChange={(event, date) => {
+                                    if (date) {
+                                        const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                                        updateField('fecha_siembra', formatted);
+                                    }
+                                }}
+                            />
+                            <View style={modalStyles.footer}>
+                                <TouchableOpacity
+                                    style={modalStyles.doneButton}
+                                    onPress={() => setMostrarDatePicker(false)}
+                                >
+                                    <Text style={modalStyles.doneButtonText}>Listo</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </Modal>
+            )}
 
             {/* Modal Selector Tipo Ensayo */}
             <Modal
@@ -887,6 +931,15 @@ const modalStyles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         maxHeight: '70%',
+    },
+    datePickerContent: {
+        paddingTop: 0,
+    },
+    datePicker: {
+        alignSelf: 'stretch',
+        height: 216,
+        marginTop: 4,
+        marginBottom: 4,
     },
     header: {
         flexDirection: 'row',

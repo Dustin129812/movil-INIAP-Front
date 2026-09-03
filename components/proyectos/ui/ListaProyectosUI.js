@@ -31,6 +31,7 @@ import { createProyectosStyles } from './proyectosStyles';
 import { useTheme } from '../../../services/theme';
 import { SkeletonCard } from '../../../src/styles/global/SkeletonCard';
 import { proyectosLocalService } from '../../../services/proyectos/proyectosLocalService';
+import { softDeleteProyecto } from '../../../db';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'INACTIVOS'];
@@ -84,14 +85,17 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
 
         setIsDeleting(true);
         try {
+            // Eliminar localmente primero (soft delete)
+            await softDeleteProyecto(uuid);
+            // Luego eliminar en API
             const result = await proyectosLocalService.eliminarProyecto(uuid);
             if (result && result.success) {
                 if (onDelete) onDelete();
             } else {
-                Alert.alert('Error', result?.message || 'No se pudo eliminar el proyecto');
+                Alert.alert('Error', result?.message || 'No se pudo eliminar');
             }
         } catch (err) {
-            Alert.alert('Error', 'No se pudo eliminar el proyecto');
+            Alert.alert('Error', err);
         }
         setShowDeleteModal(false);
         setIsDeleting(false);
