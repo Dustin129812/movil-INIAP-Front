@@ -467,7 +467,6 @@ export default function CalculadoraScreen() {
     );
   };
 
-  // Función de retroceso segura
   const retrocederSeguro = () => {
     if (router.canGoBack()) {
       router.back();
@@ -478,6 +477,7 @@ export default function CalculadoraScreen() {
 
   return (
     <SafeAreaView
+      edges={["top"]}
       style={[
         styles.safe,
         {
@@ -561,11 +561,6 @@ export default function CalculadoraScreen() {
                 width >= 900
                   ? 980
                   : 720,
-
-              marginBottom:
-                Platform.OS === "web"
-                  ? 0
-                  : 92 + insets.bottom,
             },
           ]}
         >
@@ -833,6 +828,7 @@ export default function CalculadoraScreen() {
                   colors.cardBg,
                 borderColor:
                   colors.dividerColor,
+                paddingBottom: Math.max(insets.bottom, 12),
               },
             ]}
           >
@@ -1020,7 +1016,7 @@ const styles = StyleSheet.create({
 
   contenido: {
     padding: 12,
-    paddingBottom: 18,
+    paddingBottom: 24,
   },
 
   footer: {

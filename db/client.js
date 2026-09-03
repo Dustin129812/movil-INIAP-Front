@@ -1,6 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { eq, isNull } from 'drizzle-orm';
+import { eq, isNull, isNotNull, inArray } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
 import * as schema from './schema';
 
@@ -588,11 +588,29 @@ export const obtenerLotesLocales = async () => {
         .where(isNull(schema.lotes.deleted_at));
 };
 
+export const obtenerLotesEliminados = async () => {
+    return await db
+        .select()
+        .from(schema.lotes)
+        .where(isNotNull(schema.lotes.deleted_at));
+};
+
 export const softDeleteLote = async (uuid_movil) => {
     await db
         .update(schema.lotes)
         .set({
             deleted_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        })
+        .where(eq(schema.lotes.uuid_movil, uuid_movil));
+};
+
+export const actualizarEstadoLoteLocal = async (uuid_movil, nuevoEstado) => {
+    await db
+        .update(schema.lotes)
+        .set({
+            estado_verificacion: nuevoEstado,
+            sync_status: SYNC_STATUS.PENDING,
             updated_at: new Date().toISOString(),
         })
         .where(eq(schema.lotes.uuid_movil, uuid_movil));
@@ -675,6 +693,43 @@ export const obtenerProyectosPorLote = async (loteUuid) => {
         .where(isNull(schema.proyectos.deleted_at));
 };
 
+// Obtener proyectos enlazados a un lote (tanto por lote_uuid directo como por relación N:M)
+export const obtenerProyectosEnlazadosAlLote = async (loteUuid) => {
+    // 1. Proyectos con lote_uuid directo
+    const proyectosDirecto = await db
+        .select()
+        .from(schema.proyectos)
+        .where(eq(schema.proyectos.lote_uuid, loteUuid))
+        .where(isNull(schema.proyectos.deleted_at));
+
+    // 2. Proyectos enlazados por tabla N:M
+    const relacionesN2M = await db
+        .select()
+        .from(schema.proyecto_lotes)
+        .where(eq(schema.proyecto_lotes.lote_uuid, loteUuid));
+
+    const proyectoUuidsN2M = relacionesN2M.map(r => r.proyecto_uuid);
+
+    let proyectosN2M = [];
+    if (proyectoUuidsN2M.length > 0) {
+        proyectosN2M = await db
+            .select()
+            .from(schema.proyectos)
+            .where(inArray(schema.proyectos.uuid_movil, proyectoUuidsN2M))
+            .where(isNull(schema.proyectos.deleted_at));
+    }
+
+    // Combinar y eliminar duplicados
+    const todosProyectos = [...proyectosDirecto];
+    for (const p of proyectosN2M) {
+        if (!todosProyectos.some(tp => tp.uuid_movil === p.uuid_movil)) {
+            todosProyectos.push(p);
+        }
+    }
+
+    return todosProyectos;
+};
+
 export const softDeleteProyecto = async (uuid_movil) => {
     await db
         .update(schema.proyectos)
@@ -684,6 +739,13 @@ export const softDeleteProyecto = async (uuid_movil) => {
             sync_status: SYNC_STATUS.PENDING,
         })
         .where(eq(schema.proyectos.uuid_movil, uuid_movil));
+};
+
+export const obtenerProyectosEliminados = async () => {
+    return await db
+        .select()
+        .from(schema.proyectos)
+        .where(isNotNull(schema.proyectos.deleted_at));
 };
 
 export const actualizarProyectoLocal = async (uuid_movil, datos) => {

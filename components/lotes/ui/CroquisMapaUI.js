@@ -22,6 +22,7 @@ import { WebView } from 'react-native-webview';
 import { useCroquisMapa } from '../hooks/useCroquisMapa';
 import { useTheme } from '../../../services/theme';
 import { useLocalNotifications } from '../../notifications/hooks/useLocalNotifications';
+import { useSearch } from '../context/SearchContext';
 
 const { width, height } = Dimensions.get('window');
 
@@ -50,6 +51,7 @@ export default function CroquisMapaUI() {
 
     const { isDark } = useTheme();
     const { notifyLoteGuardado } = useLocalNotifications();
+    const { recargar } = useSearch();
 
     const handleLoteSaved = useCallback((nombreLote, isPendingSync) => {
         notifyLoteGuardado(nombreLote);
@@ -63,7 +65,7 @@ export default function CroquisMapaUI() {
         preGuardarLote, abrirSelector, handleSelectOption, confirmarGuardado, origen, mostrarCondiciones,
         setMostrarCondiciones, mapType, rotarTipoMapa, isEditMode, editLoteData,
         setImagenUrlLote
-    } = useCroquisMapa(editLoteId, handleLoteSaved);
+    } = useCroquisMapa(editLoteId, handleLoteSaved, recargar);
 
     const [mostrarHectareas, setMostrarHectareas] = useState(false);
     const [busquedaText, setBusquedaText] = useState('');
@@ -166,7 +168,6 @@ export default function CroquisMapaUI() {
 
     const currentLat = location?.latitude || -0.22;
     const currentLng = location?.longitude || -78.51;
-    const streetViewEmbedUrl = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${currentLat},${currentLng}&heading=0&pitch=10&fov=80`;
 
     return (
         <View style={[styles.container, { backgroundColor: containerBg }]}>
@@ -306,7 +307,6 @@ export default function CroquisMapaUI() {
             {/* SECCIÓN INFERIOR DINÁMICA CON LIQUID GLASS (SUBE CON EL TECLADO) */}
             {!showForm && (
                 <View style={[styles.bottomControlContainer, isSearchFocused && { bottom: keyboardHeight + 16 }]}>
-                    {/* Botón Fijar Punto Rediseñado Estilo Apple */}
                     <Animated.View style={{ transform: [{ scale: pinScale }], width: '100%', marginBottom: 10 }}>
                         <TouchableOpacity
                             style={[styles.applePinButton, isTracking && styles.tileDisabled]}
@@ -325,7 +325,6 @@ export default function CroquisMapaUI() {
                         </TouchableOpacity>
                     </Animated.View>
 
-                    {/* Buscador Liquid Glass Fijo Abajo (Sube con teclado y despliega sugerencias) */}
                     <View style={[styles.glassSearchIsland, isSearchFocused && styles.glassSearchExpanded]}>
                         <View style={styles.glassSearchRow}>
                             <MaterialCommunityIcons name="magnify" size={20} color="rgba(255,255,255,0.7)" style={{ marginRight: 10 }} />
@@ -365,7 +364,6 @@ export default function CroquisMapaUI() {
                 </View>
             )}
 
-            {/* Tap detector para cerrar buscador cuando está activo */}
             {isSearchFocused && (
                 <TouchableOpacity
                     style={styles.keyboardDismissArea}

@@ -17,7 +17,7 @@ import {
     configuracion,
     SYNC_STATUS,
 } from '../../db/schema';
-import { eq, inArray } from 'drizzle-orm';
+import { eq, inArray, isNull, and } from 'drizzle-orm';
 import { fetchApi } from '../api/apiClient';
 
 /**
@@ -107,14 +107,14 @@ const obtenerLotesValidosParaSync = async () => {
  * son marcados como 'error_geometria' y NO se incluyen en el payload.
  */
 const construirPayloadSync = async () => {
-    // Obtener DRAFT y PENDING por separado
+    // Obtener DRAFT y PENDING por separado (excluyendo eliminados para lotes y proyectos)
     const [lotesDraft, lotesPending] = await Promise.all([
-        db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.DRAFT)),
-        db.select().from(lotes).where(eq(lotes.sync_status, SYNC_STATUS.PENDING)),
+        db.select().from(lotes).where(and(eq(lotes.sync_status, SYNC_STATUS.DRAFT), isNull(lotes.deleted_at))),
+        db.select().from(lotes).where(and(eq(lotes.sync_status, SYNC_STATUS.PENDING), isNull(lotes.deleted_at))),
     ]);
     const [proyectosDraft, proyectosPending] = await Promise.all([
-        db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.DRAFT)),
-        db.select().from(proyectos).where(eq(proyectos.sync_status, SYNC_STATUS.PENDING)),
+        db.select().from(proyectos).where(and(eq(proyectos.sync_status, SYNC_STATUS.DRAFT), isNull(proyectos.deleted_at))),
+        db.select().from(proyectos).where(and(eq(proyectos.sync_status, SYNC_STATUS.PENDING), isNull(proyectos.deleted_at))),
     ]);
     const [ciclosDraft, ciclosPending] = await Promise.all([
         db.select().from(ciclos_cultivo).where(eq(ciclos_cultivo.sync_status, SYNC_STATUS.DRAFT)),

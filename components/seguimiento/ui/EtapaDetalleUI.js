@@ -97,16 +97,16 @@ export default function EtapaDetalleUI({
 
                     <View style={[styles.estadoBadge, { backgroundColor: colorSet.bg, marginTop: 10 }]}>
                         <Text style={[styles.estadoBadgeText, { color: colorSet.text }]}>
-                            {estado === 'completada' ? '✅ Finalizada / Completada' :
-                             estado === 'en_progreso' ? '🔄 En progreso' :
-                             estado === 'pendiente' ? '⏳ Pendiente' : '⏭️ Omitida'}
+                            {estado === 'completada' ? 'Finalizada / Completada' :
+                             estado === 'en_progreso' ? 'En progreso' :
+                             estado === 'pendiente' ? 'Pendiente' : 'Omitida'}
                         </Text>
                     </View>
                 </View>
 
                 {/* Fechas de inicio y fin */}
                 <View style={styles.detalleCard}>
-                    <Text style={styles.detalleSeccionTitulo}>🗓️ Período de la Etapa</Text>
+                    <Text style={styles.detalleSeccionTitulo}>Período de la Etapa</Text>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
                         <View>
                             <Text style={{ fontSize: 12, color: colors.textSecondary }}>Fecha de Inicio</Text>
@@ -130,7 +130,7 @@ export default function EtapaDetalleUI({
                 {/* Descripción */}
                 {descripcion ? (
                     <View style={styles.detalleCard}>
-                        <Text style={styles.detalleSeccionTitulo}>📋 Descripción</Text>
+                        <Text style={styles.detalleSeccionTitulo}>Descripción</Text>
                         <Text style={{ fontSize: 14, lineHeight: 22, color: colors.textSecondary }}>
                             {descripcion}
                         </Text>
@@ -140,7 +140,7 @@ export default function EtapaDetalleUI({
                 {/* Indicadores Clave */}
                 {indicadores.length > 0 ? (
                     <View style={styles.detalleCard}>
-                        <Text style={styles.detalleSeccionTitulo}>📌 Indicadores Clave</Text>
+                        <Text style={styles.detalleSeccionTitulo}>Indicadores Clave</Text>
                         {indicadores.map((ind, i) => (
                             <View key={i} style={{ flexDirection: 'row', marginBottom: 8, gap: 8 }}>
                                 <Text style={{ color: '#30D158', fontSize: 14 }}>•</Text>
@@ -155,7 +155,7 @@ export default function EtapaDetalleUI({
                 {/* Recomendaciones Agronómicas */}
                 {recomendaciones.length > 0 ? (
                     <View style={styles.detalleCard}>
-                        <Text style={styles.detalleSeccionTitulo}>💡 Recomendaciones Agronómicas</Text>
+                        <Text style={styles.detalleSeccionTitulo}>Recomendaciones Agronómicas</Text>
                         {recomendaciones.map((rec, i) => (
                             <View key={rec.recomendacion_id || i} style={styles.recomendacionItem}>
                                 <Text style={styles.recomendacionTitulo}>{rec.titulo}</Text>
@@ -177,7 +177,7 @@ export default function EtapaDetalleUI({
                 {/* Historial de eventos ocurridos */}
                 <View style={styles.detalleCard}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                        <Text style={styles.detalleSeccionTitulo}>📅 Eventos y Observaciones</Text>
+                        <Text style={styles.detalleSeccionTitulo}>Eventos y Observaciones</Text>
                         <Text style={{ fontSize: 13, color: colors.textTertiary }}>
                             {eventos.length} registrado{eventos.length !== 1 ? 's' : ''}
                         </Text>
@@ -238,11 +238,11 @@ export default function EtapaDetalleUI({
                 {estado === 'en_progreso' ? (
                     <View style={{ marginTop: 8 }}>
                         <TouchableOpacity style={styles.primaryButton} onPress={handleRegistrarEvento}>
-                            <Text style={styles.primaryButtonText}>📝 Registrar Evento / Avance</Text>
+                            <Text style={styles.primaryButtonText}>Registrar Evento / Avance</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity style={styles.dangerButton} onPress={handleFinalizarEtapa}>
-                            <Text style={styles.dangerButtonText}>✅ Finalizar Etapa</Text>
+                            <Text style={styles.dangerButtonText}>Finalizar Etapa</Text>
                         </TouchableOpacity>
                     </View>
                 ) : null}

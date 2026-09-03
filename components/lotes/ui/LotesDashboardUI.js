@@ -34,6 +34,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSearch } from '../context/SearchContext';
 import { useTheme } from '../../../services/theme';
 import { lotesService } from '../../../services/lotes';
+import { softDeleteLote, actualizarEstadoLoteLocal, obtenerProyectosEnlazadosAlLote } from '../../../db';
 
 import {
     ESTILOS_STATUS,
@@ -59,11 +60,6 @@ const CAMPOS_EDITABLES = [
     { key: 'cultivo', label: 'Cultivo', icon: 'seed', autoCapitalize: 'words' },
 ];
 
-// ============================================
-// COMPONENTE: Bottom Sheet Base (estilo Apple)
-// Backdrop con blur + tarjeta que sube desde abajo con spring.
-// Lo reutilizan el selector de estado y el modal de edición.
-// ============================================
 function AppleBottomSheet({ visible, onClose, isDark, children, maxHeight }) {
     const insets = useSafeAreaInsets();
     const translateY = useSharedValue(500);
@@ -138,9 +134,6 @@ function AppleBottomSheet({ visible, onClose, isDark, children, maxHeight }) {
     );
 }
 
-// ============================================
-// COMPONENTE: Selector de Estado (bottom sheet estilo iOS action sheet)
-// ============================================
 function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }) {
     const colores = getColores(isDark);
 
@@ -196,9 +189,6 @@ function StatusPickerModal({ visible, currentStatus, onSelect, onClose, isDark }
     );
 }
 
-// ============================================
-// COMPONENTE: Selector de Opciones genérico (para provincia, canton, estacion, cultivo)
-// ============================================
 function OptionPickerModal({ visible, title, options, currentValue, onSelect, onClose, isDark }) {
     const colores = getColores(isDark);
 
@@ -502,33 +492,10 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
     };
 
     const { animateIn, handlePressIn, handlePressOut, containerAnimatedStyle } = useCardAnimations(index);
-    const defaultImage = 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=800&auto=format&fit=crop';
 
-    // ---- Captura del croquis de vértices como imagen ----
-    // TODO: reactivar cuando definamos storage para imágenes (S3/Cloudinary/servidor propio)
-    // Temporalmente deshabilitado - se muestra VerticesMap directamente en vez de capturar
-    // const [capturedUri, setCapturedUri] = useState(item.imagen_croquis_url || null);
-    // const viewShotRef = useRef(null);
-    // const captureAttempted = useRef(false);
-    // const needsCapture = hasVertices && !capturedUri && !captureAttempted.current;
-    // useEffect(() => {
-    //     if (!needsCapture) return;
-    //     captureAttempted.current = true;
-    //     const timer = setTimeout(async () => {
-    //         try {
-    //             const uri = await viewShotRef.current?.capture?.();
-    //             if (uri) {
-    //                 setCapturedUri(uri);
-    //                 if (typeof lotesService.guardarCapturaLote === 'function') {
-    //                     lotesService.guardarCapturaLote(item.id, uri).catch(() => {});
-    //                 }
-    //             }
-    //         } catch (e) { }
-    //     }, 350);
-    //     return () => clearTimeout(timer);
-    // }, [needsCapture]);
+    
 
-    const backgroundImageSource = { uri: item.imagen_url || defaultImage };
+    const hasImage = !!item.imagen_url;
 
     useEffect(() => {
         animateIn();
@@ -585,9 +552,9 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                             </TouchableOpacity>
                         </View>
                     </View>
-                ) : (
+                ) : hasImage ? (
                     <ImageBackground
-                        source={backgroundImageSource}
+                        source={{ uri: item.imagen_url }}
                         style={styles.figmaImageSection}
                         imageStyle={styles.figmaImageStyle}
                     >
@@ -627,6 +594,43 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                             </TouchableOpacity>
                         </View>
                     </ImageBackground>
+                ) : (
+                    <View style={[styles.figmaImageSection, { backgroundColor: '#2d5a27' }]}>
+                        <View style={styles.figmaTopRow}>
+                            <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); onStatusChange(item); }}
+                                activeOpacity={0.8}
+                            >
+                                <BlurView intensity={60} tint="light" style={styles.figmaPopularBadge}>
+                                    <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
+                                    <Text style={styles.figmaPopularText}>{statusConfig.text}</Text>
+                                </BlurView>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.figmaImageBottomRow}>
+                            <View style={styles.figmaTitleArea}>
+                                <Text style={styles.figmaCardTitle} numberOfLines={1}>
+                                    {item.nombre_lote || 'Lote sin nombre'}
+                                </Text>
+                                <View style={styles.figmaLocationWrapper}>
+                                    <MaterialCommunityIcons name="map-marker" size={13} color="#FFFFFF" />
+                                    <Text style={styles.figmaLocationText} numberOfLines={1}>
+                                        {item.ubicacion_manual || item.estacion || item.canton || item.provincia || 'Ubicación no definida'}
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.figmaStartRouteBtn}
+                                onPress={(e) => { e.stopPropagation(); onEdit(); }}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={styles.figmaStartRouteText}>Editar</Text>
+                                <MaterialCommunityIcons name="arrow-right" size={14} color="#111111" />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
                 )}
 
                 <View style={styles.infoBottomSection}>
@@ -907,10 +911,8 @@ export default function LotesDashboardUI() {
         if (!loteEditar) return;
         setIsSavingEdit(true);
         try {
-            // TODO: confirmar el nombre real de este método en tu lotesService.
-            // Debe aceptar (id, { nombre_lote, provincia, canton, estacion, cultivo })
-            const result = await lotesService.actualizarLote(loteEditar.id, form);
-            if (result && result.data) {
+            const result = await lotesService.actualizarLote(loteEditar.uuid_movil, form);
+            if (result && result.success) {
                 setEditModalVisible(false);
                 recargar();
             } else {
@@ -930,42 +932,69 @@ export default function LotesDashboardUI() {
     };
 
     const handleDelete = async (lote) => {
-        // Verificar que tenemos el UUID del lote
-        if (!lote || (!lote.uuid_movil && !lote.id)) {
-            Alert.alert('Error', 'No se encontró el ID del lote');
+        if (!lote) {
+            Alert.alert('Error', 'No se encontró el lote');
             return;
         }
 
-        const uuid = lote.uuid_movil || lote.id;
+        if (!lote.uuid_movil) {
+            Alert.alert(
+                'Lote no sincronizado',
+                'Este lote todavía no se ha sincronizado con el servidor, así que no se puede eliminar desde aquí. Sincronízalo primero.'
+            );
+            return;
+        }
 
-        // Llamar al API del backend para eliminar (soft delete en backend)
+        // Verificar si el lote tiene proyectos enlazados
+        const proyectosEnlazados = await obtenerProyectosEnlazadosAlLote(lote.uuid_movil);
+        if (proyectosEnlazados.length > 0) {
+            const nombresProyectos = proyectosEnlazados.map(p => p.titulo || p.uuid_movil).join(', ');
+            Alert.alert(
+                'No se puede eliminar',
+                `Este lote está enlazado a ${proyectosEnlazados.length} proyecto(s): ${nombresProyectos}. Elimina los proyectos primero o desvincula el lote de ellos.`
+            );
+            return;
+        }
+
+        // Eliminar localmente Y del backend
         try {
-            const result = await lotesService.eliminarLote(uuid);
-            if (result && result.success) {
-                recargar();
-            } else {
-                Alert.alert('Error', result?.message || 'No se pudo eliminar el lote');
-            }
+            // Primero eliminar localmente para feedback inmediato
+            await softDeleteLote(lote.uuid_movil);
+            // Luego eliminar del backend
+            await lotesService.eliminarLote(lote.uuid_movil);
+            await recargar();
+            Alert.alert('Éxito', 'Lote eliminado');
         } catch (err) {
-            Alert.alert('Error', 'No se pudo eliminar el lote');
+            await recargar();
+            Alert.alert('Error', err?.message || 'No se pudo eliminar el lote');
         }
     };
 
     const handleSelectStatus = async (nuevoEstado) => {
         if (!loteSeleccionado) return;
         setStatusPickerVisible(false);
+
         setIsUpdatingStatus(true);
 
         try {
-            const result = await lotesService.cambiarEstadoLote(loteSeleccionado.id, nuevoEstado);
-            if (result && result.data) {
+            // Actualizar local primero para feedback inmediato
+            if (loteSeleccionado.uuid_movil) {
+                await actualizarEstadoLoteLocal(loteSeleccionado.uuid_movil, nuevoEstado);
+            }
+
+            // Llamar al API
+            const result = await lotesService.cambiarEstadoLote(loteSeleccionado.uuid_movil, nuevoEstado);
+
+            await recargar();
+
+            if (result && result.success) {
                 Alert.alert('Éxito', 'Estado actualizado correctamente');
-                recargar();
             } else {
                 Alert.alert('Error', result?.message || 'No se pudo actualizar el estado');
             }
         } catch (err) {
-            Alert.alert('Error', 'No se pudo actualizar el estado');
+            await recargar();
+            Alert.alert('Error', err?.message || 'No se pudo actualizar el estado');
         } finally {
             setIsUpdatingStatus(false);
             setLoteSeleccionado(null);
@@ -1281,9 +1310,9 @@ const styles = StyleSheet.create({
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     headerHomeTitle: {
-        fontSize: 36,
+        fontSize: 28,
         fontWeight: '800',
-        letterSpacing: -0.8,
+        letterSpacing: -0.5,
     },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 

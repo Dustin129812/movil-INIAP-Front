@@ -1,5 +1,4 @@
-import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import { useFocusEffect } from 'expo-router';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
 import { lotesService } from '../../../services/lotes';
 
 const SearchContext = createContext({
@@ -22,57 +21,37 @@ export function SearchProvider({ children }) {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    const cargarLotes = useCallback(async () => {
+    const cargarLotes = async () => {
         setIsLoading(true);
         setError(null);
         try {
             const data = await lotesService.obtenerLotes();
-            if (Array.isArray(data)) {
-                setListaLotes(data);
-            } else if (data && Array.isArray(data.data)) {
-                setListaLotes(data.data);
-            } else if (data && Array.isArray(data.lotes)) {
-                setListaLotes(data.lotes);
-            } else {
-                setListaLotes([]);
-            }
+            setListaLotes(data);
         } catch (err) {
             setError('Error al cargar lotes');
             setListaLotes([]);
         } finally {
             setIsLoading(false);
         }
+    };
+
+    useEffect(() => {
+        cargarLotes();
     }, []);
 
-    const recargar = useCallback(() => {
-        cargarLotes();
-    }, [cargarLotes]);
-    useFocusEffect(
-        useCallback(() => {
-            cargarLotes();
-        }, [cargarLotes])
-    );
-
     const lotesFiltrados = useMemo(() => {
-        if (!searchText.trim()) {
-            if (filtroEstado === 'TODOS') {
-                return listaLotes;
-            }
-            return listaLotes.filter(lote => {
-                if (filtroEstado === 'PENDIENTES') {
-                    return lote.estado_verificacion === 'pendiente';
-                } else if (filtroEstado === 'ACTIVOS') {
-                    return lote.estado_verificacion === 'verificado';
-                } else if (filtroEstado === 'ERROR') {
-                    // Mostrar lotes con error de geometría (no se pueden sincronizar)
-                    return lote.sync_status === 'error_geometria';
-                }
-                return true;
-            });
-        }
-        const query = searchText.toLowerCase().trim();
+        if (!Array.isArray(listaLotes)) return [];
 
         return listaLotes.filter(lote => {
+            let matchesStatus = true;
+            if (filtroEstado === 'PENDIENTES') matchesStatus = lote.estado_verificacion === 'pendiente';
+            else if (filtroEstado === 'ACTIVOS') matchesStatus = lote.estado_verificacion === 'verificado';
+            else if (filtroEstado === 'ERROR') matchesStatus = lote.sync_status === 'error_geometria';
+
+            if (!matchesStatus) return false;
+            if (!searchText.trim()) return true;
+
+            const query = searchText.toLowerCase().trim();
             const searchableFields = [
                 lote.nombre_lote,
                 lote.uuid_movil,
@@ -80,22 +59,11 @@ export function SearchProvider({ children }) {
                 lote.canton,
                 lote.provincia,
                 lote.descripcion,
-            ].map(field => (field || '').toLowerCase());
+            ];
 
-            const matchesSearch = searchableFields.some(field =>
-                field.includes(query) || field.startsWith(query)
+            return searchableFields.some(field => 
+                field && String(field).toLowerCase().includes(query)
             );
-
-            let matchesStatus = true;
-            if (filtroEstado === 'PENDIENTES') {
-                matchesStatus = lote.estado_verificacion === 'pendiente';
-            } else if (filtroEstado === 'ACTIVOS') {
-                matchesStatus = lote.estado_verificacion === 'verificado';
-            } else if (filtroEstado === 'ERROR') {
-                matchesStatus = lote.sync_status === 'error_geometria';
-            }
-
-            return matchesSearch && matchesStatus;
         });
     }, [listaLotes, searchText, filtroEstado]);
 
@@ -116,7 +84,7 @@ export function SearchProvider({ children }) {
                 listaLotes,
                 isLoading,
                 error,
-                recargar,
+                recargar: cargarLotes,
             }}
         >
             {children}

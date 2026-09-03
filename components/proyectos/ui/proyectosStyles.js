@@ -42,10 +42,10 @@ export const createProyectosStyles = (isDark) => StyleSheet.create({
         paddingBottom: 8,
     },
     headerTitle: {
-        fontSize: 34,
+        fontSize: 28,
         fontWeight: '700',
         color: isDark ? '#FFFFFF' : '#000000',
-        letterSpacing: 0.37,
+        letterSpacing: 0.2,
     },
     headerSubtitle: {
         fontSize: 15,

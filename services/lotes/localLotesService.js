@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Crypto from 'expo-crypto';
 import { db, initDb, crearLoteLocal as crearLoteLocalDb, obtenerLotesLocales, marcarLoteComoSincronizado, SYNC_STATUS, lotes } from '../../db';
-import { eq } from 'drizzle-orm';
+import { eq, isNull, and } from 'drizzle-orm';
 
 const URL_API = process.env.EXPO_PUBLIC_API_URL;
 
@@ -100,7 +100,10 @@ export const sincronizarLotesPendientes = async () => {
         const lotesPendientes = await db
             .select()
             .from(lotes)
-            .where(eq(lotes.sync_status, SYNC_STATUS.PENDING));
+            .where(and(
+                eq(lotes.sync_status, SYNC_STATUS.PENDING),
+                isNull(lotes.deleted_at)
+            ));
 
         let sincronizados = 0;
         let errores = 0;

@@ -36,7 +36,7 @@ import { proyectosLocalService } from '../../../services/proyectos';
 import { localLotesService } from '../../../services/lotes';
 import { useTheme } from '../../../services/theme';
 import { crearProyectoStyles as styles } from '../../../src/styles/crearProyectoStyles';
-import DatePickerWheel from '../../../components/calendario/ui/DatePickerWheel';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useLocalNotifications } from '../../../components/notifications/hooks/useLocalNotifications';
 import ColaboradoresModal from '../../../components/proyectos/ui/ColaboradoresModal';
 import ColaboradoresExternosModal from '../../../components/proyectos/ui/ColaboradoresExternosModal';
@@ -841,14 +841,37 @@ export default function NuevoProyectoScreen() {
                 </View>
             </Modal>
 
-            {/* Date Picker */}
-            <DatePickerWheel
-                visible={mostrarSelectorFecha}
-                value={formData.fecha_siembra}
-                onChange={(date) => updateField('fecha_siembra', date)}
-                onClose={() => setMostrarSelectorFecha(false)}
-                isDark={isDark}
-            />
+            {/* Date Picker - Android native picker */}
+            {Platform.OS === 'android' && mostrarSelectorFecha && (
+                <DateTimePicker
+                    value={formData.fecha_siembra ? new Date(formData.fecha_siembra.split('-')[0], formData.fecha_siembra.split('-')[1] - 1, formData.fecha_siembra.split('-')[2]) : new Date()}
+                    mode="date"
+                    display="default"
+                    onChange={(event, date) => {
+                        setMostrarSelectorFecha(false);
+                        if (date) {
+                            const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            updateField('fecha_siembra', formatted);
+                        }
+                    }}
+                />
+            )}
+
+            {/* Date Picker - iOS native picker in modal */}
+            {Platform.OS === 'ios' && mostrarSelectorFecha && (
+                <DateTimePicker
+                    value={formData.fecha_siembra ? new Date(formData.fecha_siembra.split('-')[0], formData.fecha_siembra.split('-')[1] - 1, formData.fecha_siembra.split('-')[2]) : new Date()}
+                    mode="date"
+                    display="spinner"
+                    onChange={(event, date) => {
+                        if (date) {
+                            const formatted = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                            updateField('fecha_siembra', formatted);
+                        }
+                        setMostrarSelectorFecha(false);
+                    }}
+                />
+            )}
 
             {/* Modal Selector Tipo Ensayo */}
             <SimpleOptionModal

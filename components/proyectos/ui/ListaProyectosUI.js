@@ -31,6 +31,7 @@ import { createProyectosStyles } from './proyectosStyles';
 import { useTheme } from '../../../services/theme';
 import { SkeletonCard } from '../../../src/styles/global/SkeletonCard';
 import { proyectosLocalService } from '../../../services/proyectos/proyectosLocalService';
+import { softDeleteProyecto } from '../../../db';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'INACTIVOS'];
@@ -84,14 +85,17 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
 
         setIsDeleting(true);
         try {
+            // Eliminar localmente primero (soft delete)
+            await softDeleteProyecto(uuid);
+            // Luego eliminar en API
             const result = await proyectosLocalService.eliminarProyecto(uuid);
             if (result && result.success) {
                 if (onDelete) onDelete();
             } else {
-                Alert.alert('Error', result?.message || 'No se pudo eliminar el proyecto');
+                Alert.alert('Error', result?.message || 'No se pudo eliminar');
             }
         } catch (err) {
-            Alert.alert('Error', 'No se pudo eliminar el proyecto');
+            Alert.alert('Error', err);
         }
         setShowDeleteModal(false);
         setIsDeleting(false);
@@ -367,13 +371,6 @@ export default function ListaProyectosUI({
                     </Animated.Text>
 
                     <View style={styles.headerButtons}>
-                        <TouchableOpacity
-                            style={[styles.misCultivosButton, { backgroundColor: isDark ? 'rgba(106,153,78,0.2)' : 'rgba(106,153,78,0.15)' }]}
-                            onPress={() => router.push('/mis-cultivos')}
-                        >
-                            <MaterialCommunityIcons name="leaf" size={16} color="#6A994E" />
-                            <Text style={[styles.misCultivosText, { color: '#6A994E' }]}>Seguimiento</Text>
-                        </TouchableOpacity>
 
                         <Animated.View style={counterAnimatedStyle}>
                             <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.counterGlassPill}>
@@ -522,9 +519,9 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     headerHomeTitle: {
-        fontSize: 36,
+        fontSize: 28,
         fontWeight: '800',
-        letterSpacing: -0.8,
+        letterSpacing: -0.5,
     },
     counterGlassPill: {
         flexDirection: 'row',

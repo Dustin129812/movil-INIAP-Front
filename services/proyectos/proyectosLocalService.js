@@ -4,7 +4,9 @@ import {
     initDb,
     crearProyectoLocal as crearProyectoLocalDb,
     obtenerProyectosLocales,
+    obtenerProyectosEliminados,
     marcarProyectoComoSincronizado,
+    softDeleteProyecto,
     crearCicloLocal as crearCicloLocalDb,
     crearVisitaLocal as crearVisitaLocalDb,
     crearHojaDatosLocal as crearHojaDatosLocalDb,
@@ -198,6 +200,10 @@ export const inicializarBaseDatosProyectos = async () => {
 // Obtener proyectos - siempre priorizar datos locales con cambios pendientes
 export const obtenerProyectos = async () => {
     try {
+        // Obtener UUIDs de proyectos eliminados localmente para excluirlos
+        const proyectosEliminados = await obtenerProyectosEliminados();
+        const eliminadosSet = new Set(proyectosEliminados.map(p => p.uuid_movil).filter(Boolean));
+
         // Siempre obtener datos locales primero (son la fuente de verdad offline)
         const proyectosLocales = await obtenerProyectosLocales();
 
@@ -206,7 +212,7 @@ export const obtenerProyectos = async () => {
             proyectosLocales.map(p => [p.uuid_movil, p])
         );
 
-        // Si no hay token, retornar locales
+        // Si no hay token, retornar locales (ya filtrados por deleted_at IS NULL)
         const token = await obtenerToken();
         if (!token) {
             return proyectosLocales;
@@ -232,39 +238,43 @@ export const obtenerProyectos = async () => {
             // Ignorar errores de API
         }
 
-        // Si no hay datos de API, retornar locales
+        // Si no hay datos de API, retornar locales (ya filtrados por deleted_at IS NULL)
         if (datosApi.length === 0) {
             return proyectosLocales;
         }
 
         // UNIÓN de ambas fuentes:
         // 1. Empezar con mapa vacío
-        // 2. Agregar todos los de API
+        // 2. Agregar todos los de API (excluyendo eliminados localmente)
         // 3. Para cada local, si existe en API → sobrescribir con versión combinada (API + estado local)
         //    si NO existe en API → agregar tal cual (proyecto local pendiente de sync)
         const mergedMap = new Map();
 
-        // Primero, agregar todos los de API
+        // Primero, agregar todos los de API (excluyendo UUIDs eliminados localmente)
         for (const proyApi of datosApi) {
-            mergedMap.set(proyApi.uuid_movil, proyApi);
-        }
-
-        // Luego, agregar/sobrescribir con datos locales
-        for (const [uuid, proyLocal] of localesMap) {
-            if (mergedMap.has(uuid)) {
-                // Existe en API: combinar API + estado local preservado
-                const proyApi = mergedMap.get(uuid);
-                mergedMap.set(uuid, {
-                    ...proyApi,
-                    estado: proyLocal.estado || proyApi.estado || 'activo',
-                });
-            } else {
-                // NO existe en API: proyecto local pendiente de sync, agregar tal cual
-                mergedMap.set(uuid, proyLocal);
+            if (proyApi.uuid_movil && !eliminadosSet.has(proyApi.uuid_movil)) {
+                mergedMap.set(proyApi.uuid_movil, proyApi);
             }
         }
 
-        return Array.from(mergedMap.values());
+        // Luego, agregar/sobrescribir con datos locales (ya excluidos por deleted_at IS NULL)
+        for (const [uuid, proyLocal] of localesMap) {
+            if (uuid && !eliminadosSet.has(uuid)) {
+                if (mergedMap.has(uuid)) {
+                    // Existe en API: combinar API + estado local preservado
+                    const proyApi = mergedMap.get(uuid);
+                    mergedMap.set(uuid, {
+                        ...proyApi,
+                        estado: proyLocal.estado || proyApi.estado || 'activo',
+                    });
+                } else {
+                    // NO existe en API: proyecto local pendiente de sync, agregar tal cual
+                    mergedMap.set(uuid, proyLocal);
+                }
+            }
+        }
+
+        return Array.from(mergedMap.values()).filter(p => p && (p.uuid_movil || p.id));
     } catch (error) {
         // En caso de error, siempre retornar datos locales
         const proyectosLocales = await obtenerProyectosLocales();
@@ -518,9 +528,13 @@ export const obtenerProyectoLocal = async (uuid_movil) => {
     }
 };
 
-// Eliminar proyecto (llama al API - soft delete en backend)
+// Eliminar proyecto (soft delete local + API)
 export const eliminarProyecto = async (uuid_movil) => {
     try {
+        // 1. Marcar como eliminado LOCAL primero (respuesta inmediata al usuario)
+        await softDeleteProyecto(uuid_movil);
+
+        // 2. Sincronizar con el API en segundo plano
         const token = await obtenerToken();
         const respuesta = await fetch(`${URL_API}/agrodecide/proyectos/${uuid_movil}`, {
             method: 'DELETE',
@@ -533,11 +547,10 @@ export const eliminarProyecto = async (uuid_movil) => {
         if (respuesta.ok) {
             return { success: true, message: 'Proyecto eliminado' };
         } else {
-            return { success: false, message: 'No se pudo eliminar el proyecto' };
+            return { success: true, message: 'Proyecto eliminado localmente, sincronización pendiente' };
         }
     } catch (error) {
-        // console removed
-        return { success: false, message: 'Error de red al eliminar proyecto' };
+        return { success: true, message: 'Proyecto eliminado localmente, sincronización pendiente' };
     }
 };
 
