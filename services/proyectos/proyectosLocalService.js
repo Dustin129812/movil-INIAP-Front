@@ -128,24 +128,34 @@ const guardarColaboradoresExternosLocales = async (proyectoUuid, colaboradoresEx
     const guardados = [];
 
     for (const colaborador of colaboradoresExternos) {
-        const colaboradorLocal = await registrarColaboradorExternoLocal({
-            ci: colaborador.ci,
-            nombre_completo: colaborador.nombre_completo,
-            server_id: colaborador.server_id || null,
-        });
+        try {
+            const colaboradorLocal = await registrarColaboradorExternoLocal({
+                ci: colaborador.ci,
+                nombre_completo: colaborador.nombre_completo,
+                server_id: colaborador.server_id || null,
+            });
 
-        await crearProyectoColaboradorExternoRelacion(
-            proyectoUuid,
-            colaboradorLocal.id,
-            colaborador.participacion
-        );
+            if (!colaboradorLocal || !colaboradorLocal.id) {
+                console.log('ERROR: registrarColaboradorExternoLocal retornó invalido:', colaboradorLocal);
+                throw new Error('Error al registrar colaborador externo: ' + colaborador.ci);
+            }
 
-        guardados.push({
-            ...colaborador,
-            id: colaboradorLocal.id,
-            local_id: colaboradorLocal.id,
-            server_id: colaboradorLocal.server_id || colaborador.server_id || null,
-        });
+            await crearProyectoColaboradorExternoRelacion(
+                proyectoUuid,
+                colaboradorLocal.id,
+                colaborador.participacion
+            );
+
+            guardados.push({
+                ...colaborador,
+                id: colaboradorLocal.id,
+                local_id: colaboradorLocal.id,
+                server_id: colaboradorLocal.server_id || colaborador.server_id || null,
+            });
+        } catch (error) {
+            console.log('ERROR guardarColaboradoresExternosLocales:', error);
+            throw error;
+        }
     }
 
     return guardados;
@@ -346,20 +356,29 @@ export const crearProyectoLocal = async (datosProyecto) => {
                 if (respuesta.ok) {
                     const datos = await respuesta.json();
                     if (datos.success || respuesta.status === 201) {
-                        const externosSincronizados = await sincronizarColaboradoresExternosServidor(
+                        // Siempre marcar como SYNCED si el proyecto se creó en el servidor
+                        // Los externos se syncronizan en segundo plano después
+                        await marcarProyectoComoSincronizado(proyectoLocal.uuid_movil);
+
+                        // Sincronizar externos en segundo plano (no bloquea)
+                        sincronizarColaboradoresExternosServidor(
                             proyectoLocal.uuid_movil,
                             colaboradoresExternosLocales
-                        );
-
-                        if (externosSincronizados) {
-                            await marcarProyectoComoSincronizado(proyectoLocal.uuid_movil);
-                        }
+                        ).then((externosSincronizados) => {
+                            if (externosSincronizados) {
+                                console.log('Externos sincronizados OK');
+                            } else {
+                                console.log('Externos pendientes de sync');
+                            }
+                        }).catch((err) => {
+                            console.log('Error sync externos:', err);
+                        });
 
                         return {
                             success: true,
                             proyecto: datos.data || proyectoLocal,
-                            pendingSync: !externosSincronizados,
-                            externalSyncPending: !externosSincronizados,
+                            pendingSync: false,
+                            externalSyncPending: false,
                         };
                     }
                     // console removed

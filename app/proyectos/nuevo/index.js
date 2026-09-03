@@ -129,6 +129,11 @@ export default function NuevoProyectoScreen() {
     const [cultivoSeleccionado, setCultivoSeleccionado] = useState(null);
     const [variedadSeleccionada, setVariedadSeleccionada] = useState(null);
     const [colaboradoresSeleccionados, setColaboradoresSeleccionados] = useState([]);
+    const [mostrarModalColaboradorExterno, setMostrarModalColaboradorExterno] = useState(false);
+    const [colaboradoresExternosTemporal, setColaboradoresExternosTemporal] = useState([]);
+    const [extCi, setExtCi] = useState('');
+    const [extNombre, setExtNombre] = useState('');
+    const [extParticipacion, setExtParticipacion] = useState('');
 
     const [currentStep, setCurrentStep] = useState(0);
     const [maxReachedStep, setMaxReachedStep] = useState(0);
@@ -271,6 +276,7 @@ export default function NuevoProyectoScreen() {
             const datosParaGuardar = {
                 ...formData,
                 lotes_uuids: formData.lotes_ids,
+                colaboradores_externos: colaboradoresExternosTemporal,
             };
             const resultado = await proyectosLocalService.crearProyectoLocal(datosParaGuardar);
             if (resultado.success) {
@@ -280,7 +286,8 @@ export default function NuevoProyectoScreen() {
                 Alert.alert('Error', resultado.message || 'No se pudo crear el proyecto');
             }
         } catch (error) {
-            Alert.alert('Error', 'Ocurrió un error al crear el proyecto');
+            console.log('ERROR crear proyecto:', error);
+            Alert.alert('Error', 'Ocurrió un error al crear el proyecto: ' + (error.message || error.toString()));
         } finally {
             setIsSaving(false);
         }
@@ -620,6 +627,73 @@ export default function NuevoProyectoScreen() {
                                 </TouchableOpacity>
                             </SectionCard>
 
+                            {/* Personal colaborador externo */}
+                            <SectionCard
+                                icon="account-hard-hat-outline"
+                                title="Personal colaborador externo"
+                                subtitle="Agrega personal externo al proyecto"
+                                isDark={isDark}
+                            >
+                                {colaboradoresExternosTemporal.length > 0 && (
+                                    <View style={wiz.selectedLotesList}>
+                                        {colaboradoresExternosTemporal.map((colab, index) => (
+                                            <View 
+                                                key={index} 
+                                                style={[wiz.selectedLoteCard, isDark && wiz.selectedLoteCardDark]}
+                                            >
+                                                <View style={[wiz.loteIconBox, isDark && wiz.loteIconBoxDark]}>
+                                                    <MaterialCommunityIcons name="account-hard-hat" size={20} color={ACCENT} />
+                                                </View>
+                                                <View style={{ flex: 1, marginHorizontal: 10 }}>
+                                                    <Text numberOfLines={1} style={[wiz.selectedLoteTitle, isDark && wiz.textWhite]}>
+                                                        {colab.nombre_completo}
+                                                    </Text>
+                                                    <Text numberOfLines={1} style={[wiz.selectedLoteSubtitle, isDark && wiz.selectedLoteSubtitleDark]}>
+                                                        C.I: {colab.ci} • {colab.participacion}
+                                                    </Text>
+                                                </View>
+                                                <TouchableOpacity 
+                                                    onPress={() => {
+                                                        const newList = colaboradoresExternosTemporal.filter((_, i) => i !== index);
+                                                        setColaboradoresExternosTemporal(newList);
+                                                    }}
+                                                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                >
+                                                    <MaterialCommunityIcons name="close-circle-outline" size={20} color={DANGER} />
+                                                </TouchableOpacity>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+
+                                <TouchableOpacity
+                                    style={[
+                                        wiz.selectorLoteBox, 
+                                        isDark && wiz.selectorLoteBoxDark,
+                                        colaboradoresExternosTemporal.length > 0 && wiz.selectorLoteBoxActive
+                                    ]}
+                                    onPress={() => {
+                                        setExtCi('');
+                                        setExtNombre('');
+                                        setExtParticipacion('');
+                                        setMostrarModalColaboradorExterno(true);
+                                    }}
+                                    activeOpacity={0.75}
+                                >
+                                    <View style={[wiz.selectorIconCircle, isDark && wiz.selectorIconCircleDark]}>
+                                        <MaterialCommunityIcons name="account-plus-outline" size={24} color={ACCENT} />
+                                    </View>
+                                    <View style={{ alignItems: 'center' }}>
+                                        <Text style={[wiz.selectorMainText, isDark && wiz.textWhite]}>
+                                            {colaboradoresExternosTemporal.length === 0 ? 'Agregar personal externo' : 'Añadir más personal'}
+                                        </Text>
+                                        <Text style={wiz.selectorSubText}>
+                                            Personal que no pertenece al sistema
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            </SectionCard>
+
                             <SectionCard
                                 icon="clipboard-check-outline"
                                 title="Resumen"
@@ -849,6 +923,94 @@ export default function NuevoProyectoScreen() {
                     updateField('variedad_nombre', variedad_nombre);
                 }}
             />
+
+            {/* Modal Registrar Colaborador Externo */}
+            <Modal
+                visible={mostrarModalColaboradorExterno}
+                transparent
+                animationType="slide"
+                onRequestClose={() => setMostrarModalColaboradorExterno(false)}
+            >
+                <View style={modalStyles.overlay}>
+                    <View style={[modalStyles.content, { paddingBottom: insets.bottom + 16 }]}>
+                        <View style={modalStyles.grabber} />
+                        <View style={modalStyles.header}>
+                            <Text style={modalStyles.title}>Personal externo</Text>
+                            <TouchableOpacity onPress={() => setMostrarModalColaboradorExterno(false)}>
+                                <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView style={modalStyles.scrollInside} keyboardShouldPersistTaps="handled">
+                            <View style={modalStyles.formGroup}>
+                                <Text style={modalStyles.inputLabel}>Cédula de identidad *</Text>
+                                <TextInput
+                                    style={[modalStyles.textInput, isDark && modalStyles.textInputDark]}
+                                    placeholder="10 dígitos"
+                                    placeholderTextColor={isDark ? '#636366' : '#A0A0A5'}
+                                    value={extCi}
+                                    onChangeText={setExtCi}
+                                    keyboardType="number-pad"
+                                    maxLength={10}
+                                />
+                            </View>
+                            <View style={modalStyles.formGroup}>
+                                <Text style={modalStyles.inputLabel}>Nombre completo *</Text>
+                                <TextInput
+                                    style={[modalStyles.textInput, isDark && modalStyles.textInputDark]}
+                                    placeholder="Nombres y apellidos"
+                                    placeholderTextColor={isDark ? '#636366' : '#A0A0A5'}
+                                    value={extNombre}
+                                    onChangeText={setExtNombre}
+                                    autoCapitalize="words"
+                                />
+                            </View>
+                            <View style={modalStyles.formGroup}>
+                                <Text style={modalStyles.inputLabel}>Participación en el proyecto *</Text>
+                                <TextInput
+                                    style={[modalStyles.textInput, modalStyles.textAreaModal, isDark && modalStyles.textInputDark]}
+                                    placeholder="Detalle la participación en el proyecto"
+                                    placeholderTextColor={isDark ? '#636366' : '#A0A0A5'}
+                                    value={extParticipacion}
+                                    onChangeText={setExtParticipacion}
+                                    multiline
+                                    numberOfLines={3}
+                                    textAlignVertical="top"
+                                />
+                            </View>
+                            <TouchableOpacity
+                                style={[modalStyles.primaryButton, (!extCi || !extNombre || !extParticipacion) && modalStyles.primaryButtonDisabled]}
+                                onPress={() => {
+                                    if (!extCi.trim() || !extNombre.trim() || !extParticipacion.trim()) {
+                                        Alert.alert('Error', 'Todos los campos son requeridos');
+                                        return;
+                                    }
+                                    if (!/^\d{10}$/.test(extCi.trim())) {
+                                        Alert.alert('Error', 'La cédula debe tener 10 dígitos');
+                                        return;
+                                    }
+                                    const existe = colaboradoresExternosTemporal.some(c => c.ci === extCi.trim());
+                                    if (existe) {
+                                        Alert.alert('Error', 'Este colaborador ya fue agregado');
+                                        return;
+                                    }
+                                    setColaboradoresExternosTemporal([
+                                        ...colaboradoresExternosTemporal,
+                                        {
+                                            ci: extCi.trim(),
+                                            nombre_completo: extNombre.trim(),
+                                            participacion: extParticipacion.trim(),
+                                        },
+                                    ]);
+                                    setMostrarModalColaboradorExterno(false);
+                                }}
+                                disabled={!extCi || !extNombre || !extParticipacion}
+                            >
+                                <Text style={modalStyles.primaryButtonText}>Agregar</Text>
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </KeyboardAvoidingView>
     );
 }
@@ -1114,4 +1276,17 @@ const modalStyles = StyleSheet.create({
     footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#3A3A3C' },
     doneButton: { backgroundColor: ACCENT, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
     doneButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+    scrollInside: { paddingHorizontal: 20, paddingTop: 12 },
+    formGroup: { marginBottom: 16 },
+    inputLabel: { fontSize: 13, fontWeight: '600', color: '#8E8E93', marginBottom: 8 },
+    textInput: {
+        borderWidth: 1, borderColor: '#3A3A3C', borderRadius: 12,
+        paddingHorizontal: 14, paddingVertical: 12, fontSize: 15,
+        backgroundColor: '#2C2C2E', color: '#FFFFFF',
+    },
+    textInputDark: { borderColor: '#3A3A3C', backgroundColor: '#2C2C2E', color: '#FFFFFF' },
+    textAreaModal: { minHeight: 80, paddingTop: 12 },
+    primaryButton: { backgroundColor: ACCENT, paddingVertical: 14, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+    primaryButtonDisabled: { opacity: 0.5 },
+    primaryButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });
