@@ -41,7 +41,7 @@ export const exploreStyles = StyleSheet.create({
     height: 42,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerTitle: { fontSize: 34, fontWeight: '700', color: '#000000', letterSpacing: -0.4 },
+  headerTitle: { fontSize: 28, fontWeight: '700', color: '#000000', letterSpacing: -0.2 },
 
   // --- PERFIL APPLE ACCOUNT ---
   appleProfileSection: {

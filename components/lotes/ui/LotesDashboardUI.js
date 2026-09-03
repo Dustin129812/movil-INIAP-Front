@@ -1310,9 +1310,9 @@ const styles = StyleSheet.create({
     },
     headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
     headerHomeTitle: {
-        fontSize: 36,
+        fontSize: 28,
         fontWeight: '800',
-        letterSpacing: -0.8,
+        letterSpacing: -0.5,
     },
     headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 

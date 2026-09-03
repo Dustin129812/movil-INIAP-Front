@@ -519,9 +519,9 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
     headerHomeTitle: {
-        fontSize: 36,
+        fontSize: 28,
         fontWeight: '800',
-        letterSpacing: -0.8,
+        letterSpacing: -0.5,
     },
     counterGlassPill: {
         flexDirection: 'row',

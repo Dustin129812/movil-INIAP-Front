@@ -383,6 +383,10 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                   const iconColor = (isFocused && !isSearchOpen) ? colors.iconActiveColor : colors.iconInactiveColor;
                   const textColor = colors.labelColor;
 
+                  const isHomeTab = (routeNameLower === 'index' || routeNameLower === 'home');
+                  const labelSize = isHomeTab ? 10 : 7;
+                  const iconSize = isHomeTab ? ICON_SIZE : ICON_SIZE - 4;
+
                   return (
                     <TouchableOpacity key={index} onPress={onPress} activeOpacity={0.6} style={tabBarStyles.tabItem}>
                       <Animated.View
@@ -393,11 +397,11 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
                       >
                         <Ionicons
                           name={iconName}
-                          size={ICON_SIZE}
+                          size={iconSize}
                           color={iconColor}
                           style={{ marginBottom: 2 }}
                         />
-                        <Text style={[tabBarStyles.tabLabel, { color: textColor }]}>
+                        <Text style={[tabBarStyles.tabLabel, { color: textColor, fontSize: labelSize }]}>
                           {labelText}
                         </Text>
                       </Animated.View>
