@@ -7,12 +7,12 @@ import { lotesService } from '../../../services/lotes';
 import { crearLoteLocal, crearProyectoLocal } from '../../../db';
 
 /**
- * Calcula la distancia entre dos puntos usando la fórmula de Haversine.
- * @param {number} lat1 - Latitud del punto 1
- * @param {number} lon1 - Longitud del punto 1
- * @param {number} lat2 - Latitud del punto 2
- * @param {number} lon2 - Longitud del punto 2
- * @returns {number} Distancia en metros
+ 
+ * @param {number} lat1 
+ * @param {number} lon1 
+ * @param {number} lat2 
+ * @param {number} lon2
+ * @returns {number} 
  */
 const calcularDistanciaEntrePuntos = (lat1, lon1, lat2, lon2) => {
     const R = 6378137; // Radio de la Tierra en metros
@@ -26,7 +26,7 @@ const calcularDistanciaEntrePuntos = (lat1, lon1, lat2, lon2) => {
     return R * c;
 };
 
-export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
+export const useCroquisMapa = (editLoteId = null, onLoteSaved = null, onRecargar = null) => {
     const mapRef = useRef(null);
 
     const [location, setLocation] = useState(null);
@@ -443,6 +443,9 @@ export const useCroquisMapa = (editLoteId = null, onLoteSaved = null) => {
                 setImagenUrlLote(null);
                 if (onLoteSaved) {
                     onLoteSaved(form.nombreLote, true);
+                }
+                if (onRecargar) {
+                    onRecargar();
                 }
             }
 

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { obtenerLotesLocales } from '../../db/client';
+import { obtenerLotesLocales, obtenerLotesEliminados, softDeleteLote } from '../../db/client';
 
 const URL_API = process.env.EXPO_PUBLIC_API_URL;
 
@@ -20,6 +20,10 @@ const obtenerToken = async () => {
 export const lotesService = {
   async obtenerLotes() {
     try {
+      // Obtener UUIDs de lotes eliminados localmente para excluirlos
+      const lotesEliminados = await obtenerLotesEliminados();
+      const eliminadosSet = new Set(lotesEliminados.map(l => l.uuid_movil).filter(Boolean));
+
       // Obtener datos locales primero (fuente de verdad offline)
       const lotesLocales = await obtenerLotesLocales();
       const localesMap = new Map(
@@ -28,7 +32,7 @@ export const lotesService = {
 
       const token = await obtenerToken();
 
-      // Si no hay token, retornar locales
+      // Si no hay token, retornar locales (ya filtrados por deleted_at IS NULL)
       if (!token) {
         return lotesLocales;
       }
@@ -56,28 +60,28 @@ export const lotesService = {
         // Ignorar errores de API
       }
 
-      // Si no hay datos de API, retornar locales
+      // Si no hay datos de API, retornar locales (ya filtrados por deleted_at IS NULL)
       if (datosApi.length === 0) {
         return lotesLocales;
       }
 
       // UNIÓN de ambas fuentes:
       // 1. Empezar con mapa vacío
-      // 2. Agregar todos los de API
+      // 2. Agregar todos los de API (excluyendo eliminados localmente)
       // 3. Para cada local, si existe en API → sobrescribir con versión combinada
       //    si NO existe en API → agregar tal cual (lote local pendiente de sync)
       const mergedMap = new Map();
 
-      // Primero, agregar todos los de API (solo si tienen uuid_movil válido)
+      // Primero, agregar todos los de API (excluyendo UUIDs eliminados localmente)
       for (const loteApi of datosApi) {
-        if (loteApi.uuid_movil) {
+        if (loteApi.uuid_movil && !eliminadosSet.has(loteApi.uuid_movil)) {
           mergedMap.set(loteApi.uuid_movil, loteApi);
         }
       }
 
-      // Luego, agregar/sobrescribir con datos locales
+      // Luego, agregar/sobrescribir con datos locales (ya excluidos por deleted_at IS NULL)
       for (const [uuid, loteLocal] of localesMap) {
-        if (uuid) {
+        if (uuid && !eliminadosSet.has(uuid)) {
           if (mergedMap.has(uuid)) {
             // Existe en API: combinar API + estado local preservado
             const loteApi = mergedMap.get(uuid);
@@ -169,18 +173,16 @@ export const lotesService = {
 
       const contentType = respuesta.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
-        // console removed
         return { success: false, message: 'Respuesta no válida del servidor' };
       }
 
       const datos = await respuesta.json();
 
-      if (respuesta.ok && datos.data) {
-        return { success: true, data: datos.data, message: datos.message };
+      if (respuesta.ok) {
+        return { success: true, data: datos.data || datos, message: datos.message };
       }
       return { success: false, message: datos.message || 'Error al actualizar' };
     } catch (error) {
-      // console removed
       return { success: false, message: 'Error de red' };
     }
   },
@@ -191,6 +193,10 @@ export const lotesService = {
 
   async eliminarLote(uuid_movil) {
     try {
+      // 1. Marcar como eliminado LOCAL primero (respuesta inmediata al usuario)
+      await softDeleteLote(uuid_movil);
+
+      // 2. Sincronizar con el API en segundo plano
       const token = await obtenerToken();
       const respuesta = await fetch(`${URL_API}/agrodecide/lotes/${uuid_movil}`, {
         method: 'DELETE',
@@ -203,11 +209,10 @@ export const lotesService = {
       if (respuesta.ok) {
         return { success: true, message: 'Lote eliminado' };
       } else {
-        return { success: false, message: 'No se pudo eliminar el lote' };
+        return { success: true, message: 'Lote eliminado localmente, sincronización pendiente' };
       }
     } catch (error) {
-      // console removed
-      return { success: false, message: 'Error de red al eliminar lote' };
+      return { success: true, message: 'Lote eliminado localmente, sincronización pendiente' };
     }
   },
 
