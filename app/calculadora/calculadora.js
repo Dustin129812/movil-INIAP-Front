@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { BlurView } from "expo-blur";
 import {
   useLocalSearchParams,
   useRouter,
@@ -10,6 +11,7 @@ import {
   useState,
 } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -499,59 +501,93 @@ export default function CalculadoraScreen() {
             : undefined
         }
       >
+        {/* Scrim de legibilidad para el status bar */}
         <LinearGradient
-          colors={[
-            colors.dimGradientStart,
-            colors.dimGradientEnd,
-          ]}
-          style={styles.header}
-        >
-          <TouchableOpacity
-            style={styles.back}
-            onPress={retrocederSeguro}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons
-              name="chevron-left"
-              size={30}
-              color="#ffffff"
-            />
-          </TouchableOpacity>
+          pointerEvents="none"
+          colors={
+            isDark
+              ? ['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.28)', 'rgba(0,0,0,0)']
+              : ['rgba(0,0,0,0.12)', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0)']
+          }
+          style={[styles.statusBarScrim, { height: insets.top + 40 }]}
+        />
 
-          <View style={styles.headerTexto}>
-            <Text style={styles.eyebrow}>
-              INIAP · GESTIÓN AGRÍCOLA
+        {/* Header con BrandBadge glass - contenedor unificado con bordes redondeados */}
+        <View style={[styles.header, { paddingTop: insets.top + 4 }]}>
+          <BlurView
+            intensity={isDark ? 85 : 95}
+            tint={isDark ? 'dark' : 'light'}
+            style={styles.headerGlassContainer}
+          >
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                { backgroundColor: isDark ? 'rgba(20,20,22,0.75)' : 'rgba(255,255,255,0.85)' },
+              ]}
+            />
+            <LinearGradient
+              colors={
+                isDark
+                  ? ['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)']
+                  : ['rgba(255,255,255,1)', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']
+              }
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.85, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <View
+              style={[
+                styles.headerGlassBorder,
+                { borderColor: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)' },
+              ]}
+            />
+
+            {/* Back button */}
+            <TouchableOpacity
+              style={styles.back}
+              onPress={retrocederSeguro}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name="chevron-left"
+                size={26}
+                color={isDark ? '#ffffff' : '#000000'}
+              />
+            </TouchableOpacity>
+
+            {/* Título */}
+            <Text style={[styles.headerTitle, { color: isDark ? '#ffffff' : '#000000' }]}>
+              Calculadora
             </Text>
 
-            <Text style={styles.headerTitulo}>
-              Calculadora de fertilización
-            </Text>
-          </View>
+            {/* Acciones */}
+            <View style={styles.headerActions}>
+              <TouchableOpacity
+                style={styles.headerAccion}
+                onPress={abrirHistorial}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="history"
+                  size={22}
+                  color={isDark ? '#ffffff' : '#000000'}
+                />
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.headerAccion}
-            onPress={abrirHistorial}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons
-              name="history"
-              size={22}
-              color="#ffffff"
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.headerAccion}
-            onPress={limpiar}
-            activeOpacity={0.8}
-          >
-            <MaterialCommunityIcons
-              name="broom"
-              size={21}
-              color="#ffffff"
-            />
-          </TouchableOpacity>
-        </LinearGradient>
+              <TouchableOpacity
+                style={styles.headerAccion}
+                onPress={limpiar}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="broom"
+                  size={21}
+                  color={isDark ? '#ffffff' : '#000000'}
+                />
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        </View>
 
         <View
           style={[
@@ -936,47 +972,68 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  statusBarScrim: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 15,
+  },
+
   header: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  headerGlassContainer: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    height: 56,
+    borderRadius: 28,
+    overflow: "hidden",
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+
+  headerGlassBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 28,
+    borderWidth: 1,
   },
 
   back: {
-    width: 42,
-    height: 42,
+    width: 52,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  headerTexto: {
+  headerTitle: {
     flex: 1,
-  },
-
-  eyebrow: {
-    color: "#4ade80",
-    fontSize: 9,
-    fontWeight: "900",
-    letterSpacing: 1,
-  },
-
-  headerTitulo: {
-    color: "#ffffff",
     fontSize: 18,
-    fontWeight: "900",
-    marginTop: 2,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    textAlign: "center",
+  },
+
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
 
   headerAccion: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 52,
+    height: 56,
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: 7,
-    backgroundColor:
-      "rgba(255,255,255,0.12)",
   },
 
   shell: {

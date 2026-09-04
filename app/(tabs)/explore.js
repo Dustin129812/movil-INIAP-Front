@@ -17,6 +17,7 @@ import Animated, {
   Easing,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { DynamicIslandNotification } from '../../components/ui';
 import { useAuth } from '../../services/auth';
 import { useDeviceInfo } from '../../services/device';
@@ -37,6 +38,46 @@ const HEADER_ANIMATION = {
   HEADER_ROW_MARGIN_TOP: 2,
   HEADER_BOTTOM_GAP: 12,
 };
+
+// Cápsula glass con logo INIAP + título de sección
+function BrandBadge({ isDark, textColor, titleStyle, style }) {
+  return (
+    <View style={[styles.brandTouchable, style]}>
+      <BlurView intensity={isDark ? 85 : 95} tint={isDark ? 'dark' : 'light'} style={styles.brandPill}>
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            { backgroundColor: isDark ? 'rgba(20,20,22,0.75)' : 'rgba(255,255,255,0.85)' },
+          ]}
+        />
+        <LinearGradient
+          colors={
+            isDark
+              ? ['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)']
+              : ['rgba(255,255,255,1)', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']
+          }
+          start={{ x: 0.15, y: 0 }}
+          end={{ x: 0.85, y: 1 }}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View
+          style={[
+            styles.brandGlassBorder,
+            { borderColor: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)' },
+          ]}
+        />
+        <View style={styles.brandLogoDisc}>
+          <Image
+            source={require('../../assets/images/INIAP.png')}
+            style={styles.brandLogo}
+            resizeMode="contain"
+          />
+        </View>
+        <Text style={[styles.brandPillTitle, titleStyle, { color: textColor }]}>Ajustes</Text>
+      </BlurView>
+    </View>
+  );
+}
 
 // ============================================
 // COMPONENTE PRINCIPAL
@@ -184,9 +225,7 @@ export default function SettingsScreen() {
       {/* Header: se oculta al scrollear y reaparece solo arriba */}
       <View style={[styles.header, { paddingTop: insets.top + HEADER_ANIMATION.HEADER_ROW_MARGIN_TOP }]}>
         <Animated.View style={[styles.headerTopRow, titleAnimatedStyle]}>
-          <View style={styles.headerLeft}>
-            <Text style={[styles.headerTitle, isDark && styles.textWhite]}>Ajustes</Text>
-          </View>
+          <BrandBadge isDark={isDark} textColor={isDark ? '#FFFFFF' : '#000000'} />
         </Animated.View>
       </View>
 

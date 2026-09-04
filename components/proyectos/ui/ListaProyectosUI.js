@@ -3,6 +3,7 @@ import {
     View,
     Text,
     StyleSheet,
+    Image,
     FlatList,
     TouchableOpacity,
     RefreshControl,
@@ -35,6 +36,46 @@ import { softDeleteProyecto } from '../../../db';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'INACTIVOS'];
+
+// Cápsula glass con logo INIAP + título de sección
+function BrandBadge({ isDark, textColor, titleStyle, style }) {
+    return (
+        <View style={[styles.brandTouchable, style]}>
+            <BlurView intensity={isDark ? 85 : 95} tint={isDark ? 'dark' : 'light'} style={styles.brandPill}>
+                <View
+                    style={[
+                        StyleSheet.absoluteFillObject,
+                        { backgroundColor: isDark ? 'rgba(20,20,22,0.75)' : 'rgba(255,255,255,0.85)' },
+                    ]}
+                />
+                <LinearGradient
+                    colors={
+                        isDark
+                            ? ['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)']
+                            : ['rgba(255,255,255,1)', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']
+                    }
+                    start={{ x: 0.15, y: 0 }}
+                    end={{ x: 0.85, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                />
+                <View
+                    style={[
+                        styles.brandGlassBorder,
+                        { borderColor: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)' },
+                    ]}
+                />
+                <View style={styles.brandLogoDisc}>
+                    <Image
+                        source={require('../../../assets/images/INIAP.png')}
+                        style={styles.brandLogo}
+                        resizeMode="contain"
+                    />
+                </View>
+                <Text style={[styles.brandPillTitle, titleStyle, { color: textColor }]}>Proyectos</Text>
+            </BlurView>
+        </View>
+    );
+}
 
 const EstadoBadge = ({ estado, estilos }) => {
     const isActivo = estado === 'activo';
@@ -366,9 +407,9 @@ export default function ListaProyectosUI({
             {/* TÍTULO "Proyectos" + CONTADOR — se ocultan juntos al scrollear */}
             <View style={[styles.header, { paddingTop: insets.top + TITLE_ROW_MARGIN_TOP }]}>
                 <View style={styles.headerTopRow}>
-                    <Animated.Text style={[styles.headerHomeTitle, { color: textPrimary }, titleAnimatedStyle]}>
-                        Proyectos
-                    </Animated.Text>
+                    <Animated.View style={titleAnimatedStyle}>
+                        <BrandBadge isDark={isDark} textColor={textPrimary} />
+                    </Animated.View>
 
                     <View style={styles.headerButtons}>
 
@@ -523,6 +564,46 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: -0.5,
     },
+
+    brandTouchable: {
+        borderRadius: 28,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 7 },
+        shadowOpacity: 0.12,
+        shadowRadius: 14,
+        elevation: 5,
+    },
+    brandPill: {
+        height: 56,
+        borderRadius: 28,
+        paddingLeft: 10,
+        paddingRight: 18,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        overflow: 'hidden',
+    },
+    brandGlassBorder: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 28,
+        borderWidth: 1,
+    },
+    brandLogoDisc: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    brandLogo: {
+        width: 32,
+        height: 32,
+    },
+    brandPillTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: -0.4,
+    },
+
     counterGlassPill: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -33,9 +33,13 @@ const INFOGRAFIAS_ROUTE = '/infografias';
 const REVEAL_DURATION = 260;
 const HIDE_DURATION = 160;
 const STAGGER = 70;
+
+// Altura de la imagen principal (Cotopaxi) que actúa como "pantalla" de bienvenida
 const HERO_HEIGHT = 420;
+// Cuánto hay que desplazar el scroll (tras salir del hero) para revelar el header flotante
 const HERO_REVEAL_OFFSET = 150;
 
+// Botón de notificaciones "glass" — optimizado para mayor nitidez y contraste
 function NotifBell({ isDark, pendingCount, onPress, style }) {
     return (
         <AnimatedTouchable
@@ -43,18 +47,18 @@ function NotifBell({ isDark, pendingCount, onPress, style }) {
             activeOpacity={0.75}
             onPress={onPress}
         >
-            <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.notifPill}>
+            <BlurView intensity={isDark ? 85 : 95} tint={isDark ? 'dark' : 'light'} style={styles.notifPill}>
                 <View
                     style={[
                         StyleSheet.absoluteFillObject,
-                        { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' },
+                        { backgroundColor: isDark ? 'rgba(20,20,22,0.75)' : 'rgba(255,255,255,0.85)' },
                     ]}
                 />
                 <LinearGradient
                     colors={
                         isDark
-                            ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
-                            : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
+                            ? ['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)']
+                            : ['rgba(255,255,255,1)', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']
                     }
                     start={{ x: 0.15, y: 0 }}
                     end={{ x: 0.85, y: 1 }}
@@ -63,20 +67,20 @@ function NotifBell({ isDark, pendingCount, onPress, style }) {
                 <View
                     style={[
                         styles.notifSpecular,
-                        { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' },
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,1)' },
                     ]}
                 />
                 <View
                     style={[
                         styles.notifGlassBorder,
-                        { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' },
+                        { borderColor: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)' },
                     ]}
                 />
 
                 <MaterialCommunityIcons
                     name={pendingCount > 0 ? 'bell-badge-outline' : 'bell-outline'}
                     size={22}
-                    color={pendingCount > 0 ? '#FF9500' : (isDark ? '#A7C957' : '#6A994E')}
+                    color={pendingCount > 0 ? '#FF9500' : (isDark ? '#D0E17D' : '#4C8C2B')}
                 />
                 {pendingCount > 0 && (
                     <View style={styles.notifBadge}>
@@ -88,6 +92,7 @@ function NotifBell({ isDark, pendingCount, onPress, style }) {
     );
 }
 
+// Mini-mockup 3D de la calculadora
 function CalcMockup3D() {
     return (
         <View style={styles.calc3dOuter}>
@@ -130,6 +135,7 @@ function CalcMockup3D() {
     );
 }
 
+// Mini-mockup 3D de un libro/catálogo
 function BookMockup3D() {
     return (
         <View style={styles.book3dOuter}>
@@ -151,6 +157,7 @@ function BookMockup3D() {
     );
 }
 
+// Mini-mockup 3D de un documento/PDF
 function DocMockup3D() {
     return (
         <View style={styles.doc3dOuter}>
@@ -175,9 +182,50 @@ function DocMockup3D() {
     );
 }
 
+// Placa "glass" con logo INIAP + título "Home" — alta nitidez y contraste mejorado
+function BrandBadge({ isDark, textColor, titleStyle, style }) {
+    return (
+        <View style={[styles.brandTouchable, style]}>
+            <BlurView intensity={isDark ? 85 : 95} tint={isDark ? 'dark' : 'light'} style={styles.brandPill}>
+                <View
+                    style={[
+                        StyleSheet.absoluteFillObject,
+                        { backgroundColor: isDark ? 'rgba(20,20,22,0.75)' : 'rgba(255,255,255,0.85)' },
+                    ]}
+                />
+                <LinearGradient
+                    colors={
+                        isDark
+                            ? ['rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)', 'rgba(255,255,255,0)']
+                            : ['rgba(255,255,255,1)', 'rgba(255,255,255,0.6)', 'rgba(255,255,255,0.2)']
+                    }
+                    start={{ x: 0.15, y: 0 }}
+                    end={{ x: 0.85, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                />
+                <View
+                    style={[
+                        styles.brandGlassBorder,
+                        { borderColor: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(255,255,255,0.9)' },
+                    ]}
+                />
+
+                <View style={styles.brandLogoDisc}>
+                    <Image
+                        source={require('../../../assets/images/INIAP.png')}
+                        style={styles.brandLogo}
+                        resizeMode="contain"
+                    />
+                </View>
+                <Text style={[styles.brandPillTitle, titleStyle, { color: textColor }]}>Home</Text>
+            </BlurView>
+        </View>
+    );
+}
+
 export default function HomeDashboard() {
     const router = useRouter();
-    const { isDark } = useTheme();
+    const { theme, isDark } = useTheme();
     const insets = useSafeAreaInsets();
 
     const {
@@ -196,6 +244,7 @@ export default function HomeDashboard() {
     const [isSyncModalVisible, setIsSyncModalVisible] = useState(false);
     const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
     const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
+
     const GLOBE_SIZE = 120;
     const globeRotation = useSharedValue(0);
 
@@ -217,14 +266,18 @@ export default function HomeDashboard() {
     }));
 
     const heroScrollThreshold = HERO_HEIGHT - insets.top - HERO_REVEAL_OFFSET;
+
     const [headerVisible, setHeaderVisible] = useState(false);
+
     const scrollY = useSharedValue(0);
+
     const scrollHandler = useAnimatedScrollHandler({
         onScroll: (event) => { scrollY.value = event.contentOffset.y; },
     });
 
     const homeOpacity = useSharedValue(0);
     const homeTranslateY = useSharedValue(-6);
+
     const notifOpacity = useSharedValue(0);
     const notifTranslateY = useSharedValue(-6);
 
@@ -315,40 +368,43 @@ export default function HomeDashboard() {
         <View style={[styles.container, { backgroundColor: bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
+            {/* Fondo superior oscurecido sutilmente para evitar mezcla difusa con el notch */}
             <LinearGradient
                 pointerEvents="none"
                 colors={
                     isDark
                         ? [
-                            'rgba(16,52,57,0.75)',
-                            'rgba(6,17,22,0.18)',
-                            'rgba(6,17,22,0)',
+                            'rgba(0,0,0,0.65)',
+                            'rgba(0,0,0,0.2)',
+                            'rgba(0,0,0,0)',
                         ]
                         : [
-                            'rgba(255,255,255,0.98)',
-                            'rgba(237,248,238,0.65)',
+                            'rgba(255,255,255,0.85)',
+                            'rgba(255,255,255,0.4)',
                             'rgba(244,248,245,0)',
                         ]
                 }
                 style={[
                     styles.statusBarScrim,
                     {
-                        height: insets.top + 205,
+                        height: insets.top + 55,
                     },
                 ]}
             />
 
+            {/* HEADER FLOTANTE — Aparece al hacer scroll con máxima nitidez */}
             <Animated.View
                 pointerEvents={headerVisible ? 'auto' : 'none'}
                 style={[styles.header, { paddingTop: insets.top + 2 }]}
             >
                 <View style={styles.headerTopRow}>
-                    <Animated.Text style={[styles.headerHomeTitle, { color: textPrimary }, homeTitleAnimatedStyle]}>
-                        Home
-                    </Animated.Text>
+                    <Animated.View style={homeTitleAnimatedStyle}>
+                        <BrandBadge key={`brand-${theme}`} isDark={isDark} textColor={textPrimary} />
+                    </Animated.View>
 
                     {!esInvitado && (
                         <NotifBell
+                            key={`notif-${theme}`}
                             isDark={isDark}
                             pendingCount={pendingCount}
                             onPress={() => setIsNotificationsVisible(true)}
@@ -358,13 +414,14 @@ export default function HomeDashboard() {
                 </View>
             </Animated.View>
 
-
+            {/* CONTENIDO PRINCIPAL */}
             <Animated.ScrollView
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                {/* HERO — Imagen del Cotopaxi */}
                 <View style={styles.heroWrapper}>
                     <Image
                         source={require('../../../assets/images/cotopaxi_2.jpg')}
@@ -374,7 +431,7 @@ export default function HomeDashboard() {
 
                     <LinearGradient
                         pointerEvents="none"
-                        colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']}
+                        colors={['rgba(0,0,0,0.65)', 'rgba(0,0,0,0)']}
                         locations={[0, 0.4]}
                         style={styles.heroTopScrim}
                     />
@@ -386,12 +443,13 @@ export default function HomeDashboard() {
                         style={StyleSheet.absoluteFillObject}
                     />
 
+                    {/* Header estático sobre la foto */}
                     <View style={[styles.heroTopRow, { paddingTop: insets.top + 10 }]}>
-                        <Text style={styles.heroTitle}>Home</Text>
+                        <BrandBadge isDark={isDark} textColor={textPrimary} />
 
                         {!esInvitado && (
                             <NotifBell
-                                isDark
+                                isDark={isDark}
                                 pendingCount={pendingCount}
                                 onPress={() => setIsNotificationsVisible(true)}
                             />
@@ -400,146 +458,137 @@ export default function HomeDashboard() {
 
                     <View style={styles.heroBottomText}>
                         <Text style={styles.heroWelcome}>Bienvenido</Text>
+                        <Text style={styles.heroCaption}>
+                            {pendingCount > 0
+                                ? `${pendingCount} cambio${pendingCount > 1 ? 's' : ''} sin sincronizar`
+                                : `Todo al día con ${totalLotes} lote${totalLotes === 1 ? '' : 's'} activo${totalLotes === 1 ? '' : 's'}`}
+                        </Text>
                     </View>
                 </View>
 
+                {/* SHEET — Tarjeta de contenido */}
                 <View style={[styles.sheet, { backgroundColor: bg }]}>
                     <Text style={[styles.welcomeSubtitle, { color: textSecondary }]}>
                         Gestiona tus datos agrícolas{'\n'}de forma fácil y segura.
                     </Text>
 
+                    {/* Sincronización */}
+                    {!esInvitado && (
+                        <TouchableOpacity
+                            activeOpacity={0.9}
+                            onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
+                            style={styles.syncBar}
+                        >
+                            <View style={styles.syncIconCircle}>
+                                <MaterialCommunityIcons name="sync" size={20} color="#FFFFFF" />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={styles.syncTitle}>Sincronizar datos</Text>
+                                <Text style={styles.syncCaption}>
+                                    {isSyncing
+                                        ? 'Sincronizando...'
+                                        : pendingCount > 0
+                                            ? `${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}`
+                                            : 'Todo está al día'}
+                                </Text>
+                            </View>
+                            <View style={styles.syncArrowBtn}>
+                                <MaterialCommunityIcons name="arrow-right" size={18} color="#1B3A2A" />
+                            </View>
+                        </TouchableOpacity>
+                    )}
 
-                {!esInvitado && (
-                    <TouchableOpacity
-                        activeOpacity={0.9}
-                        onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
-                        style={styles.syncBar}
-                    >
-                        <View style={styles.syncIconCircle}>
-                            <MaterialCommunityIcons name="sync" size={20} color="#FFFFFF" />
-                        </View>
-                        <View style={{ flex: 1, marginLeft: 12 }}>
-                            <Text style={styles.syncTitle}>Sincronizar datos</Text>
-                            <Text style={styles.syncCaption}>
-                                {isSyncing
-                                    ? 'Sincronizando...'
-                                    : pendingCount > 0
-                                        ? `${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}`
-                                        : 'Todo está al día'}
-                            </Text>
-                        </View>
-                        <View style={styles.syncArrowBtn}>
-                            <MaterialCommunityIcons name="arrow-right" size={18} color="#1B3A2A" />
-                        </View>
-                    </TouchableOpacity>
-                )}
+                    {/* HERRAMIENTAS */}
+                    <Text style={[styles.toolsSectionTitle, { color: textPrimary }]}>Elige tu herramienta</Text>
 
-                <Text style={[styles.toolsSectionTitle, { color: textPrimary }]}>Elige tu herramienta</Text>
-                <TouchableOpacity
-                    activeOpacity={0.92}
-                    onPress={() => router.push(CALC_ROUTE)}
-                    style={styles.toolBanner}
-                >
-                    <View style={[StyleSheet.absoluteFillObject, styles.toolBannerClip]}>
-                        <LinearGradient
-                            colors={['#4B3B85', '#181330']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={StyleSheet.absoluteFillObject}
-                        />
-                    </View>
-
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => setIsInfoModalVisible(true)}
-                        style={styles.toolInfoBadge}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    >
-                        <MaterialCommunityIcons name="information-outline" size={16} color="#FFFFFF" />
-                    </TouchableOpacity>
-
-                    <View style={styles.toolBannerTextCol}>
-                        <Text style={styles.toolBannerTitle}>Calculadora</Text>
-                        <Text style={styles.toolBannerSubtitle}>Dosis exacta de{'\n'}nutrientes para tu cultivo</Text>
-
-                        <View style={styles.toolBannerArrowBtn}>
-                            <MaterialCommunityIcons name="arrow-right" size={18} color="#181330" />
-                        </View>
-                    </View>
-
-                    <View style={styles.toolBannerMockup} pointerEvents="none">
-                        <CalcMockup3D />
-                    </View>
-                </TouchableOpacity>
-
-                <View style={styles.toolsGrid}>
+                    {/* Banner Calculadora */}
                     <TouchableOpacity
                         activeOpacity={0.92}
-                        onPress={() => router.push(CATALOGOS_ROUTE)}
-                        style={styles.toolGridCard}
+                        onPress={() => router.push(CALC_ROUTE)}
+                        style={styles.toolBanner}
                     >
-                        <View style={[StyleSheet.absoluteFillObject, styles.toolGridClip]}>
+                        <View style={[StyleSheet.absoluteFillObject, styles.toolBannerClip]}>
                             <LinearGradient
-                                colors={['#E8A24B', '#7A3B12']}
-                                start={{ x: 0.15, y: 0 }}
-                                end={{ x: 0.85, y: 1 }}
+                                colors={['#4B3B85', '#181330']}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 1 }}
                                 style={StyleSheet.absoluteFillObject}
                             />
                         </View>
-                        <View style={styles.toolGridMockup} pointerEvents="none">
-                            <BookMockup3D />
+
+                        <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => setIsInfoModalVisible(true)}
+                            style={styles.toolInfoBadge}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        >
+                            <MaterialCommunityIcons name="information-outline" size={16} color="#FFFFFF" />
+                        </TouchableOpacity>
+
+                        <View style={styles.toolBannerTextCol}>
+                            <Text style={styles.toolBannerTitle}>Calculadora</Text>
+                            <Text style={styles.toolBannerSubtitle}>Dosis exacta de{'\n'}nutrientes para tu cultivo</Text>
+
+                            <View style={styles.toolBannerArrowBtn}>
+                                <MaterialCommunityIcons name="arrow-right" size={18} color="#181330" />
+                            </View>
                         </View>
-                        <View style={styles.toolGridTextCol}>
-                            <Text style={styles.toolGridTitle}>Catálogos</Text>
-                            <Text style={styles.toolGridSubtitle}>Cultivos y plagas</Text>
+
+                        <View style={styles.toolBannerMockup} pointerEvents="none">
+                            <CalcMockup3D />
                         </View>
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        activeOpacity={0.92}
-                        onPress={() => router.push(INFOGRAFIAS_ROUTE)}
-                        style={styles.toolGridCard}
-                    >
-                        <View style={[StyleSheet.absoluteFillObject, styles.toolGridClip]}>
-                            <LinearGradient
-                                colors={['#2C86AE', '#0B2C41']}
-                                start={{ x: 0.15, y: 0 }}
-                                end={{ x: 0.85, y: 1 }}
-                                style={StyleSheet.absoluteFillObject}
-                            />
-                        </View>
-                        <View style={styles.toolGridMockup} pointerEvents="none">
-                            <DocMockup3D />
-                        </View>
-                        <View style={styles.toolGridTextCol}>
-                            <Text style={styles.toolGridTitle}>Infografías y PDF</Text>
-                            <Text style={styles.toolGridSubtitle}>Reportes offline</Text>
-                        </View>
-                    </TouchableOpacity>
-                </View>
+                    {/* Grid inferior */}
+                    <View style={styles.toolsGrid}>
+                        <TouchableOpacity
+                            activeOpacity={0.92}
+                            onPress={() => router.push(CATALOGOS_ROUTE)}
+                            style={styles.toolGridCard}
+                        >
+                            <View style={[StyleSheet.absoluteFillObject, styles.toolGridClip]}>
+                                <LinearGradient
+                                    colors={['#E8A24B', '#7A3B12']}
+                                    start={{ x: 0.15, y: 0 }}
+                                    end={{ x: 0.85, y: 1 }}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
+                            </View>
+                            <View style={styles.toolGridMockup} pointerEvents="none">
+                                <BookMockup3D />
+                            </View>
+                            <View style={styles.toolGridTextCol}>
+                                <Text style={styles.toolGridTitle}>Catálogos</Text>
+                                <Text style={styles.toolGridSubtitle}>Cultivos y plagas</Text>
+                            </View>
+                        </TouchableOpacity>
 
-                <View style={[styles.stateCard, { backgroundColor: cardBg }]}>
-                    <View style={{ flex: 1 }}>
-                        <View style={styles.stateLabelRow}>
-                            <View style={styles.stateDot} />
-                            <Text style={styles.stateLabel}>ESTADO</Text>
-                        </View>
-                        <Text style={[styles.stateTitle, { color: textPrimary }]} numberOfLines={2}>
-                            {pendingCount > 0
-                                ? `${pendingCount} cambio${pendingCount > 1 ? 's' : ''} sin sincronizar`
-                                : `Todo al día con ${totalLotes} lote${totalLotes === 1 ? '' : 's'} activo${totalLotes === 1 ? '' : 's'}`}
-                        </Text>
-                        <Text style={styles.stateCaption}>
-                            {pendingCount > 0 ? 'Toca sincronizar para actualizar' : 'Última revisión hace 2h'}
-                        </Text>
-                    </View>
-                        <View style={styles.stateImageCircle}>
-                            <MaterialCommunityIcons name="sprout-outline" size={30} color="#6A994E" />
-                        </View>
+                        <TouchableOpacity
+                            activeOpacity={0.92}
+                            onPress={() => router.push(INFOGRAFIAS_ROUTE)}
+                            style={styles.toolGridCard}
+                        >
+                            <View style={[StyleSheet.absoluteFillObject, styles.toolGridClip]}>
+                                <LinearGradient
+                                    colors={['#2C86AE', '#0B2C41']}
+                                    start={{ x: 0.15, y: 0 }}
+                                    end={{ x: 0.85, y: 1 }}
+                                    style={StyleSheet.absoluteFillObject}
+                                />
+                            </View>
+                            <View style={styles.toolGridMockup} pointerEvents="none">
+                                <DocMockup3D />
+                            </View>
+                            <View style={styles.toolGridTextCol}>
+                                <Text style={styles.toolGridTitle}>Infografías y PDF</Text>
+                                <Text style={styles.toolGridSubtitle}>Reportes offline</Text>
+                            </View>
+                        </TouchableOpacity>
                     </View>
                 </View>
             </Animated.ScrollView>
 
+            {/* Modal Info Calculadora */}
             <Modal
                 visible={isInfoModalVisible}
                 transparent
@@ -568,6 +617,7 @@ export default function HomeDashboard() {
                 </View>
             </Modal>
 
+            {/* Modal Sincronización */}
             <Modal
                 visible={isSyncModalVisible}
                 transparent
@@ -605,6 +655,7 @@ export default function HomeDashboard() {
                                 />
                             </Svg>
                         </Animated.View>
+
                         <LinearGradient
                             pointerEvents="none"
                             colors={['rgba(255,255,255,0.28)', 'rgba(255,255,255,0)']}
@@ -641,15 +692,10 @@ export default function HomeDashboard() {
                 </View>
             </Modal>
 
+            {/* NOTIFICACIONES */}
             <NotificationsCenter
-                visible={
-                    isNotificationsVisible
-                }
-                onClose={() =>
-                    setIsNotificationsVisible(
-                        false
-                    )
-                }
+                visible={isNotificationsVisible}
+                onClose={() => setIsNotificationsVisible(false)}
                 isDark={isDark}
                 isSyncing={isSyncing}
                 syncMessage={syncMessage}
@@ -660,8 +706,7 @@ export default function HomeDashboard() {
     );
 }
 
-
-
+/* ESTILOS */
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -669,8 +714,6 @@ const styles = StyleSheet.create({
     scrollContent: {
         paddingBottom: 100,
     },
-
-
     heroWrapper: {
         width: '100%',
         height: HERO_HEIGHT,
@@ -701,16 +744,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         zIndex: 5,
     },
-    heroTitle: {
-        fontSize: 30,
-        fontWeight: '800',
-        letterSpacing: -1.2,
-        lineHeight: 35,
-        color: '#FFFFFF',
-        textShadowColor: 'rgba(0,0,0,0.45)',
-        textShadowOffset: { width: 0, height: 1 },
-        textShadowRadius: 6,
-    },
     heroBottomText: {
         position: 'absolute',
         left: 24,
@@ -735,8 +768,6 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 6,
     },
-
-
     sheet: {
         marginTop: -32,
         borderTopLeftRadius: 32,
@@ -750,7 +781,6 @@ const styles = StyleSheet.create({
         shadowRadius: 16,
         elevation: 6,
     },
-
     statusBarScrim: {
         position: 'absolute',
         top: 0,
@@ -758,7 +788,6 @@ const styles = StyleSheet.create({
         right: 0,
         zIndex: 15,
     },
-
     header: {
         position: 'absolute',
         top: 0,
@@ -768,50 +797,88 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
         paddingHorizontal: 20,
     },
-
     headerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
     },
-    headerHomeTitle: {
-        fontSize: 30,
-        fontWeight: '800',
-        letterSpacing: -1.2,
-        lineHeight: 35,
+    brandTouchable: {
+        borderRadius: 30,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 7 },
+        shadowOpacity: 0.15,
+        shadowRadius: 14,
+        elevation: 5,
     },
-
-    notifTouchable: {
+    brandPill: {
+        height: 56,
         borderRadius: 28,
+        paddingLeft: 10,
+        paddingRight: 18,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        overflow: 'hidden',
+    },
+    brandGlassBorder: {
+        ...StyleSheet.absoluteFillObject,
+        borderRadius: 28,
+        borderWidth: 1.2,
+    },
+    brandLogoDisc: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    brandLogo: {
+        width: 32,
+        height: 32,
+    },
+    brandPillTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: -0.4,
+        textShadowColor: 'rgba(0, 0, 0, 0.25)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 2,
+    },
+    notifTouchable: {
+        borderRadius: 26,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: 7,
         },
-        shadowOpacity: 0.12,
+        shadowOpacity: 0.15,
         shadowRadius: 14,
         elevation: 5,
     },
-
     notifPill: {
-        width: 54,
-        height: 54,
-        borderRadius: 27,
+        width: 52,
+        height: 52,
+        borderRadius: 26,
         justifyContent: 'center',
         alignItems: 'center',
         overflow: 'hidden',
     },
-
     notifGlassBorder: {
         ...StyleSheet.absoluteFillObject,
-        borderRadius: 27,
-        borderWidth: 1,
+        borderRadius: 26,
+        borderWidth: 1.2,
     },
-
+    notifSpecular: {
+        position: 'absolute',
+        top: 0,
+        left: 8,
+        right: 8,
+        height: 1,
+        borderRadius: 1,
+    },
     notifBadge: {
         position: 'absolute',
-        top: 5,
-        right: 5,
+        top: 4,
+        right: 4,
         backgroundColor: '#FF9500',
         borderRadius: 10,
         minWidth: 19,
@@ -820,54 +887,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 5,
     },
-
     notifBadgeText: {
         color: '#FFFFFF',
         fontSize: 10,
         fontWeight: '800',
-    },
-
-
-
-    introBlock: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        justifyContent: 'space-between',
-        minHeight: 180,
-        paddingTop: 4,
-        paddingLeft: 4,
-        paddingRight: 0,
-        marginBottom: 12,
-        position: 'relative',
-    },
-
-    introTextCol: {
-        flex: 1,
-        paddingRight: 8,
-        paddingBottom: 6,
-    },
-
-    introHello: {
-        fontSize: 30,
-        fontWeight: '800',
-        letterSpacing: -1.0,
-        lineHeight: 36,
-    },
-
-    introName: {
-        fontSize: 30,
-        fontWeight: '800',
-        letterSpacing: -0.8,
-        lineHeight: 36,
-        marginTop: -2,
-    },
-
-    introDescription: {
-        fontSize: 13,
-        lineHeight: 18,
-        fontWeight: '500',
-        maxWidth: 200,
-        marginTop: 8,
     },
     welcomeSubtitle: {
         fontSize: 14,
@@ -875,7 +898,6 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         marginBottom: 18,
     },
-
     toolsSectionTitle: {
         fontSize: 20,
         fontWeight: '800',
@@ -987,7 +1009,6 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginTop: 2,
     },
-
     book3dOuter: {
         width: 90,
         height: 100,
@@ -1043,7 +1064,6 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(122,59,18,0.35)',
         width: '75%',
     },
-
     doc3dOuter: {
         width: 90,
         height: 100,
@@ -1261,57 +1281,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         fontSize: 14,
     },
-    stateCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 24,
-        paddingVertical: 18,
-        paddingHorizontal: 18,
-        marginBottom: 14,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-        elevation: 2,
-    },
-    stateLabelRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 6,
-        gap: 6,
-    },
-    stateDot: {
-        width: 6,
-        height: 6,
-        borderRadius: 3,
-        backgroundColor: '#6A994E',
-    },
-    stateLabel: {
-        fontSize: 11,
-        fontWeight: '700',
-        color: '#6A994E',
-        letterSpacing: 0.5,
-    },
-    stateTitle: {
-        fontSize: 16,
-        fontWeight: '800',
-        lineHeight: 21,
-        marginBottom: 4,
-    },
-    stateCaption: {
-        fontSize: 12,
-        fontWeight: '500',
-        color: '#8DAE7B',
-    },
-    stateImageCircle: {
-        width: 58,
-        height: 58,
-        borderRadius: 29,
-        backgroundColor: 'rgba(106,153,78,0.14)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: 12,
-    },
     syncBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1349,16 +1318,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginLeft: 8,
     },
-
-    /* MODAL */
-
     modalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.72)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-
     earthLoader: {
         width: 120,
         height: 120,
@@ -1379,7 +1344,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-
     earthSvgStrip: {
         position: 'absolute',
         left: 0,
@@ -1387,7 +1351,6 @@ const styles = StyleSheet.create({
         width: 240,
         height: 120,
     },
-
     earthText: {
         marginTop: 16,
         fontSize: 17,
@@ -1398,7 +1361,6 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         textAlign: 'center',
     },
-
     closeSyncBtn: {
         marginTop: 24,
         backgroundColor: '#386641',
@@ -1406,7 +1368,6 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         borderRadius: 10,
     },
-
     closeSyncBtnText: {
         color: '#FFFFFF',
         fontWeight: '800',
