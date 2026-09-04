@@ -35,13 +35,11 @@ export default function MisCultivosScreen() {
             let proyectosRows;
 
             if (proyectoId) {
+                // Buscar por UUID específico - no filtrar por sync_status
                 proyectosRows = await db
                     .select()
                     .from(proyectos)
-                    .where(and(
-                        eq(proyectos.sync_status, 'synced'),
-                        eq(proyectos.uuid_movil, proyectoId)
-                    ))
+                    .where(eq(proyectos.uuid_movil, proyectoId))
                     .orderBy(desc(proyectos.created_at));
             } else {
                 proyectosRows = await db
@@ -188,7 +186,7 @@ export default function MisCultivosScreen() {
 
             <TouchableOpacity
                 style={[styles.verButton, { backgroundColor: 'rgba(10,132,255,0.12)', borderColor: 'rgba(10,132,255,0.3)', borderWidth: 1, marginTop: 12 }]}
-                onPress={() => router.push(`/mis-cultivos?proyectoId=${proyecto.uuid_movil}`)}
+                onPress={() => router.push(`/proyectos/${proyecto.uuid_movil}/seguimiento`)}
                 activeOpacity={0.7}
             >
                 <MaterialCommunityIcons name="timeline-clock" size={20} color="#0A84FF" />

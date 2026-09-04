@@ -14,9 +14,7 @@ import {
     actualizarLotesDelProyecto,
     obtenerColaboradoresPorProyecto,
     actualizarColaboradoresDelProyecto,
-    db,
 } from '../../../db';
-import { proyecto_colaboradores, usuarios } from '../../../db/schema';
 
 export const useEditarProyecto = (proyectoUuid) => {
     const [proyecto, setProyecto] = useState(null);
@@ -126,6 +124,8 @@ export const useEditarProyecto = (proyectoUuid) => {
                 if (resultado.success) {
                     await cargarProyecto();
                     setIsNewProject(false);
+                    // Sync en segundo plano
+                    proyectosLocalService.sincronizarProyecto(proyectoUuid).catch(() => {});
                     return { success: true };
                 }
                 return { success: false, message: resultado.message || 'Error al crear proyecto' };
@@ -133,7 +133,6 @@ export const useEditarProyecto = (proyectoUuid) => {
                 // Proyecto existente - actualizar
                 await proyectosLocalService.actualizarProyectoLocal(proyectoUuid, datosActualizados);
                 // Actualizar relaciones N:M con lotes si changed
-                // Use lotes_ids (form field) or lotes_uuids (service field)
                 const lotesIds = datosActualizados.lotes_ids || datosActualizados.lotes_uuids;
                 if (lotesIds && Array.isArray(lotesIds)) {
                     await actualizarLotesDelProyecto(proyectoUuid, lotesIds);
@@ -144,6 +143,8 @@ export const useEditarProyecto = (proyectoUuid) => {
                     await actualizarColaboradoresDelProyecto(proyectoUuid, colaboradoresIds);
                 }
                 await cargarProyecto();
+                // Sync en segundo plano
+                proyectosLocalService.sincronizarProyecto(proyectoUuid).catch(() => {});
                 return { success: true };
             }
         } catch (err) {

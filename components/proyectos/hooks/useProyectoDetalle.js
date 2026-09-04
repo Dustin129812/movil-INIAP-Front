@@ -1,6 +1,5 @@
 import { useState, useCallback } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { proyectosService } from '../../../services/proyectos';
 import { proyectosLocalService } from '../../../services/proyectos';
 
 export const useProyectoDetalle = (proyectoUuid) => {
@@ -16,23 +15,16 @@ export const useProyectoDetalle = (proyectoUuid) => {
         setError(null);
 
         try {
-            let proyecto = await proyectosService.obtenerProyecto(proyectoUuid);
-
-            if (!proyecto) {
-                const { db } = await import('../../../db');
-                const { eq } = await import('drizzle-orm');
-                const { proyectos } = await import('../../../db/schema');
-                const resultados = await db.select().from(proyectos).where(eq(proyectos.uuid_movil, proyectoUuid));
-                proyecto = resultados[0] || null;
-            }
-
+            // Buscar siempre en BD local por uuid_movil
+            const proyecto = await proyectosLocalService.obtenerProyectoLocal(proyectoUuid);
             setProyectoData(proyecto);
 
             if (proyecto) {
-                const ciclosData = await proyectosLocalService.obtenerCiclosDelProyecto(proyecto.id);
+                // Usar uuid_movil para las consultas
+                const ciclosData = await proyectosLocalService.obtenerCiclosDelProyecto(proyectoUuid);
                 setCiclos(ciclosData || []);
 
-                const visitasData = await proyectosLocalService.obtenerVisitasDelProyecto(proyecto.id);
+                const visitasData = await proyectosLocalService.obtenerVisitasDelProyecto(proyectoUuid);
                 setVisitas(visitasData || []);
             }
         } catch (err) {

@@ -883,19 +883,30 @@ export const registrarColaboradorExternoLocal = async ({
     if (existentes.length > 0) {
         const existente = existentes[0];
 
-        if (
-            server_id &&
-            (
-                Number(existente.server_id) !== Number(server_id) ||
-                existente.sync_status !== SYNC_STATUS.SYNCED
-            )
-        ) {
+        // Si ya existe y no está sincronizado, marcar como sincronizado
+        // (asume que si se llama sin server_id, ya fue sincronizado externamente)
+        if (existente.sync_status !== SYNC_STATUS.SYNCED) {
+            const resultado = await db
+                .update(schema.colaboradores_externos)
+                .set({
+                    server_id: server_id || existente.server_id,
+                    nombre_completo: nombreLimpio || existente.nombre_completo,
+                    sync_status: SYNC_STATUS.SYNCED,
+                    updated_at: new Date().toISOString(),
+                })
+                .where(eq(schema.colaboradores_externos.id, existente.id))
+                .returning();
+
+            return resultado[0] || existente;
+        }
+
+        // Si ya está sincronizado, actualizar nombre si cambió y retornar
+        if (server_id && Number(existente.server_id) !== Number(server_id)) {
             const resultado = await db
                 .update(schema.colaboradores_externos)
                 .set({
                     server_id,
                     nombre_completo: nombreLimpio || existente.nombre_completo,
-                    sync_status: SYNC_STATUS.SYNCED,
                     updated_at: new Date().toISOString(),
                 })
                 .where(eq(schema.colaboradores_externos.id, existente.id))
@@ -937,6 +948,52 @@ export const marcarColaboradorExternoComoSincronizado = async (colaboradorLocalI
             updated_at: new Date().toISOString(),
         })
         .where(eq(schema.colaboradores_externos.id, colaboradorLocalId));
+};
+
+// Marcar todos los colaboradores externos como sincronizados
+// Uso: corregir registros que se quedaron locales sin sincronizar
+export const marcarTodosColaboradoresExternosComoSincronizados = async () => {
+    const todos = await db
+        .select()
+        .from(schema.colaboradores_externos);
+
+    for (const colab of todos) {
+        if (colab.sync_status !== SYNC_STATUS.SYNCED) {
+            await db
+                .update(schema.colaboradores_externos)
+                .set({
+                    sync_status: SYNC_STATUS.SYNCED,
+                    updated_at: new Date().toISOString(),
+                })
+                .where(eq(schema.colaboradores_externos.id, colab.id));
+        }
+    }
+
+    return todos.length;
+};
+
+// Marcar todos los proyectos como sincronizados
+// Uso: corregir proyectos que se sincronizaron pero no se marcó el status
+export const marcarTodosProyectosComoSincronizados = async () => {
+    const todos = await db
+        .select()
+        .from(schema.proyectos);
+
+    let count = 0;
+    for (const proy of todos) {
+        if (proy.sync_status !== SYNC_STATUS.SYNCED) {
+            await db
+                .update(schema.proyectos)
+                .set({
+                    sync_status: SYNC_STATUS.SYNCED,
+                    updated_at: new Date().toISOString(),
+                })
+                .where(eq(schema.proyectos.id, proy.id));
+            count++;
+        }
+    }
+
+    return count;
 };
 
 export const marcarProyectoColaboradorExternoRelacionComoSincronizada = async (

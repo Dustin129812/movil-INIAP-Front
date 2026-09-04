@@ -10,11 +10,11 @@ import Animated, {
     useAnimatedScrollHandler,
     cancelAnimation,
     Easing,
-    interpolate,
     useAnimatedReaction,
     withDelay,
     withRepeat,
     withTiming,
+    runOnJS,
 } from 'react-native-reanimated';
 import Svg, { Circle, Path } from 'react-native-svg';
 
@@ -33,51 +33,143 @@ const INFOGRAFIAS_ROUTE = '/infografias';
 const REVEAL_DURATION = 260;
 const HIDE_DURATION = 160;
 const STAGGER = 70;
-const TOP_REVEAL_THRESHOLD = 12;
+const HERO_HEIGHT = 420;
+const HERO_REVEAL_OFFSET = 150;
 
-function Calculator3D() {
-    const keys = [
-        ['7', '8', '9'],
-        ['4', '5', '6'],
-        ['1', '2', '3'],
-        ['·', '0', '='],
-    ];
+function NotifBell({ isDark, pendingCount, onPress, style }) {
+    return (
+        <AnimatedTouchable
+            style={[styles.notifTouchable, style]}
+            activeOpacity={0.75}
+            onPress={onPress}
+        >
+            <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.notifPill}>
+                <View
+                    style={[
+                        StyleSheet.absoluteFillObject,
+                        { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' },
+                    ]}
+                />
+                <LinearGradient
+                    colors={
+                        isDark
+                            ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
+                            : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
+                    }
+                    start={{ x: 0.15, y: 0 }}
+                    end={{ x: 0.85, y: 1 }}
+                    style={StyleSheet.absoluteFillObject}
+                />
+                <View
+                    style={[
+                        styles.notifSpecular,
+                        { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' },
+                    ]}
+                />
+                <View
+                    style={[
+                        styles.notifGlassBorder,
+                        { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' },
+                    ]}
+                />
+
+                <MaterialCommunityIcons
+                    name={pendingCount > 0 ? 'bell-badge-outline' : 'bell-outline'}
+                    size={22}
+                    color={pendingCount > 0 ? '#FF9500' : (isDark ? '#A7C957' : '#6A994E')}
+                />
+                {pendingCount > 0 && (
+                    <View style={styles.notifBadge}>
+                        <Text style={styles.notifBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
+                    </View>
+                )}
+            </BlurView>
+        </AnimatedTouchable>
+    );
+}
+
+function CalcMockup3D() {
     return (
         <View style={styles.calc3dOuter}>
             <View style={styles.calc3dGroundShadow} />
             <View style={styles.calc3dBody}>
                 <LinearGradient
-                    colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
-                    start={{ x: 0.1, y: 0 }}
-                    end={{ x: 0.7, y: 0.9 }}
-                    style={styles.calc3dSheen}
                     pointerEvents="none"
+                    colors={['rgba(255,255,255,0.55)', 'rgba(255,255,255,0)']}
+                    style={styles.calc3dSheen}
                 />
-                <LinearGradient colors={['#3A3A42', '#151519']} style={styles.calc3dScreen}>
-                    <MaterialCommunityIcons name="leaf" size={12} color="#A7C957" />
-                    <Text style={styles.calc3dScreenText}>0.00</Text>
-                </LinearGradient>
-
-                <View style={styles.calc3dKeys}>
-                    {keys.map((row, r) => (
-                        <View key={r} style={styles.calc3dRow}>
-                            {row.map((k) => {
-                                const isEquals = k === '=';
-                                return (
-                                    <LinearGradient
-                                        key={k}
-                                        colors={isEquals ? ['#FFC300', '#FFC300'] : ['#FAFAF8', '#DEDCD6']}
-                                        style={[styles.calc3dKey, isEquals && styles.calc3dKeyAccent]}
-                                    >
-                                        <Text style={[styles.calc3dKeyText, isEquals && styles.calc3dKeyTextAccent]}>
-                                            {k}
-                                        </Text>
-                                    </LinearGradient>
-                                );
-                            })}
-                        </View>
-                    ))}
+                <View style={[styles.calc3dScreen, { backgroundColor: '#101820' }]}>
+                    <Text style={[styles.calc3dScreenText, { color: '#7CF29A' }]}>128.4</Text>
                 </View>
+                <View style={styles.calc3dKeys}>
+                    <View style={styles.calc3dRow}>
+                        <View style={[styles.calc3dKey, { backgroundColor: '#F4F2EE' }]}>
+                            <Text style={styles.calc3dKeyText}>7</Text>
+                        </View>
+                        <View style={[styles.calc3dKey, { backgroundColor: '#F4F2EE' }]}>
+                            <Text style={styles.calc3dKeyText}>8</Text>
+                        </View>
+                        <View style={[styles.calc3dKey, { backgroundColor: '#F4F2EE' }]}>
+                            <Text style={styles.calc3dKeyText}>9</Text>
+                        </View>
+                    </View>
+                    <View style={styles.calc3dRow}>
+                        <View style={[styles.calc3dKey, { backgroundColor: '#F4F2EE' }]}>
+                            <Text style={styles.calc3dKeyText}>4</Text>
+                        </View>
+                        <View style={[styles.calc3dKey, { backgroundColor: '#F4F2EE' }]}>
+                            <Text style={styles.calc3dKeyText}>5</Text>
+                        </View>
+                        <View style={[styles.calc3dKey, styles.calc3dKeyAccent, { backgroundColor: '#E8A24B' }]}>
+                            <Text style={[styles.calc3dKeyText, styles.calc3dKeyTextAccent]}>÷</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+}
+
+function BookMockup3D() {
+    return (
+        <View style={styles.book3dOuter}>
+            <View style={styles.book3dGroundShadow} />
+            <View style={styles.book3dPages} />
+            <View style={styles.book3dCover}>
+                <LinearGradient
+                    pointerEvents="none"
+                    colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0)']}
+                    style={styles.book3dSheen}
+                />
+                <MaterialCommunityIcons name="sprout" size={18} color="#8A431B" />
+                <View>
+                    <View style={styles.book3dLine} />
+                    <View style={[styles.book3dLine, { width: '55%', marginTop: 4 }]} />
+                </View>
+            </View>
+        </View>
+    );
+}
+
+function DocMockup3D() {
+    return (
+        <View style={styles.doc3dOuter}>
+            <View style={styles.doc3dGroundShadow} />
+            <View style={styles.doc3dBody}>
+                <LinearGradient
+                    pointerEvents="none"
+                    colors={['rgba(255,255,255,0.5)', 'rgba(255,255,255,0)']}
+                    style={styles.doc3dSheen}
+                />
+                <View style={styles.doc3dFold} />
+                <View style={styles.doc3dBars}>
+                    <View style={[styles.doc3dBar, { height: 12, backgroundColor: '#BFE3F2' }]} />
+                    <View style={[styles.doc3dBar, { height: 22, backgroundColor: '#2C86AE' }]} />
+                    <View style={[styles.doc3dBar, { height: 8, backgroundColor: '#0B2C41' }]} />
+                </View>
+            </View>
+            <View style={styles.doc3dPdfTag}>
+                <Text style={styles.doc3dPdfTagText}>PDF</Text>
             </View>
         </View>
     );
@@ -104,81 +196,45 @@ export default function HomeDashboard() {
     const [isSyncModalVisible, setIsSyncModalVisible] = useState(false);
     const [isNotificationsVisible, setIsNotificationsVisible] = useState(false);
     const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
-
-    // Loader "mundo" — igual al original: dos manchas SVG desplazándose sobre la esfera
-    const anim1 = useSharedValue(0);
-    const anim2 = useSharedValue(0);
+    const GLOBE_SIZE = 120;
+    const globeRotation = useSharedValue(0);
 
     useEffect(() => {
         if (isSyncModalVisible) {
-            anim1.value = 0;
-            anim2.value = 0;
-            anim1.value = withRepeat(withTiming(1, { duration: 5000, easing: Easing.linear }), -1, false);
-            anim2.value = withRepeat(withTiming(1, { duration: 5000, easing: Easing.linear }), -1, false);
+            globeRotation.value = 0;
+            globeRotation.value = withRepeat(
+                withTiming(-GLOBE_SIZE, { duration: 4200, easing: Easing.linear }),
+                -1,
+                false
+            );
         } else {
-            cancelAnimation(anim1);
-            cancelAnimation(anim2);
+            cancelAnimation(globeRotation);
         }
     }, [isSyncModalVisible]);
 
-    const svgStyle1 = useAnimatedStyle(() => {
-        const progress = anim1.value;
+    const globeRotationStyle = useAnimatedStyle(() => ({
+        transform: [{ translateX: globeRotation.value }],
+    }));
 
-        return {
-            left: interpolate(
-                progress,
-                [0, 0.3, 0.31, 0.35, 0.45, 1],
-                [-32, -96, -96, 112, 112, -32]
-            ),
-            opacity: interpolate(
-                progress,
-                [0, 0.3, 0.31, 0.35, 0.45, 1],
-                [1, 1, 0, 0, 1, 1]
-            ),
-        };
-    });
-
-    const svgStyle2 = useAnimatedStyle(() => {
-        const progress = anim2.value;
-
-        return {
-            left: interpolate(
-                progress,
-                [0, 0.75, 0.76, 0.77, 0.8, 1],
-                [80, -112, -112, 128, 128, 80]
-            ),
-            opacity: interpolate(
-                progress,
-                [0, 0.75, 0.76, 0.77, 0.8, 1],
-                [1, 1, 0, 0, 1, 1]
-            ),
-        };
-    });
-
-    // (Se quitó la animación de pulso: el componente de sincronizar ahora queda fijo)
-
-    const HEADER_ROW_HEIGHT = 54;
-    const HEADER_ROW_GAP = 10;
-    const headerContentHeight = insets.top + 2 + HEADER_ROW_HEIGHT + HEADER_ROW_GAP;
-    const scrollTopPadding = headerContentHeight + 6;
-
+    const heroScrollThreshold = HERO_HEIGHT - insets.top - HERO_REVEAL_OFFSET;
+    const [headerVisible, setHeaderVisible] = useState(false);
     const scrollY = useSharedValue(0);
-
     const scrollHandler = useAnimatedScrollHandler({
         onScroll: (event) => { scrollY.value = event.contentOffset.y; },
     });
 
-    const homeOpacity = useSharedValue(1);
-    const homeTranslateY = useSharedValue(0);
-
-    const notifOpacity = useSharedValue(1);
-    const notifTranslateY = useSharedValue(0);
+    const homeOpacity = useSharedValue(0);
+    const homeTranslateY = useSharedValue(-6);
+    const notifOpacity = useSharedValue(0);
+    const notifTranslateY = useSharedValue(-6);
 
     useAnimatedReaction(
-        () => scrollY.value <= TOP_REVEAL_THRESHOLD,
-        (isAtTop, wasAtTop) => {
-            if (isAtTop === wasAtTop) return;
-            if (isAtTop) {
+        () => scrollY.value > heroScrollThreshold,
+        (isPastHero, wasPastHero) => {
+            if (isPastHero === wasPastHero) return;
+            if (isPastHero) {
+                runOnJS(setHeaderVisible)(true);
+
                 notifOpacity.value = withTiming(1, {
                     duration: REVEAL_DURATION,
                     easing: Easing.out(Easing.cubic),
@@ -230,9 +286,11 @@ export default function HomeDashboard() {
                         easing: Easing.in(Easing.cubic),
                     })
                 );
+
+                runOnJS(setHeaderVisible)(false);
             }
         },
-        [TOP_REVEAL_THRESHOLD]
+        [heroScrollThreshold]
     );
 
     const homeTitleAnimatedStyle = useAnimatedStyle(() => ({
@@ -280,85 +338,77 @@ export default function HomeDashboard() {
                 ]}
             />
 
-            {/* HEADER  */}
-
-            {/* Header — igual al original: título "Home" + bandeja de notificaciones glass */}
-            <View style={[styles.header, { paddingTop: insets.top + 2 }]}>
+            <Animated.View
+                pointerEvents={headerVisible ? 'auto' : 'none'}
+                style={[styles.header, { paddingTop: insets.top + 2 }]}
+            >
                 <View style={styles.headerTopRow}>
                     <Animated.Text style={[styles.headerHomeTitle, { color: textPrimary }, homeTitleAnimatedStyle]}>
                         Home
                     </Animated.Text>
 
                     {!esInvitado && (
-                        <AnimatedTouchable
-                            style={[styles.notifTouchable, notifAnimatedStyle]}
-                            activeOpacity={0.75}
+                        <NotifBell
+                            isDark={isDark}
+                            pendingCount={pendingCount}
                             onPress={() => setIsNotificationsVisible(true)}
-                        >
-                            <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.notifPill}>
-                                <View
-                                    style={[
-                                        StyleSheet.absoluteFillObject,
-                                        { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' },
-                                    ]}
-                                />
-                                <LinearGradient
-                                    colors={
-                                        isDark
-                                            ? ['rgba(255,255,255,0.22)', 'rgba(255,255,255,0.04)', 'rgba(255,255,255,0)']
-                                            : ['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.25)', 'rgba(255,255,255,0.05)']
-                                    }
-                                    start={{ x: 0.15, y: 0 }}
-                                    end={{ x: 0.85, y: 1 }}
-                                    style={StyleSheet.absoluteFillObject}
-                                />
-                                <View
-                                    style={[
-                                        styles.notifSpecular,
-                                        { backgroundColor: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.9)' },
-                                    ]}
-                                />
-                                <View
-                                    style={[
-                                        styles.notifGlassBorder,
-                                        { borderColor: isDark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.85)' },
-                                    ]}
-                                />
-
-                                <MaterialCommunityIcons
-                                    name={pendingCount > 0 ? 'bell-badge-outline' : 'bell-outline'}
-                                    size={22}
-                                    color={pendingCount > 0 ? '#FF9500' : (isDark ? '#A7C957' : '#6A994E')}
-                                />
-                                {pendingCount > 0 && (
-                                    <View style={styles.notifBadge}>
-                                        <Text style={styles.notifBadgeText}>{pendingCount > 99 ? '99+' : pendingCount}</Text>
-                                    </View>
-                                )}
-                            </BlurView>
-                        </AnimatedTouchable>
+                            style={notifAnimatedStyle}
+                        />
                     )}
                 </View>
-            </View>
+            </Animated.View>
 
-            {/*CONTENIDO */}
 
             <Animated.ScrollView
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
-                contentContainerStyle={[
-                    styles.scrollContent,
-                    {
-                        paddingTop: scrollTopPadding,
-                    },
-                ]}
+                contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={[styles.welcomeSubtitle, { color: textSecondary }]}>
-                    Gestiona tus datos agrícolas{'\n'}de forma fácil y segura.
-                </Text>
+                <View style={styles.heroWrapper}>
+                    <Image
+                        source={require('../../../assets/images/cotopaxi_2.jpg')}
+                        style={styles.heroImage}
+                        resizeMode="cover"
+                    />
 
-                {/* Barra de sincronizar — solo para usuarios registrados */}
+                    <LinearGradient
+                        pointerEvents="none"
+                        colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0)']}
+                        locations={[0, 0.4]}
+                        style={styles.heroTopScrim}
+                    />
+
+                    <LinearGradient
+                        pointerEvents="none"
+                        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.35)']}
+                        locations={[0.55, 1]}
+                        style={StyleSheet.absoluteFillObject}
+                    />
+
+                    <View style={[styles.heroTopRow, { paddingTop: insets.top + 10 }]}>
+                        <Text style={styles.heroTitle}>Home</Text>
+
+                        {!esInvitado && (
+                            <NotifBell
+                                isDark
+                                pendingCount={pendingCount}
+                                onPress={() => setIsNotificationsVisible(true)}
+                            />
+                        )}
+                    </View>
+
+                    <View style={styles.heroBottomText}>
+                        <Text style={styles.heroWelcome}>Bienvenido</Text>
+                    </View>
+                </View>
+
+                <View style={[styles.sheet, { backgroundColor: bg }]}>
+                    <Text style={[styles.welcomeSubtitle, { color: textSecondary }]}>
+                        Gestiona tus datos agrícolas{'\n'}de forma fácil y segura.
+                    </Text>
+
+
                 {!esInvitado && (
                     <TouchableOpacity
                         activeOpacity={0.9}
@@ -384,99 +434,90 @@ export default function HomeDashboard() {
                     </TouchableOpacity>
                 )}
 
-                {/* Tarjeta de la calculadora — verde claro, ícono + botón "?" + flecha de acceso */}
-                <View style={styles.featureCardWrapper}>
-                    <View style={styles.featureCard}>
-                        <View style={styles.featureIconBox}>
-                            <MaterialCommunityIcons name="calculator-variant-outline" size={22} color="#1B3A2A" />
-                        </View>
-
-                        <TouchableOpacity
-                            activeOpacity={0.8}
-                            onPress={() => setIsInfoModalVisible(true)}
-                            style={styles.infoBadge}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                        >
-                            <MaterialCommunityIcons name="information-outline" size={18} color="#1B3A2A" />
-                        </TouchableOpacity>
-
-                        <View style={styles.featureLabelRow}>
-                            <Text style={styles.featureTitle}>Calculadora</Text>
-                            <Text style={styles.featureSubtitle}>Nutrientes y dosis</Text>
-                        </View>
-
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => router.push(CALC_ROUTE)}
-                            style={styles.featureArrowBtn}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                            <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
-                        </TouchableOpacity>
+                <Text style={[styles.toolsSectionTitle, { color: textPrimary }]}>Elige tu herramienta</Text>
+                <TouchableOpacity
+                    activeOpacity={0.92}
+                    onPress={() => router.push(CALC_ROUTE)}
+                    style={styles.toolBanner}
+                >
+                    <View style={[StyleSheet.absoluteFillObject, styles.toolBannerClip]}>
+                        <LinearGradient
+                            colors={['#4B3B85', '#181330']}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFillObject}
+                        />
                     </View>
+
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => setIsInfoModalVisible(true)}
+                        style={styles.toolInfoBadge}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                    >
+                        <MaterialCommunityIcons name="information-outline" size={16} color="#FFFFFF" />
+                    </TouchableOpacity>
+
+                    <View style={styles.toolBannerTextCol}>
+                        <Text style={styles.toolBannerTitle}>Calculadora</Text>
+                        <Text style={styles.toolBannerSubtitle}>Dosis exacta de{'\n'}nutrientes para tu cultivo</Text>
+
+                        <View style={styles.toolBannerArrowBtn}>
+                            <MaterialCommunityIcons name="arrow-right" size={18} color="#181330" />
+                        </View>
+                    </View>
+
+                    <View style={styles.toolBannerMockup} pointerEvents="none">
+                        <CalcMockup3D />
+                    </View>
+                </TouchableOpacity>
+
+                <View style={styles.toolsGrid}>
+                    <TouchableOpacity
+                        activeOpacity={0.92}
+                        onPress={() => router.push(CATALOGOS_ROUTE)}
+                        style={styles.toolGridCard}
+                    >
+                        <View style={[StyleSheet.absoluteFillObject, styles.toolGridClip]}>
+                            <LinearGradient
+                                colors={['#E8A24B', '#7A3B12']}
+                                start={{ x: 0.15, y: 0 }}
+                                end={{ x: 0.85, y: 1 }}
+                                style={StyleSheet.absoluteFillObject}
+                            />
+                        </View>
+                        <View style={styles.toolGridMockup} pointerEvents="none">
+                            <BookMockup3D />
+                        </View>
+                        <View style={styles.toolGridTextCol}>
+                            <Text style={styles.toolGridTitle}>Catálogos</Text>
+                            <Text style={styles.toolGridSubtitle}>Cultivos y plagas</Text>
+                        </View>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        activeOpacity={0.92}
+                        onPress={() => router.push(INFOGRAFIAS_ROUTE)}
+                        style={styles.toolGridCard}
+                    >
+                        <View style={[StyleSheet.absoluteFillObject, styles.toolGridClip]}>
+                            <LinearGradient
+                                colors={['#2C86AE', '#0B2C41']}
+                                start={{ x: 0.15, y: 0 }}
+                                end={{ x: 0.85, y: 1 }}
+                                style={StyleSheet.absoluteFillObject}
+                            />
+                        </View>
+                        <View style={styles.toolGridMockup} pointerEvents="none">
+                            <DocMockup3D />
+                        </View>
+                        <View style={styles.toolGridTextCol}>
+                            <Text style={styles.toolGridTitle}>Infografías y PDF</Text>
+                            <Text style={styles.toolGridSubtitle}>Reportes offline</Text>
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
-                {/* Tarjeta de Catálogos — verde claro, ícono + flecha de acceso */}
-                <View style={styles.featureCardWrapper}>
-                    <View style={[styles.featureCard, { backgroundColor: '#E8F5E9' }]}>
-                        <View style={[styles.featureIconBox, { backgroundColor: '#C8E6C9' }]}>
-                            <MaterialCommunityIcons name="book-open-outline" size={22} color="#2E7D32" />
-                        </View>
-
-                        <View style={styles.featureLabelRow}>
-                            <Text style={[styles.featureTitle, { color: '#1B5E20' }]}>Catálogos</Text>
-                            <Text style={[styles.featureSubtitle, { color: '#4CAF50' }]}>Cultivos, plagas y más</Text>
-                        </View>
-
-                        <TouchableOpacity
-                            activeOpacity={0.85}
-                            onPress={() => router.push(CATALOGOS_ROUTE)}
-                            style={[styles.featureArrowBtn, { backgroundColor: '#4CAF50' }]}
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                        >
-                            <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-             {/* tarjeta infografia y pdf */}
-
-<View style={styles.featureCardWrapper}>
-    <View style={[styles.featureCard, { backgroundColor: '#E6F7F0' }]}>
-        <View style={[styles.featureIconBox, { backgroundColor: '#C2EBDD' }]}>
-            <MaterialCommunityIcons
-                name="file-image-outline"
-                size={22}
-                color="#1F8A70"
-            />
-        </View>
-
-        <View style={styles.featureLabelRow}>
-            <Text style={[styles.featureTitle, { color: '#16624F' }]}>
-                Infografías y PDF
-            </Text>
-
-            <Text style={[styles.featureSubtitle, { color: '#3AA17E' }]}>
-                Reportes offline
-            </Text>
-        </View>
-
-        <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push(INFOGRAFIAS_ROUTE)}
-            style={[styles.featureArrowBtn, { backgroundColor: '#3AA17E' }]}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-        >
-            <MaterialCommunityIcons
-                name="arrow-right"
-                size={20}
-                color="#FFFFFF"
-            />
-        </TouchableOpacity>
-    </View>
-</View>
-
-                {/* Tarjeta de estado — resumen de lotes y última revisión */}
                 <View style={[styles.stateCard, { backgroundColor: cardBg }]}>
                     <View style={{ flex: 1 }}>
                         <View style={styles.stateLabelRow}>
@@ -492,14 +533,13 @@ export default function HomeDashboard() {
                             {pendingCount > 0 ? 'Toca sincronizar para actualizar' : 'Última revisión hace 2h'}
                         </Text>
                     </View>
-                    <View style={styles.stateImageCircle}>
-                        <MaterialCommunityIcons name="sprout-outline" size={30} color="#6A994E" />
+                        <View style={styles.stateImageCircle}>
+                            <MaterialCommunityIcons name="sprout-outline" size={30} color="#6A994E" />
+                        </View>
                     </View>
                 </View>
             </Animated.ScrollView>
 
-            {/* Modal "¿Qué es la calculadora?" — se abre sola al entrar y se cierra sola;
-                también se puede reabrir con el ícono "?" o cerrar antes con el botón */}
             <Modal
                 visible={isInfoModalVisible}
                 transparent
@@ -528,120 +568,78 @@ export default function HomeDashboard() {
                 </View>
             </Modal>
 
-            {/* Pantalla de carga — el "mundo" de sincronización, igual al original */}
             <Modal
                 visible={isSyncModalVisible}
                 transparent
                 animationType="fade"
-                onRequestClose={() =>
-                    setIsSyncModalVisible(false)
-                }
+                onRequestClose={() => setIsSyncModalVisible(false)}
             >
-                <View
-                    style={
-                        styles.modalOverlay
-                    }
-                >
-                    <View
-                        style={[
-                            styles.earthContainer,
-                            {
-                                backgroundColor:
-                                    isDark
-                                        ? '#102020'
-                                        : '#FFFFFF',
-                                borderColor:
-                                    isDark
-                                        ? '#28513D'
-                                        : '#E4ECE7',
-                            },
-                        ]}
-                    >
-                        <View
-                            style={
-                                styles.earthLoader
-                            }
-                        >
-                            <Animated.View
-                                style={[
-                                    styles.earthSvgWrapper1,
-                                    svgStyle1,
-                                ]}
-                            >
-                                <Svg
-                                    height="100%"
-                                    width="100%"
-                                    viewBox="0 0 200 200"
-                                >
-                                    <Path
-                                        transform="translate(100 100)"
-                                        d="M29.4,-17.4C33.1,1.8,27.6,16.1,11.5,31.6C-4.7,47,-31.5,63.6,-43,56C-54.5,48.4,-50.7,16.6,-41,-10.9C-31.3,-38.4,-15.6,-61.5,-1.4,-61C12.8,-60.5,25.7,-36.5,29.4,-17.4Z"
-                                        fill="#A7C957"
-                                    />
-                                </Svg>
-                            </Animated.View>
-
-                            <Animated.View
-                                style={[
-                                    styles.earthSvgWrapper2,
-                                    svgStyle2,
-                                ]}
-                            >
-                                <Svg
-                                    height="100%"
-                                    width="100%"
-                                    viewBox="0 0 200 200"
-                                >
-                                    <Path
-                                        transform="translate(100 100)"
-                                        d="M31.7,-55.8C40.3,-50,45.9,-39.9,49.7,-29.8C53.5,-19.8,55.5,-9.9,53.1,-1.4C50.6,7.1,43.6,14.1,41.8,27.6C40.1,41.1,43.4,61.1,37.3,67C31.2,72.9,15.6,64.8,1.5,62.2C-12.5,59.5,-25,62.3,-31.8,56.7C-38.5,51.1,-39.4,37.2,-49.3,26.3C-59.1,15.5,-78,7.7,-77.6,0.2C-77.2,-7.2,-57.4,-14.5,-49.3,-28.4C-41.2,-42.4,-44.7,-63,-38.5,-70.1C-32.2,-77.2,-16.1,-70.8,-2.3,-66.9C11.6,-63,23.1,-61.5,31.7,-55.8Z"
-                                        fill="#6A994E"
-                                    />
-                                </Svg>
-                            </Animated.View>
-                        </View>
-
-                        <Text
+                <View style={styles.modalOverlay}>
+                    <View style={styles.earthLoader}>
+                        <Animated.View
                             style={[
-                                styles.earthText,
-                                {
-                                    color: textPrimary,
-                                },
+                                styles.earthSvgStrip,
+                                globeRotationStyle,
                             ]}
                         >
-                            {isSyncing
-                                ? 'Sincronizando...'
-                                : syncMessage
-                                    ? syncMessage.text
-                                    : 'Listo'}
-                        </Text>
-                        {syncMessage && !isSyncing && (
-                            <TouchableOpacity
-                                style={[styles.closeSyncBtn, { backgroundColor: syncMessage.type === 'error' ? '#FF453A' : '#6A994E' }]}
-                                onPress={() => { setIsSyncModalVisible(false); limpiarSyncMessage(); }}
-                            >
-                                <Text style={styles.closeSyncBtnText}>Cerrar</Text>
-                            </TouchableOpacity>
-                        )}
-                        {isSyncing && (
-                            <TouchableOpacity
-                                style={styles.closeSyncBtn}
-                                onPress={() => setIsSyncModalVisible(false)}
-                            >
-                                <Text
-                                    style={
-                                        styles.closeSyncBtnText
-                                    }
-                                >
-                                    Cancelar
-                                </Text>
-                            </TouchableOpacity>
-                        )}
+                            <Svg height="100%" width="100%" viewBox="0 0 240 120">
+                                <Path
+                                    transform="translate(58 96) scale(0.62)"
+                                    d="M29.4,-17.4C33.1,1.8,27.6,16.1,11.5,31.6C-4.7,47,-31.5,63.6,-43,56C-54.5,48.4,-50.7,16.6,-41,-10.9C-31.3,-38.4,-15.6,-61.5,-1.4,-61C12.8,-60.5,25.7,-36.5,29.4,-17.4Z"
+                                    fill="#A7C957"
+                                />
+                                <Path
+                                    transform="translate(178 96) scale(0.62)"
+                                    d="M29.4,-17.4C33.1,1.8,27.6,16.1,11.5,31.6C-4.7,47,-31.5,63.6,-43,56C-54.5,48.4,-50.7,16.6,-41,-10.9C-31.3,-38.4,-15.6,-61.5,-1.4,-61C12.8,-60.5,25.7,-36.5,29.4,-17.4Z"
+                                    fill="#A7C957"
+                                />
+                                <Path
+                                    transform="translate(28 22) scale(0.44)"
+                                    d="M31.7,-55.8C40.3,-50,45.9,-39.9,49.7,-29.8C53.5,-19.8,55.5,-9.9,53.1,-1.4C50.6,7.1,43.6,14.1,41.8,27.6C40.1,41.1,43.4,61.1,37.3,67C31.2,72.9,15.6,64.8,1.5,62.2C-12.5,59.5,-25,62.3,-31.8,56.7C-38.5,51.1,-39.4,37.2,-49.3,26.3C-59.1,15.5,-78,7.7,-77.6,0.2C-77.2,-7.2,-57.4,-14.5,-49.3,-28.4C-41.2,-42.4,-44.7,-63,-38.5,-70.1C-32.2,-77.2,-16.1,-70.8,-2.3,-66.9C11.6,-63,23.1,-61.5,31.7,-55.8Z"
+                                    fill="#6A994E"
+                                />
+                                <Path
+                                    transform="translate(148 22) scale(0.44)"
+                                    d="M31.7,-55.8C40.3,-50,45.9,-39.9,49.7,-29.8C53.5,-19.8,55.5,-9.9,53.1,-1.4C50.6,7.1,43.6,14.1,41.8,27.6C40.1,41.1,43.4,61.1,37.3,67C31.2,72.9,15.6,64.8,1.5,62.2C-12.5,59.5,-25,62.3,-31.8,56.7C-38.5,51.1,-39.4,37.2,-49.3,26.3C-59.1,15.5,-78,7.7,-77.6,0.2C-77.2,-7.2,-57.4,-14.5,-49.3,-28.4C-41.2,-42.4,-44.7,-63,-38.5,-70.1C-32.2,-77.2,-16.1,-70.8,-2.3,-66.9C11.6,-63,23.1,-61.5,31.7,-55.8Z"
+                                    fill="#6A994E"
+                                />
+                            </Svg>
+                        </Animated.View>
+                        <LinearGradient
+                            pointerEvents="none"
+                            colors={['rgba(255,255,255,0.28)', 'rgba(255,255,255,0)']}
+                            start={{ x: 0.25, y: 0.1 }}
+                            end={{ x: 0.7, y: 0.6 }}
+                            style={StyleSheet.absoluteFillObject}
+                        />
                     </View>
+
+                    <Text style={[styles.earthText, { color: '#FFFFFF' }]}>
+                        {isSyncing
+                            ? 'Sincronizando...'
+                            : syncMessage
+                                ? syncMessage.text
+                                : 'Listo'}
+                    </Text>
+
+                    {syncMessage && !isSyncing && (
+                        <TouchableOpacity
+                            style={[styles.closeSyncBtn, { backgroundColor: syncMessage.type === 'error' ? '#FF453A' : '#6A994E' }]}
+                            onPress={() => { setIsSyncModalVisible(false); limpiarSyncMessage(); }}
+                        >
+                            <Text style={styles.closeSyncBtnText}>Cerrar</Text>
+                        </TouchableOpacity>
+                    )}
+                    {isSyncing && (
+                        <TouchableOpacity
+                            style={styles.closeSyncBtn}
+                            onPress={() => setIsSyncModalVisible(false)}
+                        >
+                            <Text style={styles.closeSyncBtnText}>Cancelar</Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </Modal>
-
-            {/*NOTIFICACIONES */}
 
             <NotificationsCenter
                 visible={
@@ -662,15 +660,95 @@ export default function HomeDashboard() {
     );
 }
 
-/* ESTILOS */
+
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
     },
     scrollContent: {
-        paddingHorizontal: 16,
         paddingBottom: 100,
+    },
+
+
+    heroWrapper: {
+        width: '100%',
+        height: HERO_HEIGHT,
+        position: 'relative',
+        overflow: 'hidden',
+        backgroundColor: '#000000',
+    },
+    heroImage: {
+        ...StyleSheet.absoluteFillObject,
+        width: '100%',
+        height: '100%',
+    },
+    heroTopScrim: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 160,
+    },
+    heroTopRow: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        zIndex: 5,
+    },
+    heroTitle: {
+        fontSize: 30,
+        fontWeight: '800',
+        letterSpacing: -1.2,
+        lineHeight: 35,
+        color: '#FFFFFF',
+        textShadowColor: 'rgba(0,0,0,0.45)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
+    },
+    heroBottomText: {
+        position: 'absolute',
+        left: 24,
+        bottom: 52,
+        zIndex: 5,
+    },
+    heroWelcome: {
+        fontSize: 26,
+        fontWeight: '800',
+        color: '#FFFFFF',
+        letterSpacing: -0.6,
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 8,
+    },
+    heroCaption: {
+        marginTop: 4,
+        fontSize: 13,
+        fontWeight: '600',
+        color: 'rgba(255,255,255,0.9)',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
+    },
+
+
+    sheet: {
+        marginTop: -32,
+        borderTopLeftRadius: 32,
+        borderTopRightRadius: 32,
+        paddingHorizontal: 16,
+        paddingTop: 24,
+        zIndex: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -6 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 6,
     },
 
     statusBarScrim: {
@@ -749,7 +827,7 @@ const styles = StyleSheet.create({
         fontWeight: '800',
     },
 
-    /* INTRO */
+
 
     introBlock: {
         flexDirection: 'row',
@@ -797,50 +875,253 @@ const styles = StyleSheet.create({
         lineHeight: 20,
         marginBottom: 18,
     },
-    featureCard: {
+
+    toolsSectionTitle: {
+        fontSize: 20,
+        fontWeight: '800',
+        letterSpacing: -0.4,
+        marginBottom: 12,
+    },
+    toolBanner: {
         borderRadius: 26,
-        padding: 18,
-        backgroundColor: '#DCEAC9',
+        paddingVertical: 16,
+        paddingLeft: 20,
+        paddingRight: 4,
+        minHeight: 132,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 14,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.2,
+        shadowRadius: 14,
+        elevation: 4,
+    },
+    toolBannerClip: {
+        borderRadius: 26,
         overflow: 'hidden',
     },
-    featureIconBox: {
-        width: 48,
-        height: 48,
+    toolInfoBadge: {
+        position: 'absolute',
+        top: 14,
+        right: 14,
+        width: 28,
+        height: 28,
         borderRadius: 14,
+        backgroundColor: 'rgba(255,255,255,0.18)',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 5,
+    },
+    toolBannerTextCol: {
+        flex: 1,
+        paddingRight: 8,
+    },
+    toolBannerTitle: {
+        color: '#FFFFFF',
+        fontSize: 19,
+        fontWeight: '800',
+        letterSpacing: -0.3,
+    },
+    toolBannerSubtitle: {
+        color: 'rgba(255,255,255,0.72)',
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 3,
+        lineHeight: 16,
+    },
+    toolBannerArrowBtn: {
+        marginTop: 12,
+        alignSelf: 'flex-start',
+        width: 34,
+        height: 34,
+        borderRadius: 17,
         backgroundColor: '#FFFFFF',
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    toolBannerMockup: {
+        width: 132,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toolsGrid: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+    },
+    toolGridCard: {
+        flex: 1,
+        aspectRatio: 0.82,
+        borderRadius: 24,
+        padding: 16,
+        justifyContent: 'space-between',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.18,
+        shadowRadius: 12,
+        elevation: 3,
     },
-    featureLabelRow: {
-        marginTop: 22,
-        marginBottom: 2,
+    toolGridClip: {
+        borderRadius: 24,
+        overflow: 'hidden',
     },
-    featureTitle: {
-        color: '#17331F',
-        fontSize: 20,
+    toolGridMockup: {
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toolGridTextCol: {
+        marginTop: 'auto',
+    },
+    toolGridTitle: {
+        color: '#FFFFFF',
+        fontSize: 15,
         fontWeight: '800',
+        letterSpacing: -0.2,
     },
-    featureSubtitle: {
-        color: '#5C7A4C',
-        fontSize: 13,
+    toolGridSubtitle: {
+        color: 'rgba(255,255,255,0.75)',
+        fontSize: 11.5,
         fontWeight: '600',
         marginTop: 2,
     },
-    featureArrowBtn: {
+
+    book3dOuter: {
+        width: 90,
+        height: 100,
+    },
+    book3dGroundShadow: {
         position: 'absolute',
-        right: 16,
-        bottom: 16,
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#6A994E',
-        alignItems: 'center',
-        justifyContent: 'center',
+        bottom: 4,
+        left: 15,
+        width: 60,
+        height: 14,
+        borderRadius: 30,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        transform: [{ scaleX: 1.3 }],
+    },
+    book3dPages: {
+        position: 'absolute',
+        top: 12,
+        left: 22,
+        width: 58,
+        height: 74,
+        borderRadius: 6,
+        backgroundColor: '#F3ECDF',
+        transform: [{ perspective: 600 }, { rotateY: '-16deg' }, { rotateZ: '-3deg' }],
+    },
+    book3dCover: {
+        position: 'absolute',
+        top: 5,
+        left: 13,
+        width: 58,
+        height: 74,
+        borderRadius: 6,
+        backgroundColor: '#FBEEDD',
+        padding: 8,
+        justifyContent: 'space-between',
+        overflow: 'hidden',
+        transform: [{ perspective: 600 }, { rotateY: '-16deg' }, { rotateZ: '-3deg' }],
+        shadowColor: '#000',
+        shadowOffset: { width: 8, height: 12 },
+        shadowOpacity: 0.32,
+        shadowRadius: 10,
+        elevation: 12,
+    },
+    book3dSheen: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '55%',
+    },
+    book3dLine: {
+        height: 3,
+        borderRadius: 2,
+        backgroundColor: 'rgba(122,59,18,0.35)',
+        width: '75%',
+    },
+
+    doc3dOuter: {
+        width: 90,
+        height: 100,
+    },
+    doc3dGroundShadow: {
+        position: 'absolute',
+        bottom: 4,
+        left: 14,
+        width: 60,
+        height: 14,
+        borderRadius: 30,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        transform: [{ scaleX: 1.3 }],
+    },
+    doc3dBody: {
+        position: 'absolute',
+        top: 6,
+        left: 12,
+        width: 62,
+        height: 78,
+        borderRadius: 6,
+        backgroundColor: '#FFFFFF',
+        padding: 8,
+        justifyContent: 'flex-end',
+        overflow: 'hidden',
+        transform: [{ perspective: 600 }, { rotateY: '16deg' }, { rotateZ: '4deg' }],
+        shadowColor: '#000',
+        shadowOffset: { width: -6, height: 12 },
+        shadowOpacity: 0.32,
+        shadowRadius: 10,
+        elevation: 12,
+    },
+    doc3dSheen: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '55%',
+    },
+    doc3dFold: {
+        position: 'absolute',
+        top: 0,
+        right: 0,
+        width: 0,
+        height: 0,
+        borderTopWidth: 14,
+        borderLeftWidth: 14,
+        borderTopColor: '#D8D8D8',
+        borderLeftColor: 'transparent',
+    },
+    doc3dBars: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        gap: 4,
+    },
+    doc3dBar: {
+        width: 8,
+        borderRadius: 2,
+    },
+    doc3dPdfTag: {
+        position: 'absolute',
+        bottom: 2,
+        left: 24,
+        backgroundColor: '#E1432C',
+        borderRadius: 4,
+        paddingHorizontal: 5,
+        paddingVertical: 2,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    doc3dPdfTagText: {
+        color: '#FFFFFF',
+        fontSize: 8,
+        fontWeight: '800',
+        letterSpacing: 0.3,
     },
     calc3dOuter: {
         alignItems: 'center',
@@ -929,22 +1210,6 @@ const styles = StyleSheet.create({
     },
     calc3dKeyTextAccent: {
         color: '#1B3A2A',
-    },
-    featureCardWrapper: {
-        position: 'relative',
-        marginBottom: 14,
-    },
-    infoBadge: {
-        position: 'absolute',
-        top: 18,
-        right: 18,
-        width: 30,
-        height: 30,
-        borderRadius: 15,
-        backgroundColor: 'rgba(255,255,255,0.6)',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 5,
     },
     infoModalOverlay: {
         flex: 1,
@@ -1094,24 +1359,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-    earthContainer: {
-        width: 245,
-        minHeight: 245,
-        borderRadius: 26,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 10,
-        },
-        shadowOpacity: 0.28,
-        shadowRadius: 25,
-        elevation: 10,
-    },
-
     earthLoader: {
         width: 120,
         height: 120,
@@ -1133,18 +1380,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 
-    earthSvgWrapper1: {
+    earthSvgStrip: {
         position: 'absolute',
-        bottom: -32,
-        width: 112,
-        height: 112,
-    },
-
-    earthSvgWrapper2: {
-        position: 'absolute',
-        top: -48,
-        width: 112,
-        height: 112,
+        left: 0,
+        top: 0,
+        width: 240,
+        height: 120,
     },
 
     earthText: {

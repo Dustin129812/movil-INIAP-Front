@@ -19,40 +19,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '../../services/theme';
 import { proyectosLocalService } from '../../services/proyectos';
+import { buscarColaboradoresExternosLocales, registrarColaboradorExternoLocal, marcarColaboradorExternoComoSincronizado, marcarTodosProyectosComoSincronizados } from '../../db';
+import { colaboradoresExternosService } from '../../services/colaboradoresExternos/colaboradoresExternosService';
 import ColaboradoresModal from '../../components/proyectos/ui/ColaboradoresModal';
+import ColaboradoresExternosModal from '../../components/proyectos/ui/ColaboradoresExternosModal';
 
-// --- ESTILOS ---
-// Origen: app/styles/colaboradoresStyles.js
-import { colaboradoresStyles as styles } from '../../src/styles/colaboradoresStyles';
+import { StyleSheet } from 'react-native';
 
 // ============================================
 // HELPERS
 // ============================================
 
-/**
- * Determina si un proyecto está sincronizado con el backend.
- * Un proyecto está sincronizado cuando:
- * - sync_status === 'synced' O
- * - Tiene un id numérico de servidor (no solo uuid_movil local)
- */
-const estaSincronizado = (proyecto) => {
-  if (!proyecto) return false;
-  // Si tiene sync_status explícitamente en synced, está sincronizado
-  if (proyecto.sync_status === 'synced') return true;
-  // Si tiene id numérico (del servidor) y no tiene uuid_movil local, está sincronizado
-  // Pero si tiene uuid_movil significa que fue creado en el móvil
-  // Un proyecto creado en el móvil que fue sync tendría tanto uuid_movil como un id de servidor
-  // El indicador más confiable es si tiene sync_status distinto de draft/pending
-  if (proyecto.sync_status === 'draft' || proyecto.sync_status === 'pending') return false;
-  // Si llegó hasta aquí y tiene id numérico, está sincronizado
-  if (typeof proyecto.id === 'number' && !proyecto.uuid_movil) return true;
-  // Si tiene uuid_movil y sync_status no es pending/draft, está sincronizado
-  return false;
-};
-
-/**
- * Versión más simple: está sincronizado si NO es draft ni pending
- */
 const proyectoSincronizado = (proyecto) => {
   if (!proyecto) return false;
   const status = proyecto.sync_status || '';
@@ -74,11 +51,16 @@ export default function ColaboradoresProyectosScreen() {
   const [proyectoSeleccionado, setProyectoSeleccionado] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // External collaborators state
+  const [externos, setExternos] = useState([]);
+  const [loadingExternos, setLoadingExternos] = useState(false);
+  const [modalExternoVisible, setModalExternoVisible] = useState(false);
+
   // --- EFECTOS ---
   const cargarProyectos = useCallback(async () => {
     setLoading(true);
     try {
-      // Usar proyectosLocalService (misma fuente que pantalla principal)
+      await marcarTodosProyectosComoSincronizados();
       const data = await proyectosLocalService.obtenerProyectos();
       setProyectos(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -94,9 +76,30 @@ export default function ColaboradoresProyectosScreen() {
     }, [cargarProyectos])
   );
 
+  // --- CARGAR EXTERNOS ---
+  const cargarExternos = useCallback(async () => {
+    setLoadingExternos(true);
+    try {
+      const locales = await buscarColaboradoresExternosLocales('');
+      const sincronizados = Array.isArray(locales)
+        ? locales.filter(c => c.sync_status === 'synced')
+        : [];
+      setExternos(sincronizados);
+    } catch (_err) {
+      setExternos([]);
+    } finally {
+      setLoadingExternos(false);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarExternos();
+    }, [cargarExternos])
+  );
+
   // --- HANDLERS ---
   const abrirGestion = (proyecto) => {
-    // Verificar si el proyecto está sincronizado
     if (!proyectoSincronizado(proyecto)) {
       Alert.alert(
         'Proyecto no sincronizado',
@@ -113,15 +116,30 @@ export default function ColaboradoresProyectosScreen() {
   const sincronizados = proyectos.filter(p => proyectoSincronizado(p));
   const noSincronizados = proyectos.filter(p => !proyectoSincronizado(p));
 
+  // Colors
+  const bg = isDark ? '#0D0D0F' : '#F2F2F7';
+  const cardBg = isDark ? '#1C1C1E' : '#FFFFFF';
+  const cardBorder = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
+  const textPrimary = isDark ? '#FFFFFF' : '#000000';
+  const textSecondary = isDark ? '#98989F' : '#8E8E93';
+  const textTertiary = isDark ? '#636366' : '#AEAEB2';
+  const accentBlue = '#0A84FF';
+  const accentGreen = '#34C759';
+  const accentOrange = '#FF9500';
+  const divider = isDark ? '#2C2C2E' : '#E5E5EA';
+  const iconBgBlue = 'rgba(10,132,255,0.12)';
+  const iconBgGreen = 'rgba(52,199,89,0.12)';
+  const iconBgOrange = 'rgba(255,149,0,0.12)';
+
   return (
-    <View style={[styles.container, isDark && styles.containerDark]}>
+    <View style={[styles.container, { backgroundColor: bg }]}>
       <StatusBar
         barStyle={isDark ? 'light-content' : 'dark-content'}
         translucent
         backgroundColor="transparent"
       />
 
-      {/* Header con boton de volver */}
+      {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity
           style={styles.backButton}
@@ -134,7 +152,7 @@ export default function ColaboradoresProyectosScreen() {
             color={isDark ? '#FFFFFF' : '#000000'}
           />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, isDark && styles.textWhite]}>
+        <Text style={[styles.headerTitle, { color: textPrimary }]}>
           Colaboradores
         </Text>
         <View style={styles.backButton} />
@@ -144,145 +162,386 @@ export default function ColaboradoresProyectosScreen() {
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Hero, mismo patron que "Invite Family" de Apple */}
-        <View style={styles.hero}>
-          <View style={styles.iconStack}>
-            <MaterialCommunityIcons name="account-group" size={44} color="#0A84FF" />
-            <View style={styles.plusBadge}>
-              <MaterialCommunityIcons name="plus" size={12} color="#FFFFFF" />
-            </View>
+        {/* ===================== */}
+        {/* SECCION: PERSONAL EXTERNO */}
+        {/* ===================== */}
+        <View style={[styles.sectionHeader]}>
+          <View style={[styles.sectionIconBox, { backgroundColor: iconBgGreen }]}>
+            <MaterialCommunityIcons name="account-hard-hat-outline" size={18} color={accentGreen} />
           </View>
-          <Text style={[styles.heroTitle, isDark && styles.textWhite]}>
-            Colaboradores de Proyectos
-          </Text>
-          <Text style={styles.heroSubtitle}>
-            Elige un proyecto para ver, agregar o quitar colaboradores.
-          </Text>
+          <Text style={[styles.sectionTitle, { color: textPrimary }]}>Personal Externo</Text>
+          <View style={[styles.sectionBadge, { backgroundColor: iconBgGreen }]}>
+            <Text style={[styles.sectionBadgeText, { color: accentGreen }]}>{externos.length}</Text>
+          </View>
         </View>
 
-        {/* Leyenda de estados */}
-        {(noSincronizados.length > 0) && (
-          <View style={[styles.card, isDark && styles.cardDark, { marginBottom: 12, paddingVertical: 12 }]}>
-            <View style={styles.legendRow}>
-              <View style={[styles.legendDot, { backgroundColor: '#FF9500' }]} />
-              <Text style={[styles.legendText, isDark && styles.legendTextDark]}>
-                {noSincronizados.length} proyecto{noSincronizados.length > 1 ? 's' : ''} pendiente{sincronizados.length !== 1 ? 's' : ''} de sincronizar
+        <Text style={[styles.sectionSubtitle, { color: textSecondary }]}>
+          Personal que participa en proyectos de investigación
+        </Text>
+
+        {/* Card: Agregar externo */}
+        <TouchableOpacity
+          style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
+          onPress={() => setModalExternoVisible(true)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cardRow}>
+            <View style={[styles.cardIconWrap, { backgroundColor: iconBgGreen }]}>
+              <MaterialCommunityIcons name="account-plus" size={18} color={accentGreen} />
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={[styles.cardTitle, { color: textPrimary }]}>
+                Agregar personal externo
+              </Text>
+              <Text style={[styles.cardSubtitle, { color: textSecondary }]}>
+                Registrar nuevo collaborator o buscar existente
               </Text>
             </View>
-            <Text style={[styles.legendSubtext, isDark && styles.legendSubtextDark]}>
-              Sincroniza primero para poder gestionar colaboradores
+            <MaterialCommunityIcons name="chevron-right" size={20} color={textTertiary} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Lista de externos */}
+        {externos.length > 0 && (
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder, marginTop: 8 }]}>
+            {loadingExternos ? (
+              <ActivityIndicator size="small" color={accentGreen} style={{ paddingVertical: 16 }} />
+            ) : (
+              externos.map((ext, index) => (
+                <View key={ext.id || ext.ci}>
+                  <View style={styles.cardRow}>
+                    <View style={[styles.cardIconWrap, { backgroundColor: iconBgGreen }]}>
+                      <MaterialCommunityIcons name="account" size={18} color={accentGreen} />
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={[styles.cardTitle, { color: textPrimary }]} numberOfLines={1}>
+                        {ext.nombre_completo || ext.nombre || 'Sin nombre'}
+                      </Text>
+                      <Text style={[styles.cardSubtitle, { color: textSecondary }]}>
+                        C.I: {ext.ci}
+                      </Text>
+                    </View>
+                    <MaterialCommunityIcons name="cloud-check" size={16} color={accentGreen} />
+                  </View>
+                  {index < externos.length - 1 && (
+                    <View style={[styles.divider, { backgroundColor: divider }]} />
+                  )}
+                </View>
+              ))
+            )}
+          </View>
+        )}
+
+        {/* Empty externos */}
+        {!loadingExternos && externos.length === 0 && (
+          <View style={[styles.emptyState, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <MaterialCommunityIcons name="account-off-outline" size={32} color={textTertiary} />
+            <Text style={[styles.emptyText, { color: textSecondary }]}>
+              Sin personal externo registrado
+            </Text>
+          </View>
+        )}
+
+        {/* ===================== */}
+        {/* SECCION: PROYECTOS */}
+        {/* ===================== */}
+        <View style={[styles.sectionHeader, { marginTop: 32 }]}>
+          <View style={[styles.sectionIconBox, { backgroundColor: iconBgBlue }]}>
+            <MaterialCommunityIcons name="flask-outline" size={18} color={accentBlue} />
+          </View>
+          <Text style={[styles.sectionTitle, { color: textPrimary }]}>Proyectos</Text>
+          <View style={[styles.sectionBadge, { backgroundColor: iconBgBlue }]}>
+            <Text style={[styles.sectionBadgeText, { color: accentBlue }]}>{sincronizados.length}</Text>
+          </View>
+        </View>
+
+        <Text style={[styles.sectionSubtitle, { color: textSecondary }]}>
+          Selecciona un proyecto para gestionar sus colaboradores
+        </Text>
+
+        {/* Leyenda de estados */}
+        {noSincronizados.length > 0 && (
+          <View style={[styles.alertBanner, { backgroundColor: 'rgba(255,149,0,0.1)' }]}>
+            <MaterialCommunityIcons name="cloud-upload-outline" size={16} color={accentOrange} />
+            <Text style={[styles.alertText, { color: accentOrange }]}>
+              {noSincronizados.length} proyecto{noSincronizados.length > 1 ? 's' : ''} pendiente{noSincronizados.length > 1 ? 's' : ''} de sincronizar
             </Text>
           </View>
         )}
 
         {/* Lista de proyectos sincronizados */}
-        {sincronizados.length > 0 && (
-          <>
-            <Text style={[styles.groupTitle, isDark && styles.groupTitleDark]}>
-              Proyectos Disponibles
+        {loading ? (
+          <ActivityIndicator size="small" color={accentBlue} style={{ paddingVertical: 24 }} />
+        ) : sincronizados.length > 0 ? (
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder, marginTop: 8 }]}>
+            {sincronizados.map((proy, index) => (
+              <View key={proy.uuid_movil || proy.id}>
+                <TouchableOpacity
+                  style={styles.cardRow}
+                  onPress={() => abrirGestion(proy)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.cardIconWrap, { backgroundColor: iconBgBlue }]}>
+                    <MaterialCommunityIcons name="flask" size={18} color={accentBlue} />
+                  </View>
+                  <View style={styles.cardContent}>
+                    <Text style={[styles.cardTitle, { color: textPrimary }]} numberOfLines={1}>
+                      {proy.titulo || 'Sin título'}
+                    </Text>
+                    <Text style={[styles.cardSubtitle, { color: textSecondary }]} numberOfLines={1}>
+                      {proy.variedad || 'Sin variedad'}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons name="chevron-right" size={20} color={textTertiary} />
+                </TouchableOpacity>
+                {index < sincronizados.length - 1 && (
+                  <View style={[styles.divider, { backgroundColor: divider }]} />
+                )}
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View style={[styles.emptyState, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <MaterialCommunityIcons name="flask-empty-outline" size={32} color={textTertiary} />
+            <Text style={[styles.emptyText, { color: textSecondary }]}>
+              No hay proyectos disponibles
             </Text>
-            <View style={[styles.card, isDark && styles.cardDark]}>
-              {sincronizados.map((proy, index) => (
-                <View key={proy.uuid_movil || proy.id || `sync-${index}`}>
-                  <TouchableOpacity
-                    style={styles.row}
-                    onPress={() => abrirGestion(proy)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.rowLeft}>
-                      <View style={[styles.rowIconWrap, isDark && styles.rowIconWrapDark]}>
-                        <MaterialCommunityIcons name="flask-outline" size={16} color="#0A84FF" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={[styles.rowNombre, isDark && styles.textWhite]}
-                          numberOfLines={1}
-                        >
-                          {proy.titulo || 'Sin título'}
-                        </Text>
-                        <Text style={styles.rowSub} numberOfLines={1}>
-                          {proy.variedad || 'Sin variedad'}
-                        </Text>
-                      </View>
-                    </View>
-                    <MaterialCommunityIcons name="chevron-right" size={20} color="#8E8E93" />
-                  </TouchableOpacity>
-                  {index < sincronizados.length - 1 && (
-                    <View style={[styles.divider, isDark && styles.dividerDark]} />
-                  )}
-                </View>
-              ))}
-            </View>
-          </>
+          </View>
         )}
 
-        {/* Lista de proyectos NO sincronizados (deshabilitados) */}
+        {/* Proyectos no sincronizados */}
         {noSincronizados.length > 0 && (
           <>
-            <Text style={[styles.groupTitle, isDark && styles.groupTitleDark, { marginTop: sincronizados.length > 0 ? 20 : 0 }]}>
-              Pendiente de Sincronizar
+            <Text style={[styles.lockedSectionTitle, { color: textSecondary }]}>
+              Bloqueados — sincroniza primero
             </Text>
-            <View style={[styles.card, isDark && styles.cardDark, styles.cardDisabled]}>
+            <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder, opacity: 0.6 }]}>
               {noSincronizados.map((proy, index) => (
-                <View key={proy.uuid_movil || proy.id || `nosync-${index}`}>
-                  <TouchableOpacity
-                    style={[styles.row, styles.rowDisabled]}
-                    onPress={() => abrirGestion(proy)}
-                    activeOpacity={0.7}
-                  >
-                    <View style={styles.rowLeft}>
-                      <View style={[styles.rowIconWrap, { backgroundColor: 'rgba(255, 149, 0, 0.1)' }]}>
-                        <MaterialCommunityIcons name="flask-outline" size={16} color="#FF9500" />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text
-                          style={[styles.rowNombre, styles.rowNombreDisabled, isDark && styles.textWhite]}
-                          numberOfLines={1}
-                        >
-                          {proy.titulo || 'Sin título'}
-                        </Text>
-                        <View style={styles.pendingBadge}>
-                          <MaterialCommunityIcons name="cloud-upload-outline" size={10} color="#FF9500" />
-                          <Text style={styles.pendingBadgeText}>Pendiente</Text>
-                        </View>
+                <View key={proy.uuid_movil || proy.id}>
+                  <View style={[styles.cardRow, { opacity: 0.7 }]}>
+                    <View style={[styles.cardIconWrap, { backgroundColor: iconBgOrange }]}>
+                      <MaterialCommunityIcons name="flask" size={18} color={accentOrange} />
+                    </View>
+                    <View style={styles.cardContent}>
+                      <Text style={[styles.cardTitle, { color: textSecondary }]} numberOfLines={1}>
+                        {proy.titulo || 'Sin título'}
+                      </Text>
+                      <View style={styles.pendingRow}>
+                        <MaterialCommunityIcons name="cloud-upload-outline" size={12} color={accentOrange} />
+                        <Text style={[styles.pendingText, { color: accentOrange }]}>Pendiente</Text>
                       </View>
                     </View>
-                    <MaterialCommunityIcons name="lock-outline" size={18} color="#8E8E93" />
-                  </TouchableOpacity>
+                    <MaterialCommunityIcons name="lock-outline" size={18} color={textTertiary} />
+                  </View>
                   {index < noSincronizados.length - 1 && (
-                    <View style={[styles.divider, isDark && styles.dividerDark]} />
+                    <View style={[styles.divider, { backgroundColor: divider }]} />
                   )}
                 </View>
               ))}
             </View>
           </>
         )}
-
-        {/* Empty state */}
-        {loading ? (
-          <ActivityIndicator
-            size="small"
-            color="#34C759"
-            style={{ paddingVertical: 24 }}
-          />
-        ) : proyectos.length === 0 ? (
-          <View style={styles.empty}>
-            <MaterialCommunityIcons
-              name="account-group-outline"
-              size={32}
-              color="#8E8E93"
-            />
-            <Text style={styles.emptyText}>No hay proyectos disponibles</Text>
-          </View>
-        ) : null}
       </ScrollView>
 
-      {/* Modal de gestion de colaboradores */}
+      {/* Modales */}
       <ColaboradoresModal
         visible={modalVisible}
         onClose={() => setModalVisible(false)}
         proyectoId={proyectoSeleccionado?.uuid_movil || proyectoSeleccionado?.id}
       />
+
+      <ColaboradoresExternosModal
+        visible={modalExternoVisible}
+        onClose={() => {
+          setModalExternoVisible(false);
+          cargarExternos();
+        }}
+        onSelectMultiple={async (seleccionTemporal) => {
+          for (const ext of seleccionTemporal) {
+            try {
+              const colabLocal = await registrarColaboradorExternoLocal({
+                ci: ext.ci,
+                nombre_completo: ext.nombre_completo,
+                server_id: ext.server_id || null,
+              });
+
+              if (colabLocal && colabLocal.id) {
+                try {
+                  const resultado = await colaboradoresExternosService.registrarColaboradorExterno({
+                    ci: ext.ci,
+                    nombre_completo: ext.nombre_completo,
+                  });
+
+                  if (resultado.success && resultado.data) {
+                    const serverId = resultado.data?.id || resultado.data?.server_id || resultado.data?.colaborador_externo?.id;
+                    if (serverId) {
+                      await marcarColaboradorExternoComoSincronizado(colabLocal.id, serverId);
+                    }
+                  }
+                } catch (err) {
+                  console.log('Error sync externo:', err);
+                }
+              }
+            } catch (err) {
+              console.log('Error guardar externo:', err);
+            }
+          }
+          setModalExternoVisible(false);
+          cargarExternos();
+        }}
+        seleccionados={[]}
+      />
     </View>
   );
 }
+
+// ============================================
+// ESTILOS
+// ============================================
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+  },
+
+  // --- SECCIONES ---
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 4,
+  },
+  sectionIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    flex: 1,
+  },
+  sectionBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  sectionBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    marginBottom: 16,
+    marginLeft: 38,
+  },
+
+  // --- CARDS ---
+  card: {
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  cardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    gap: 12,
+  },
+  cardIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardContent: {
+    flex: 1,
+    gap: 2,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  cardSubtitle: {
+    fontSize: 13,
+  },
+  divider: {
+    height: 1,
+    marginLeft: 64,
+  },
+
+  // --- ALERT BANNER ---
+  alertBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  alertText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  // --- EMPTY STATE ---
+  emptyState: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 8,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+
+  // --- LOCKED SECTION ---
+  lockedSectionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 24,
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // --- PENDING ---
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  pendingText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+});

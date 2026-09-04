@@ -275,7 +275,11 @@ export const obtenerProyectos = async () => {
                     const proyApi = mergedMap.get(uuid);
                     mergedMap.set(uuid, {
                         ...proyApi,
+                        uuid_movil: proyApi.uuid_movil || proyLocal.uuid_movil || uuid,
                         estado: proyLocal.estado || proyApi.estado || 'activo',
+                        // Preservar sync_status local si el proyecto local tiene uno definido
+                        // Esto evita que proyectos ya sincronizados aparezcan como "pendientes"
+                        sync_status: proyLocal.sync_status || proyApi.sync_status || 'synced',
                     });
                 } else {
                     // NO existe en API: proyecto local pendiente de sync, agregar tal cual
@@ -533,6 +537,61 @@ export const sincronizarProyectosPendientes = async () => {
     }
 };
 
+// Sincronizar un proyecto especifico al servidor
+export const sincronizarProyecto = async (proyectoUuid) => {
+    try {
+        const token = await obtenerToken();
+        if (!token) return { success: false, message: 'No autenticado' };
+
+        const proyecto = await obtenerProyectoLocal(proyectoUuid);
+        if (!proyecto) return { success: false, message: 'Proyecto no encontrado' };
+
+        if (proyecto.sync_status === SYNC_STATUS.SYNCED) {
+            return { success: true, alreadySynced: true };
+        }
+
+        // Obtener colaboradores del proyecto
+        const colaboradoresIds = await db
+            .select()
+            .from(proyecto_colaboradores)
+            .where(eq(proyecto_colaboradores.proyecto_uuid, proyectoUuid));
+
+        const colaboradores = colaboradoresIds.map(c => c.usuario_id);
+
+        // Sincronizar colaboradores externos
+        const colaboradoresExternos = await obtenerColaboradoresExternosPorProyecto(proyectoUuid);
+        if (colaboradoresExternos.length > 0) {
+            await sincronizarColaboradoresExternosServidor(proyectoUuid, colaboradoresExternos);
+        }
+
+        // Preparar datos para el servidor
+        const { variedad_id, ...datosParaServidor } = proyecto;
+        const datosCompletos = {
+            ...datosParaServidor,
+            colaboradores: colaboradores,
+        };
+
+        const respuesta = await fetch(`${URL_API}/agrodecide/proyectos`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+            },
+            body: JSON.stringify(datosCompletos),
+        });
+
+        if (respuesta.ok) {
+            await marcarProyectoComoSincronizado(proyectoUuid);
+            return { success: true };
+        }
+
+        return { success: false, message: 'Error al sincronizar' };
+    } catch (error) {
+        // console removed
+        return { success: false, message: 'Error en sincronización' };
+    }
+};
+
 // Obtener un proyecto especifico por UUID
 export const obtenerProyectoLocal = async (uuid_movil) => {
     try {
@@ -584,6 +643,7 @@ export const proyectosLocalService = {
     obtenerCiclosDelProyecto,
     obtenerHojasDeVisita,
     sincronizarProyectosPendientes,
+    sincronizarProyecto,
     obtenerProyectoLocal,
     actualizarProyectoLocal,
     eliminarProyecto,
