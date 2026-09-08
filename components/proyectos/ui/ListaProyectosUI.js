@@ -150,6 +150,14 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
                         <Text style={estilos.cardTitle} numberOfLines={2}>
                             {proyecto.titulo}
                         </Text>
+                        <TouchableOpacity
+                            onPress={() => setShowDeleteModal(true)}
+                            style={deleteStyles.deleteCardBtn}
+                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            activeOpacity={0.7}
+                        >
+                            <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FF3B30" />
+                        </TouchableOpacity>
                         <EstadoBadge estado={proyecto.estado} estilos={estilos} />
                     </View>
 
@@ -670,6 +678,12 @@ const styles = StyleSheet.create({
 });
 
 const deleteStyles = StyleSheet.create({
+    deleteCardBtn: {
+        padding: 4,
+        borderRadius: 8,
+        backgroundColor: 'rgba(255,59,48,0.12)',
+        marginRight: 8,
+    },
     deleteModalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
