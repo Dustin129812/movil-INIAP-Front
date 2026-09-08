@@ -458,6 +458,9 @@ export default function HomeDashboard() {
 
                     <View style={styles.heroBottomText}>
                         <Text style={styles.heroWelcome}>Bienvenido</Text>
+                        <Text style={styles.heroUserLine} numberOfLines={1}>
+                            {esInvitado ? 'Invitado' : (usuario?.NOMBRE || usuario?.CORREO || 'Usuario')}
+                        </Text>
                         <Text style={styles.heroCaption}>
                             {pendingCount > 0
                                 ? `${pendingCount} cambio${pendingCount > 1 ? 's' : ''} sin sincronizar`
@@ -758,6 +761,15 @@ const styles = StyleSheet.create({
         textShadowColor: 'rgba(0,0,0,0.5)',
         textShadowOffset: { width: 0, height: 1 },
         textShadowRadius: 8,
+    },
+    heroUserLine: {
+        marginTop: 2,
+        fontSize: 15,
+        fontWeight: '700',
+        color: 'rgba(255,255,255,0.95)',
+        textShadowColor: 'rgba(0,0,0,0.5)',
+        textShadowOffset: { width: 0, height: 1 },
+        textShadowRadius: 6,
     },
     heroCaption: {
         marginTop: 4,
