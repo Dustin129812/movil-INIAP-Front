@@ -534,7 +534,7 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
 
     const { animateIn, handlePressIn, handlePressOut, containerAnimatedStyle } = useCardAnimations(index);
 
-    
+
 
     const hasImage = !!item.imagen_url;
 
@@ -567,6 +567,14 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                                     <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
                                     <Text style={styles.figmaPopularText}>{statusConfig.text}</Text>
                                 </BlurView>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); setShowDeleteModal(true); }}
+                                style={styles.figmaDeleteBtn}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                activeOpacity={0.7}
+                            >
+                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
 
@@ -610,6 +618,14 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                                     <Text style={styles.figmaPopularText}>{statusConfig.text}</Text>
                                 </BlurView>
                             </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); setShowDeleteModal(true); }}
+                                style={styles.figmaDeleteBtn}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                activeOpacity={0.7}
+                            >
+                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFFFFF" />
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.figmaImageBottomRow}>
@@ -646,6 +662,14 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                                     <View style={[styles.statusDot, { backgroundColor: statusConfig.color }]} />
                                     <Text style={styles.figmaPopularText}>{statusConfig.text}</Text>
                                 </BlurView>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={(e) => { e.stopPropagation(); setShowDeleteModal(true); }}
+                                style={styles.figmaDeleteBtn}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                activeOpacity={0.7}
+                            >
+                                <MaterialCommunityIcons name="trash-can-outline" size={20} color="#FFFFFF" />
                             </TouchableOpacity>
                         </View>
 
@@ -837,7 +861,7 @@ function SkeletonCard({ isDark }) {
         <Animated.View style={[styles.figmaCardContainer, animatedStyle, { backgroundColor: colores.skeletonBg }]}>
             {/* Bloque grande superior simulando la imagen de la tarjeta */}
             <View style={[styles.figmaImageSection, { backgroundColor: colores.skeletonBadgeBg, height: 210, marginBottom: 12 }]} />
-            
+
             {/* Bloques de líneas simulando los textos (estilo YouTube) */}
             <View style={{ gap: 8 }}>
                 <View style={[styles.skeletonLine, { backgroundColor: colores.skeletonBadgeBg, width: '85%', height: 18, borderRadius: 6 }]} />
@@ -1619,6 +1643,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         zIndex: 2,
+    },
+    figmaDeleteBtn: {
+        padding: 2,
     },
     figmaPopularBadge: {
         flexDirection: 'row',
