@@ -1,38 +1,40 @@
-import React, { useCallback, useRef, useState } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Image,
-    FlatList,
-    TouchableOpacity,
-    RefreshControl,
-    Dimensions,
-    ScrollView,
-    Alert,
-    ActivityIndicator,
-    Modal,
-    Pressable,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    Modal,
+    Pressable,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    useAnimatedScrollHandler,
-    withTiming,
-    withDelay,
     Easing,
     useAnimatedReaction,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withTiming
 } from 'react-native-reanimated';
-import { router } from 'expo-router';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { createProyectosStyles } from './proyectosStyles';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { softDeleteProyecto } from '../../../db';
+import {
+    EmptyStateGuide,
+} from '../../../services/onboarding';
+import { proyectosLocalService } from '../../../services/proyectos/proyectosLocalService';
 import { useTheme } from '../../../services/theme';
 import { SkeletonCard } from '../../../src/styles/global/SkeletonCard';
-import { proyectosLocalService } from '../../../services/proyectos/proyectosLocalService';
-import { softDeleteProyecto } from '../../../db';
+import { createProyectosStyles } from './proyectosStyles';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const TABS = ['TODOS', 'ACTIVOS', 'PENDIENTES', 'INACTIVOS'];
@@ -85,7 +87,7 @@ const EstadoBadge = ({ estado, estilos }) => {
     const getBadgeStyle = () => {
         if (isInactivo) return [estilos.cardBadge, { backgroundColor: 'rgba(142, 142, 147, 0.2)' }];
         if (isPendiente) return [estilos.cardBadge, estilos.cardBadgePending];
-        return estilos.cardBadge; // Verde para activo
+        return estilos.cardBadge; 
     };
 
     const getTextStyle = () => {
@@ -126,9 +128,7 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
 
         setIsDeleting(true);
         try {
-            // Eliminar localmente primero (soft delete)
             await softDeleteProyecto(uuid);
-            // Luego eliminar en API
             const result = await proyectosLocalService.eliminarProyecto(uuid);
             if (result && result.success) {
                 if (onDelete) onDelete();
@@ -191,7 +191,6 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
                         </View>
                     )}
 
-                    {/* Botón Mis Cultivos */}
                     <TouchableOpacity
                         style={misCultivosButtonStyles.misCultivosBtn}
                         onPress={() => router.push(`/mis-cultivos?proyectoId=${proyecto.uuid_movil || proyecto.id}`)}
@@ -203,7 +202,6 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
                 </View>
             </TouchableOpacity>
 
-            {/* Modal de confirmación para eliminar */}
             <Modal
                 visible={showDeleteModal}
                 transparent
@@ -225,7 +223,7 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
                             </Text>
 
                             <Text style={[deleteStyles.deleteModalSubtitle, { color: '#FF3B30', fontWeight: '600' }]}>
-                                Esta acci&#243;n eliminar&#225; &quot;{proyecto.titulo}&quot; de forma permanente.
+                                Esta acción eliminará "{proyecto.titulo}" de forma permanente.
                             </Text>
 
                             <View style={deleteStyles.deleteModalButtons}>
@@ -258,23 +256,36 @@ const ProyectoCard = ({ proyecto, estilos, onDelete }) => {
     );
 };
 
-const EmptyState = ({ estilos, filtroActivo }) => (
-    <View style={estilos.emptyContainer}>
-        <MaterialCommunityIcons name="folder-open-outline" size={64} color={estilos.emptyIcon?.color || '#38383A'} />
-        <Text style={estilos.emptyText}>
-            {filtroActivo === 'TODOS'
-                ? 'No hay proyectos registrados'
-                : filtroActivo === 'ACTIVOS'
-                ? 'No hay proyectos activos'
-                : filtroActivo === 'PENDIENTES'
-                ? 'No hay proyectos pendientes'
-                : 'No hay proyectos inactivos'}
-        </Text>
-        <Text style={estilos.emptySubtext}>
-            Presiona el botón + para crear tu primer proyecto
-        </Text>
-    </View>
-);
+const EmptyState = ({ estilos, filtroActivo, isLoading }) => {
+    const showGuide = filtroActivo === 'TODOS' && !isLoading;
+    if (showGuide) {
+        return (
+            <EmptyStateGuide
+              type="proyectos"
+              accent="#7C3AED"
+              primaryRoute="/proyectos/nuevo"
+              secondaryRoute="/catalogos"
+            />
+        );
+    }
+    return (
+        <View style={estilos.emptyContainer}>
+            <MaterialCommunityIcons name="folder-open-outline" size={64} color={estilos.emptyIcon?.color || '#38383A'} />
+            <Text style={estilos.emptyText}>
+                {filtroActivo === 'TODOS'
+                    ? 'No hay proyectos registrados'
+                    : filtroActivo === 'ACTIVOS'
+                    ? 'No hay proyectos activos'
+                    : filtroActivo === 'PENDIENTES'
+                    ? 'No hay proyectos pendientes'
+                    : 'No hay proyectos inactivos'}
+            </Text>
+            <Text style={estilos.emptySubtext}>
+                Presiona el botón + para crear tu primer proyecto
+            </Text>
+        </View>
+    );
+};
 
 export default function ListaProyectosUI({
     proyectos = [],
@@ -390,12 +401,9 @@ export default function ListaProyectosUI({
 
     const textPrimary = isDark ? '#FFFFFF' : '#000000';
     const textSecondary = isDark ? '#8E8E93' : '#6E6E73';
-    const cardBg = isDark ? 'rgba(28, 28, 30, 0.85)' : 'rgba(255, 255, 255, 0.85)';
-    const borderColor = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)';
 
     return (
         <View style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
-            {/* Scrim de legibilidad para el status bar - solo en dark mode */}
             {isDark && (
                 <LinearGradient
                     pointerEvents="none"
@@ -404,7 +412,6 @@ export default function ListaProyectosUI({
                 />
             )}
 
-            {/* TÍTULO "Proyectos" + CONTADOR — se ocultan juntos al scrollear */}
             <View style={[styles.header, { paddingTop: insets.top + TITLE_ROW_MARGIN_TOP }]}>
                 <View style={styles.headerTopRow}>
                     <Animated.View style={titleAnimatedStyle}>
@@ -412,7 +419,6 @@ export default function ListaProyectosUI({
                     </Animated.View>
 
                     <View style={styles.headerButtons}>
-
                         <Animated.View style={counterAnimatedStyle}>
                             <BlurView intensity={isDark ? 55 : 80} tint={isDark ? 'dark' : 'light'} style={styles.counterGlassPill}>
                                 <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(30,30,32,0.35)' : 'rgba(255,255,255,0.45)' }]} />
@@ -436,41 +442,39 @@ export default function ListaProyectosUI({
                 </View>
             </View>
 
-            {/* TABS — liquid glass, fijados debajo del header */}
             <View style={[styles.pinnedTabsWrap, { paddingTop: insets.top + TITLE_ROW_MARGIN_TOP + TITLE_ROW_HEIGHT + TABS_ROW_MARGIN_TOP }]}>
                 <Animated.View style={tabsAnimatedStyle}>
-                    <BlurView intensity={isDark ? 45 : 65} tint={isDark ? 'dark' : 'light'} style={styles.tabsGlassContainer}>
-                        <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(20,20,22,0.30)' : 'rgba(255,255,255,0.35)' }]} />
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
-                            {TABS.map((tab, index) => {
-                                const active = filtroActivo === tab;
-                                return (
-                                    <TouchableOpacity
-                                        key={tab}
-                                        activeOpacity={0.7}
-                                        onPress={() => handleTabPress(tab, index)}
-                                        style={styles.filterTabTouchable}
-                                    >
-                                        {active ? (
-                                            <BlurView intensity={isDark ? 60 : 85} tint={isDark ? 'dark' : 'light'} style={styles.filterTabActiveGlass}>
-                                                <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' }]} />
-                                                <View style={[styles.filterTabBorder, { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' }]} />
-                                                <Text style={[styles.filterTabText, { color: textPrimary, fontWeight: '800' }]}>{tab}</Text>
-                                            </BlurView>
-                                        ) : (
-                                            <View style={styles.filterTabInactive}>
-                                                <Text style={[styles.filterTabText, { color: textSecondary }]}>{tab}</Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </ScrollView>
-                    </BlurView>
+                      <BlurView intensity={isDark ? 45 : 65} tint={isDark ? 'dark' : 'light'} style={styles.tabsGlassContainer}>
+                          <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(20,20,22,0.30)' : 'rgba(255,255,255,0.35)' }]} />
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
+                              {TABS.map((tab, index) => {
+                                  const active = filtroActivo === tab;
+                                  return (
+                                      <TouchableOpacity
+                                          key={tab}
+                                          activeOpacity={0.7}
+                                          onPress={() => handleTabPress(tab, index)}
+                                          style={styles.filterTabTouchable}
+                                      >
+                                          {active ? (
+                                              <BlurView intensity={isDark ? 60 : 85} tint={isDark ? 'dark' : 'light'} style={styles.filterTabActiveGlass}>
+                                                  <View style={[StyleSheet.absoluteFill, { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' }]} />
+                                                  <View style={[styles.filterTabBorder, { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' }]} />
+                                                  <Text style={[styles.filterTabText, { color: textPrimary, fontWeight: '800' }]}>{tab}</Text>
+                                              </BlurView>
+                                          ) : (
+                                              <View style={styles.filterTabInactive}>
+                                                  <Text style={[styles.filterTabText, { color: textSecondary }]}>{tab}</Text>
+                                              </View>
+                                          )}
+                                      </TouchableOpacity>
+                                  );
+                              })}
+                          </ScrollView>
+                      </BlurView>
                 </Animated.View>
             </View>
 
-            {/* CONTENIDO — swipe horizontal entre listas */}
             <View style={styles.contentWrapper}>
                 <ScrollView
                     ref={horizontalScrollRef}
@@ -492,8 +496,13 @@ export default function ListaProyectosUI({
                                 <FlatList
                                     data={datos}
                                     keyExtractor={(item) => item.uuid_movil || item.id?.toString() || `proyecto-${item.titulo}-${item.estado}`}
-                                    renderItem={({ item }) => <ProyectoCard proyecto={item} estilos={estilos} onDelete={onRefresh} />}
-                                    ListEmptyComponent={isLoading && datos.length === 0 ? <SkeletonCard isDark={isDark} /> : <EmptyState estilos={estilos} filtroActivo={tab} />}
+                                    renderItem={({ item, index }) => {
+                                        const card = (
+                                            <ProyectoCard proyecto={item} estilos={estilos} onDelete={onRefresh} />
+                                        );
+                                        return card;
+                                    }}
+                                    ListEmptyComponent={isLoading && datos.length === 0 ? <SkeletonCard isDark={isDark} /> : <EmptyState estilos={estilos} filtroActivo={tab} isLoading={isLoading} />}
                                     contentContainerStyle={datos.length === 0
                                         ? [estilos.emptyList, { paddingTop: pinnedTabsHeight }]
                                         : [estilos.list, { paddingTop: pinnedTabsHeight }]
@@ -547,24 +556,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
-    misCultivosButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 16,
-        gap: 4,
-    },
-    misCultivosText: {
-        fontSize: 12,
-        fontWeight: '700',
-    },
-    headerHomeTitle: {
-        fontSize: 28,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
-
     brandTouchable: {
         borderRadius: 28,
         shadowColor: '#000',
@@ -603,7 +594,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: -0.4,
     },
-
     counterGlassPill: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -679,9 +669,6 @@ const styles = StyleSheet.create({
     contentWrapper: { flex: 1 },
 });
 
-// ============================================
-// DELETE MODAL STYLES
-// ============================================
 const deleteStyles = StyleSheet.create({
     deleteModalOverlay: {
         flex: 1,
@@ -755,9 +742,6 @@ const deleteStyles = StyleSheet.create({
     },
 });
 
-// ============================================
-// MIS CULTIVOS BUTTON STYLES (CARD)
-// ============================================
 const misCultivosButtonStyles = StyleSheet.create({
     misCultivosBtn: {
         flexDirection: 'row',

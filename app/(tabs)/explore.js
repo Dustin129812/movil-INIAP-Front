@@ -4,25 +4,26 @@
 // Navegacion: Tab "Ajustes" - configuracion de usuario y app
 // Estructura: Perfil + Apariencia + Navegacion + Logout
 
-import React, { useState } from 'react';
-import { Alert, Image, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View, StatusBar } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  useAnimatedScrollHandler,
-  useAnimatedReaction,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { Alert, Image, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, {
+    Easing,
+    useAnimatedReaction,
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DynamicIslandNotification } from '../../components/ui';
 import { useAuth } from '../../services/auth';
 import { useDeviceInfo } from '../../services/device';
+import { useOnboarding } from '../../services/onboarding';
 import { useTheme } from '../../services/theme';
-import { useRouter } from 'expo-router';
 
 // --- ESTILOS ---
 // Origen: app/styles/exploreStyles.js
@@ -89,6 +90,7 @@ export default function SettingsScreen() {
   const { deviceInfo } = useDeviceInfo();
   const { nombreDispositivo } = deviceInfo;
   const { theme, isDark, setTheme, setSystemTheme, isSystemTheme } = useTheme();
+  const { restartWalkthrough, resetAll } = useOnboarding();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -436,6 +438,37 @@ export default function SettingsScreen() {
                   </Text>
                   <Text style={styles.navRowSub} numberOfLines={1}>
                     UUID, modelo y sistema
+                  </Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color="#8E8E93" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ============================================ */}
+        {/* SECCION: TUTORIALES Y AYUDA */}
+        {/* ============================================ */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, isDark && styles.sectionTitleDark]}>
+            Tutoriales y ayuda
+          </Text>
+          <View style={[styles.card, isDark && styles.cardDark]}>
+            <TouchableOpacity
+              style={[styles.row, styles.lastRow]}
+              onPress={() => restartWalkthrough()}
+              activeOpacity={0.7}
+            >
+              <View style={styles.navRowLeft}>
+                <View style={[styles.navIconWrap, isDark && styles.navIconWrapDark, { backgroundColor: isDark ? 'rgba(11,107,69,0.18)' : 'rgba(16,185,129,0.14)' }]}>
+                  <MaterialCommunityIcons name="play-circle-outline" size={16} color="#0b6b45" />
+                </View>
+                <View>
+                  <Text style={[styles.rowLabel, isDark && styles.textWhite]}>
+                    Repetir bienvenida
+                  </Text>
+                  <Text style={styles.navRowSub} numberOfLines={1}>
+                    Ver de nuevo el tour inicial
                   </Text>
                 </View>
               </View>
