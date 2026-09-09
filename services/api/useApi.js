@@ -162,7 +162,10 @@ export function useApi() {
     try {
       const respuesta = await fetch(`${URL_API}/agrodecide/user/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({
           email: credenciales.email,
           password: credenciales.password,
@@ -170,7 +173,15 @@ export function useApi() {
         }),
       });
 
-      const datos = await respuesta.json();
+      const texto = await respuesta.text();
+      let datos;
+      try {
+        datos = JSON.parse(texto);
+      } catch (e) {
+        console.error('Respuesta no JSON en user/login:', texto);
+        setCargando(false);
+        return { success: false, message: 'El servidor no devolvió una respuesta JSON válida.' };
+      }
 
       if (datos.success && datos.data?.token) {
         const token = datos.data.token;
@@ -193,6 +204,7 @@ export function useApi() {
       setCargando(false);
       return { success: false, message: datos.message || 'Credenciales incorrectas' };
     } catch (error) {
+      console.error('Error en login:', error);
       setError('Error de red');
       setCargando(false);
       return { success: false, message: 'Error de red' };
@@ -202,13 +214,14 @@ export function useApi() {
   const loginInvitado = useCallback(async (uuid, modelo, sistemaOperativo, hardware) => {
     setCargando(true);
     setError(null);
-console.log('URL LOGIN:', `${URL_API}/agrodecide/user/login`);
-
 
     try {
       const respuesta = await fetch(`${URL_API}/agrodecide/guest/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: JSON.stringify({
           device_uuid: uuid,
           modelo: modelo || null,
@@ -217,7 +230,15 @@ console.log('URL LOGIN:', `${URL_API}/agrodecide/user/login`);
         }),
       });
 
-      const datos = await respuesta.json();
+      const texto = await respuesta.text();
+      let datos;
+      try {
+        datos = JSON.parse(texto);
+      } catch (e) {
+        console.error('Respuesta no JSON en guest/login:', texto);
+        setCargando(false);
+        return { success: false, message: 'El servidor no devolvió una respuesta JSON válida.' };
+      }
 
       if (datos.access_token) {
         const token = datos.access_token;
@@ -238,13 +259,15 @@ console.log('URL LOGIN:', `${URL_API}/agrodecide/user/login`);
       setCargando(false);
       return { success: false, message: datos.message || 'No se pudo iniciar como invitado' };
     } catch (error) {
-    console.error('ERROR REAL DE LOGIN:', error);
+      console.error('ERROR REAL DE LOGIN:', error);
 
-    return {
+      return {
         success: false,
         message: error instanceof Error ? error.message : String(error),
-    };
-}
+      };
+    } finally {
+      setCargando(false);
+    }
   }, [guardarSesion]);
 
   const cerrarSesion = useCallback(async () => {

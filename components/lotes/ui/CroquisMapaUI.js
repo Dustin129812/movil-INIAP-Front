@@ -9,22 +9,19 @@ import {
     FlatList,
     ScrollView,
     Animated,
-    Dimensions,
     Platform,
     Keyboard,
     Alert,
 } from 'react-native';
-import MapView, { Polygon, Marker } from 'react-native-maps';
+import FreeMapView from './FreeMapView';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
 import { WebView } from 'react-native-webview';
 import { useCroquisMapa } from '../hooks/useCroquisMapa';
 import { useTheme } from '../../../services/theme';
 import { useLocalNotifications } from '../../notifications/hooks/useLocalNotifications';
 import { useSearch } from '../context/SearchContext';
-
-const { width, height } = Dimensions.get('window');
 
 const calcularAreaPoligono = (puntos) => {
     if (!puntos || puntos.length < 3) return 0;
@@ -45,7 +42,6 @@ const LUGARES_SUGERIDOS = [
 ];
 
 export default function CroquisMapaUI() {
-    const router = useRouter();
     const { edit } = useLocalSearchParams();
     const editLoteId = edit ? parseInt(edit) : null;
 
@@ -62,7 +58,7 @@ export default function CroquisMapaUI() {
         showForm, setShowForm, form, updateForm,
         isSelectorVisible, setIsSelectorVisible, selectorType, selectorOptions, ubicacionSeleccionada,
         setCrosshairLocation, centrarEnGPS, toggleTracking, agregarVerticeManual, deshacerUltimoPunto,
-        preGuardarLote, abrirSelector, handleSelectOption, confirmarGuardado, origen, mostrarCondiciones,
+        preGuardarLote, abrirSelector, handleSelectOption, confirmarGuardado, mostrarCondiciones,
         setMostrarCondiciones, mapType, rotarTipoMapa, isEditMode, editLoteData,
         setImagenUrlLote
     } = useCroquisMapa(editLoteId, handleLoteSaved, recargar);
@@ -76,6 +72,8 @@ export default function CroquisMapaUI() {
     const [showStreetViewModal, setShowStreetViewModal] = useState(false);
     const [pinScale] = useState(new Animated.Value(1));
     const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+    const streetViewEmbedUrl = `https://www.google.com/maps?q=${location?.latitude || -0.22},${location?.longitude || -78.51}&layer=c&cbll=${location?.latitude || -0.22},${location?.longitude || -78.51}&output=svembed`;
 
     const mapViewRef = useRef(null);
 
@@ -132,7 +130,7 @@ export default function CroquisMapaUI() {
             setImagenUrlLote(cleanUri);
             return cleanUri;
         } catch (error) {
-            Alert.alert('Error', 'No se pudo capturar la imagen del mapa');
+            console.log('Advertencia al capturar snapshot del mapa:', error);
             return null;
         }
     };
@@ -166,41 +164,23 @@ export default function CroquisMapaUI() {
     const textoArea = mostrarHectareas ? `${(areaM2 / 10000).toFixed(2)} ha` : `${areaM2.toFixed(2)} m²`;
     const containerBg = isDark ? '#121212' : '#F2F2F7';
 
-    const currentLat = location?.latitude || -0.22;
-    const currentLng = location?.longitude || -78.51;
-
     return (
         <View style={[styles.container, { backgroundColor: containerBg }]}>
             <View ref={mapViewRef} collapsable={false} style={styles.map}>
-                <MapView
+                <FreeMapView
                     ref={mapRef}
                     style={styles.map}
                     initialRegion={location}
                     onRegionChangeComplete={(reg) => setCrosshairLocation({ latitude: reg.latitude, longitude: reg.longitude })}
+                    onRegionChange={(reg) => setCrosshairLocation({ latitude: reg.latitude, longitude: reg.longitude })}
                     mapType={mapType}
                     showsUserLocation={true}
-                    showsCompass={false}
+                    userLocation={location}
+                    points={points}
                     scrollEnabled={!isTracking}
                     zoomEnabled={!isTracking}
-                    pitchEnabled={true} 
-                    showsBuildings={true} 
-                >
-                    {points.length > 2 && (
-                        <Polygon
-                            coordinates={points}
-                            strokeColor="#30D158"
-                            fillColor="rgba(48, 209, 88, 0.25)"
-                            strokeWidth={2.5}
-                        />
-                    )}
-                    {points.map((p, index) => (
-                        <Marker key={index} coordinate={p} anchor={{ x: 0.5, y: 0.5 }}>
-                            <View style={styles.vertexMarker}>
-                                <Text style={styles.vertexText}>{index + 1}</Text>
-                            </View>
-                        </Marker>
-                    ))}
-                </MapView>
+                    is3D={is3D}
+                />
             </View>
 
             {!isTracking && !showForm && (
@@ -291,7 +271,7 @@ export default function CroquisMapaUI() {
                             const imageUri = await capturarImagenMapa();
                             setImagenUrlLote(imageUri);
                             preGuardarLote();
-                        } catch (error) {
+                        } catch (_error) {
                             Alert.alert('Error', 'No se pudo procesar');
                         }
                     }

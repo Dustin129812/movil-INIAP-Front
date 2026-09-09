@@ -58,7 +58,7 @@
 
 | Biblioteca | Versión | Uso |
 |------------|---------|-----|
-| `react-native-maps` | 1.20.1 | Mapas interactivos |
+| `react-native-webview` (Leaflet / OpenStreetMap / Esri) | 13.15.0 | Mapas interactivos 100% gratuitos sin API key |
 | `expo-location` | ~19.0.8 | Localización GPS |
 
 ### 1.7 Red y Conectividad
