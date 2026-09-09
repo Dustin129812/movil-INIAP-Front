@@ -43,6 +43,45 @@ export const exploreStyles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerTitle: { fontSize: 28, fontWeight: '700', color: '#000000', letterSpacing: -0.2 },
 
+  brandTouchable: {
+    borderRadius: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 7 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 5,
+  },
+  brandPill: {
+    height: 56,
+    borderRadius: 28,
+    paddingLeft: 10,
+    paddingRight: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    overflow: 'hidden',
+  },
+  brandGlassBorder: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 28,
+    borderWidth: 1,
+  },
+  brandLogoDisc: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandLogo: {
+    width: 32,
+    height: 32,
+  },
+  brandPillTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.4,
+  },
+
   // --- PERFIL APPLE ACCOUNT ---
   appleProfileSection: {
     alignItems: 'center',

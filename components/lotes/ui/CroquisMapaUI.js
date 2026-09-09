@@ -19,6 +19,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
 import { WebView } from 'react-native-webview';
+import { BlurView } from 'expo-blur';
 import { useCroquisMapa } from '../hooks/useCroquisMapa';
 import { useTheme } from '../../../services/theme';
 import { useLocalNotifications } from '../../notifications/hooks/useLocalNotifications';
@@ -71,7 +72,7 @@ export default function CroquisMapaUI() {
     const [busquedaText, setBusquedaText] = useState('');
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [resultadosBusqueda, setResultadosBusqueda] = useState([]);
-    
+
     const [is3D, setIs3D] = useState(false);
     const [showStreetViewModal, setShowStreetViewModal] = useState(false);
     const [pinScale] = useState(new Animated.Value(1));
@@ -182,8 +183,8 @@ export default function CroquisMapaUI() {
                     showsCompass={false}
                     scrollEnabled={!isTracking}
                     zoomEnabled={!isTracking}
-                    pitchEnabled={true} 
-                    showsBuildings={true} 
+                    pitchEnabled={true}
+                    showsBuildings={true}
                 >
                     {points.length > 2 && (
                         <Polygon
@@ -309,57 +310,61 @@ export default function CroquisMapaUI() {
                 <View style={[styles.bottomControlContainer, isSearchFocused && { bottom: keyboardHeight + 16 }]}>
                     <Animated.View style={{ transform: [{ scale: pinScale }], width: '100%', marginBottom: 10 }}>
                         <TouchableOpacity
-                            style={[styles.applePinButton, isTracking && styles.tileDisabled]}
+                            style={[styles.applePinButtonWrapper, isTracking && styles.tileDisabled]}
                             onPress={handleFijarPuntoAnimado}
                             disabled={isTracking}
                             activeOpacity={0.85}
                         >
-                            <View style={styles.applePinIconBg}>
-                                <MaterialCommunityIcons name="map-marker-plus" size={22} color="#FFFFFF" />
-                            </View>
-                            <View style={styles.applePinTextContainer}>
-                                <Text style={styles.applePinTitle}>Fijar Punto Actual</Text>
-                                <Text style={styles.applePinSub}>Añade un nuevo vértice al polígono</Text>
-                            </View>
-                            <MaterialCommunityIcons name="chevron-right" size={20} color="rgba(255,255,255,0.4)" />
+                            <BlurView intensity={40} tint="dark" style={styles.applePinButton}>
+                                <View style={styles.applePinIconBg}>
+                                    <MaterialCommunityIcons name="map-marker-plus" size={22} color="#FFFFFF" />
+                                </View>
+                                <View style={styles.applePinTextContainer}>
+                                    <Text style={styles.applePinTitle}>Fijar Punto Actual</Text>
+                                    <Text style={styles.applePinSub}>Añade un nuevo vértice al polígono</Text>
+                                </View>
+                                <MaterialCommunityIcons name="chevron-right" size={20} color="rgba(255,255,255,0.4)" />
+                            </BlurView>
                         </TouchableOpacity>
                     </Animated.View>
 
-                    <View style={[styles.glassSearchIsland, isSearchFocused && styles.glassSearchExpanded]}>
-                        <View style={styles.glassSearchRow}>
-                            <MaterialCommunityIcons name="magnify" size={20} color="rgba(255,255,255,0.7)" style={{ marginRight: 10 }} />
-                            <TextInput
-                                style={styles.glassSearchInput}
-                                placeholder="Buscar lote, sector o lugar..."
-                                placeholderTextColor="rgba(255,255,255,0.5)"
-                                value={busquedaText}
-                                onChangeText={handleSearchTextChange}
-                                onFocus={() => setIsSearchFocused(true)}
-                                onBlur={() => {
-                                    setTimeout(() => setIsSearchFocused(false), 200);
-                                }}
-                            />
-                            {busquedaText.length > 0 && (
-                                <TouchableOpacity onPress={() => handleSearchTextChange('')}>
-                                    <MaterialCommunityIcons name="close-circle" size={18} color="rgba(255,255,255,0.7)" />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-
-                        {isSearchFocused && resultadosBusqueda.length > 0 && (
-                            <View style={styles.glassResultsList}>
-                                {resultadosBusqueda.map((item) => (
-                                    <TouchableOpacity
-                                        key={item.id}
-                                        style={styles.glassResultItem}
-                                        onPress={() => seleccionarLugarBuscado(item)}
-                                    >
-                                        <MaterialCommunityIcons name="map-marker-outline" size={18} color="#30D158" style={{ marginRight: 10 }} />
-                                        <Text style={styles.glassResultText}>{item.title}</Text>
+                    <View style={[styles.glassSearchWrapper, isSearchFocused && styles.glassSearchExpandedWrapper]}>
+                        <BlurView intensity={40} tint="dark" style={styles.glassSearchIsland}>
+                            <View style={styles.glassSearchRow}>
+                                <MaterialCommunityIcons name="magnify" size={20} color="rgba(255,255,255,0.7)" style={{ marginRight: 10 }} />
+                                <TextInput
+                                    style={styles.glassSearchInput}
+                                    placeholder="Buscar lote, sector o lugar..."
+                                    placeholderTextColor="rgba(255,255,255,0.5)"
+                                    value={busquedaText}
+                                    onChangeText={handleSearchTextChange}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => {
+                                        setTimeout(() => setIsSearchFocused(false), 200);
+                                    }}
+                                />
+                                {busquedaText.length > 0 && (
+                                    <TouchableOpacity onPress={() => handleSearchTextChange('')}>
+                                        <MaterialCommunityIcons name="close-circle" size={18} color="rgba(255,255,255,0.7)" />
                                     </TouchableOpacity>
-                                ))}
+                                )}
                             </View>
-                        )}
+
+                            {isSearchFocused && resultadosBusqueda.length > 0 && (
+                                <View style={styles.glassResultsList}>
+                                    {resultadosBusqueda.map((item) => (
+                                        <TouchableOpacity
+                                            key={item.id}
+                                            style={styles.glassResultItem}
+                                            onPress={() => seleccionarLugarBuscado(item)}
+                                        >
+                                            <MaterialCommunityIcons name="map-marker-outline" size={18} color="#30D158" style={{ marginRight: 10 }} />
+                                            <Text style={styles.glassResultText}>{item.title}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+                        </BlurView>
                     </View>
                 </View>
             )}
@@ -384,8 +389,8 @@ export default function CroquisMapaUI() {
                         domStorageEnabled={true}
                         startInLoadingState={true}
                     />
-                    <TouchableOpacity 
-                        style={styles.svCloseBtn} 
+                    <TouchableOpacity
+                        style={styles.svCloseBtn}
                         onPress={() => setShowStreetViewModal(false)}
                         activeOpacity={0.8}
                     >
@@ -446,7 +451,7 @@ export default function CroquisMapaUI() {
                             </TouchableOpacity>
 
                             <Text style={styles.inputLabel}>Ubicación del Lote *</Text>
-                            
+
                             <TouchableOpacity style={styles.dropdownBtn} onPress={() => abrirSelector('provincia')}>
                                 <Text style={styles.dropdownLabel}>Provincia</Text>
                                 <View style={styles.dropdownValueContainer}>
@@ -719,10 +724,18 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
 
-    applePinButton: {
+    // Wrapper afuera: lleva la sombra (las sombras no se ven bien si el hijo tiene overflow:hidden)
+    applePinButtonWrapper: {
         width: '100%',
-        backgroundColor: 'rgba(25, 25, 30, 0.65)',
-        backdropFilter: 'blur(25px)',
+        borderRadius: 22,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.35,
+        shadowRadius: 10,
+        elevation: 8,
+    },
+    // BlurView adentro: lleva el recorte (overflow hidden) y el efecto de vidrio real
+    applePinButton: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: 12,
@@ -730,11 +743,8 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         borderWidth: 1,
         borderColor: 'rgba(255, 255, 255, 0.2)',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-        elevation: 8,
+        overflow: 'hidden',
+        backgroundColor: 'rgba(25, 25, 30, 0.35)', // fallback visible mientras carga el blur nativo
     },
     applePinIconBg: {
         width: 40,
@@ -760,24 +770,29 @@ const styles = StyleSheet.create({
         marginTop: 1,
     },
 
-    glassSearchIsland: {
+    // Wrapper afuera: sombra
+    glassSearchWrapper: {
         width: '100%',
-        backgroundColor: 'rgba(25, 25, 30, 0.65)',
-        backdropFilter: 'blur(25px)',
         borderRadius: 22,
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderWidth: 1,
-        borderColor: 'rgba(255, 255, 255, 0.2)',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 6 },
         shadowOpacity: 0.35,
         shadowRadius: 10,
         elevation: 8,
     },
-    glassSearchExpanded: {
-        backgroundColor: 'rgba(25, 25, 30, 0.92)',
-        paddingBottom: 14,
+    glassSearchExpandedWrapper: {
+        // el wrapper no cambia de fondo; solo controla la sombra al expandirse
+    },
+    // BlurView adentro: recorte + vidrio real
+    glassSearchIsland: {
+        width: '100%',
+        borderRadius: 22,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderWidth: 1,
+        borderColor: 'rgba(255, 255, 255, 0.2)',
+        overflow: 'hidden',
+        backgroundColor: 'rgba(25, 25, 30, 0.35)', // fallback visible mientras carga el blur nativo
     },
     glassSearchRow: {
         flexDirection: 'row',

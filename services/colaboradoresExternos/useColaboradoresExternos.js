@@ -99,6 +99,7 @@ const combinarColaboradoresExternos = (locales = [], backend = []) => {
     combinados[indice] = {
       ...existente,
       ...normalizado,
+      id: normalizado.id || existente.id || null,
       participacion: normalizado.participacion || existente.participacion,
       local_id: existente.local_id || normalizado.local_id,
       server_id: normalizado.server_id || existente.server_id,

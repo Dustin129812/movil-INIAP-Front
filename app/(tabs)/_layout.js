@@ -1,39 +1,33 @@
-// ============================================
-// TAB LAYOUT - Liquid Glass Navigation
-// ============================================
-// Navegacion principal con tab bar personalizado estilo Liquid Glass
-// Estructura: Tabs + Custom TabBar con glass morphism
-
-import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, Dimensions, Text, TextInput, Keyboard, Platform } from 'react-native';
-import { useSafeAreaInsets, SafeAreaProvider } from 'react-native-safe-area-context';
-import { Tabs, useRouter, usePathname } from 'expo-router';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  FadeInUp,
-  FadeOutDown,
-  FadeIn,
-  FadeOut,
-  interpolate,
-  runOnJS,
-} from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
+import { Tabs, usePathname, useRouter } from 'expo-router';
+import { useEffect, useRef, useState } from 'react';
+import { Dimensions, Keyboard, Platform, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useTheme } from '../../services/theme';
+import Animated, {
+    FadeIn,
+    FadeInUp,
+    FadeOut,
+    FadeOutDown,
+    interpolate,
+    runOnJS,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SearchProvider, useSearch } from '../../components/lotes/context/SearchContext';
 import { sincronizarCatalogos } from '../../services/catalogosSyncService';
+import { useTheme } from '../../services/theme';
 
 // --- TEMA DEL TAB BAR ---
 // Origen: services/theme/tabBarTheme.js
 import {
-  TAB_BAR_COLORS,
-  TAB_BAR_DIMENSIONS,
-  TAB_BAR_SPRING_CONFIG,
-  getTabBarColors,
+    TAB_BAR_COLORS,
+    TAB_BAR_DIMENSIONS,
+    TAB_BAR_SPRING_CONFIG,
+    getTabBarColors,
 } from '../../services/theme';
 
 // --- ESTILOS ---
@@ -308,108 +302,107 @@ function CleanLiquidGlassTabBar({ state, navigation }) {
 
             {/* --- MAIN PILL (Glass Tabs) --- */}
             <Animated.View style={[tabBarStyles.mainPillContainer, animatedMainPillStyle]}>
-              <BlurView
-                intensity={TAB_BAR_DIMENSIONS.GLASS_INTENSITY}
-                tint={colors.blurTint}
-                experimentalBlurMethod="dimezisBlurView"
-                style={[tabBarStyles.glassContainer, { backgroundColor: colors.glassBgColor, borderColor: colors.glassBorderColor }]}
-              >
+                <BlurView
+                  intensity={TAB_BAR_DIMENSIONS.GLASS_INTENSITY}
+                  tint={colors.blurTint}
+                  experimentalBlurMethod="dimezisBlurView"
+                  style={[tabBarStyles.glassContainer, { backgroundColor: colors.glassBgColor, borderColor: colors.glassBorderColor }]}
+                >
 
-                {/* --- BUBBLE INDICATOR --- */}
-                {!isSearchOpen && (
-                  <GestureDetector gesture={composedGesture}>
-                    <Animated.View
-                      style={[
-                        tabBarStyles.activeBlobShadowWrapper,
-                        animatedIndicatorStyle,
-                        isDark ? null : tabBarStyles.activeBlobShadowLight,
-                      ]}
-                    >
-                      <View style={tabBarStyles.activeBlobBubble}>
-                        <BlurView
-                          intensity={TAB_BAR_DIMENSIONS.BUBBLE_INTENSITY}
-                          tint={colors.activeBubbleTint}
-                          experimentalBlurMethod="dimezisBlurView"
-                          style={[
-                            tabBarStyles.activeBlobBlur,
-                            {
-                              backgroundColor: colors.activeBubbleOverlay,
-                              borderColor: colors.activeBubbleBorder,
-                              borderWidth: colors.activeBubbleBorderWidth,
-                            },
-                          ]}
-                        />
-                      </View>
-                    </Animated.View>
-                  </GestureDetector>
-                )}
-
-                {/* --- TAB ITEMS --- */}
-                {state.routes.map((route, index) => {
-                  const isFocused = state.index === index;
-                  const routeNameLower = route.name.toLowerCase();
-
-                  if (isSearchOpen && index !== 0) return null;
-
-                  const onPress = () => {
-                    if (isSearchOpen) {
-                      setIsSearchOpen(false);
-                      router.push('/');
-                      return;
-                    }
-                    const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-                    if (!isFocused && !event.defaultPrevented) {
-                      navigation.navigate(route.name, route.params);
-                    }
-                  };
-
-                  let iconName = 'home';
-                  let labelText = route.name;
-
-                  if (routeNameLower === 'index' || routeNameLower === 'home') {
-                    labelText = 'Home';
-                    iconName = isFocused ? 'home' : 'home-outline';
-                  } else if (routeNameLower.includes('lote') || routeNameLower === 'new') {
-                    labelText = 'Lotes';
-                    iconName = isFocused ? 'map' : 'map-outline';
-                  } else if (routeNameLower.includes('proyecto')) {
-                    labelText = 'Proyectos';
-                    iconName = isFocused ? 'folder' : 'folder-outline';
-                  } else if (routeNameLower.includes('explore')) {
-                    labelText = 'Ajustes';
-                    iconName = isFocused ? 'settings' : 'settings-outline';
-                  }
-
-                  const iconColor = (isFocused && !isSearchOpen) ? colors.iconActiveColor : colors.iconInactiveColor;
-                  const textColor = colors.labelColor;
-
-                  const isHomeTab = (routeNameLower === 'index' || routeNameLower === 'home');
-                  const labelSize = isHomeTab ? 10 : 7;
-                  const iconSize = isHomeTab ? ICON_SIZE : ICON_SIZE - 4;
-
-                  return (
-                    <TouchableOpacity key={index} onPress={onPress} activeOpacity={0.6} style={tabBarStyles.tabItem}>
+                  {/* --- BUBBLE INDICATOR --- */}
+                  {!isSearchOpen && (
+                    <GestureDetector gesture={composedGesture}>
                       <Animated.View
                         style={[
-                          { alignItems: 'center', justifyContent: 'center' },
-                          { transform: [{ scale: isFocused ? 1.05 : 1 }] },
+                          tabBarStyles.activeBlobShadowWrapper,
+                          animatedIndicatorStyle,
+                          isDark ? null : tabBarStyles.activeBlobShadowLight,
                         ]}
                       >
-                        <Ionicons
-                          name={iconName}
-                          size={iconSize}
-                          color={iconColor}
-                          style={{ marginBottom: 2 }}
-                        />
-                        <Text style={[tabBarStyles.tabLabel, { color: textColor, fontSize: labelSize }]}>
-                          {labelText}
-                        </Text>
+                        <View style={tabBarStyles.activeBlobBubble}>
+                          <BlurView
+                            intensity={TAB_BAR_DIMENSIONS.BUBBLE_INTENSITY}
+                            tint={colors.activeBubbleTint}
+                            experimentalBlurMethod="dimezisBlurView"
+                            style={[
+                              tabBarStyles.activeBlobBlur,
+                              {
+                                backgroundColor: colors.activeBubbleOverlay,
+                                borderColor: colors.activeBubbleBorder,
+                                borderWidth: colors.activeBubbleBorderWidth,
+                              },
+                            ]}
+                          />
+                        </View>
                       </Animated.View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </BlurView>
-            </Animated.View>
+                    </GestureDetector>
+                  )}
+
+                  {/* --- TAB ITEMS --- */}
+                  {state.routes.map((route, index) => {
+                    const isFocused = state.index === index;
+                    const routeNameLower = route.name.toLowerCase();
+
+                    if (isSearchOpen && index !== 0) return null;
+
+                    const onPress = () => {
+                      if (isSearchOpen) {
+                        setIsSearchOpen(false);
+                        router.push('/');
+                        return;
+                      }
+                      const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+                      if (!isFocused && !event.defaultPrevented) {
+                        navigation.navigate(route.name, route.params);
+                      }
+                    };
+
+                    let iconName = 'home';
+                    let labelText = route.name;
+
+                    if (routeNameLower === 'index' || routeNameLower === 'home') {
+                      labelText = 'Home';
+                      iconName = isFocused ? 'home' : 'home-outline';
+                    } else if (routeNameLower.includes('lote') || routeNameLower === 'new') {
+                      labelText = 'Lotes';
+                      iconName = isFocused ? 'map' : 'map-outline';
+                    } else if (routeNameLower.includes('proyecto')) {
+                      labelText = 'Proyectos';
+                      iconName = isFocused ? 'folder' : 'folder-outline';
+                    } else if (routeNameLower.includes('explore')) {
+                      labelText = 'Ajustes';
+                      iconName = isFocused ? 'settings' : 'settings-outline';
+                    }
+
+                    const iconColor = (isFocused && !isSearchOpen) ? colors.iconActiveColor : colors.iconInactiveColor;
+                    const textColor = colors.labelColor;
+
+                    const labelSize = 10;
+                    const iconSize = ICON_SIZE;
+
+                    return (
+                      <TouchableOpacity key={index} onPress={onPress} activeOpacity={0.6} style={tabBarStyles.tabItem}>
+                        <Animated.View
+                          style={[
+                            { alignItems: 'center', justifyContent: 'center' },
+                            { transform: [{ scale: isFocused ? 1.05 : 1 }] },
+                          ]}
+                        >
+                          <Ionicons
+                            name={iconName}
+                            size={iconSize}
+                            color={iconColor}
+                            style={{ marginBottom: 2 }}
+                          />
+                          <Text style={[tabBarStyles.tabLabel, { color: textColor, fontSize: labelSize }]}>
+                            {labelText}
+                          </Text>
+                        </Animated.View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </BlurView>
+              </Animated.View>
 
             {/* --- SEARCH BUTTON --- */}
             <Animated.View style={[tabBarStyles.searchBtnWrapper, animatedSearchContainerStyle, { marginLeft: SEARCH_GAP }]}>
@@ -501,29 +494,27 @@ export default function TabLayout() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <SearchProvider>
-        <Tabs
-          tabBar={(props) => <CleanLiquidGlassTabBar {...props} />}
-          screenOptions={{
-            headerShown: false,
-            tabBarStyle: {
-              position: 'absolute',
-              backgroundColor: 'transparent',
-              borderTopWidth: 0,
-              elevation: 0,
-            },
-            tabBarSceneStyle: {
-              backgroundColor: 'transparent',
-            },
-          }}
-        >
-          <Tabs.Screen name="index" />
-          <Tabs.Screen name="lotes" />
-          <Tabs.Screen name="proyectos" />
-          <Tabs.Screen name="explore" />
-        </Tabs>
-      </SearchProvider>
-    </SafeAreaProvider>
+    <SearchProvider>
+      <Tabs
+        tabBar={(props) => <CleanLiquidGlassTabBar {...props} />}
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: {
+            position: 'absolute',
+            backgroundColor: 'transparent',
+            borderTopWidth: 0,
+            elevation: 0,
+          },
+          tabBarSceneStyle: {
+            backgroundColor: 'transparent',
+          },
+        }}
+      >
+        <Tabs.Screen name="index" />
+        <Tabs.Screen name="lotes" />
+        <Tabs.Screen name="proyectos" />
+        <Tabs.Screen name="explore" />
+      </Tabs>
+    </SearchProvider>
   );
 }
