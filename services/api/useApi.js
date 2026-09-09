@@ -202,6 +202,8 @@ export function useApi() {
   const loginInvitado = useCallback(async (uuid, modelo, sistemaOperativo, hardware) => {
     setCargando(true);
     setError(null);
+console.log('URL LOGIN:', `${URL_API}/agrodecide/user/login`);
+
 
     try {
       const respuesta = await fetch(`${URL_API}/agrodecide/guest/login`, {
@@ -236,10 +238,13 @@ export function useApi() {
       setCargando(false);
       return { success: false, message: datos.message || 'No se pudo iniciar como invitado' };
     } catch (error) {
-      setError('Error de red');
-      setCargando(false);
-      return { success: false, message: 'Error de red' };
-    }
+    console.error('ERROR REAL DE LOGIN:', error);
+
+    return {
+        success: false,
+        message: error instanceof Error ? error.message : String(error),
+    };
+}
   }, [guardarSesion]);
 
   const cerrarSesion = useCallback(async () => {
