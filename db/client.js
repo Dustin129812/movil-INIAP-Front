@@ -555,21 +555,6 @@ export const initDb = async () => {
                 `);
             } catch (e) { /* columna ya existe */ }
 
-            // ============================================================
-            // MIGRACIÓN CRÍTICA: crear índices UNIQUE en uuid_movil
-            // ------------------------------------------------------------
-            // Estas 5 tablas se crearon arriba con `uuid_movil TEXT` sin
-            // UNIQUE, pero schema.js (Drizzle) sí declara
-            // `.unique()` sobre esa columna. Drizzle genera
-            // `onConflictDoUpdate({ target: uuid_movil })` confiando en su
-            // definición, y SQLite lo rechaza porque la tabla física nunca
-            // tuvo esa restricción:
-            //   "ON CONFLICT clause does not match any PRIMARY KEY or
-            //    UNIQUE constraint"
-            // Un índice único (CREATE UNIQUE INDEX) cumple exactamente la
-            // misma función que un UNIQUE inline para efectos de
-            // ON CONFLICT, y sí puede crearse sobre una tabla ya existente
-            // sin tener que recrearla ni migrar filas.
             const tablasConUuid = ['lotes', 'proyectos', 'ciclos_cultivo', 'visitas', 'hojas_datos'];
             for (const tabla of tablasConUuid) {
                 try {
@@ -578,9 +563,7 @@ export const initDb = async () => {
                         ON ${tabla}(uuid_movil);
                     `);
                 } catch (e) {
-                    // Solo puede fallar si ya existen uuid_movil duplicados
-                    // (no NULL) en el dispositivo. Se limpian dejando la
-                    // fila más reciente por id y se reintenta una vez.
+
                     console.warn(`[DB] Duplicados en ${tabla}.uuid_movil, limpiando antes de crear el índice único:`, e.message || e);
                     try {
                         await expoDb.execAsync(`
@@ -609,15 +592,6 @@ export const initDb = async () => {
     }
 };
 
-// ============================================================
-// Enriquecimiento de lotes con nombres legibles (provincia/canton/estacion)
-// ============================================================
-// La tabla `lotes` sólo guarda ids (provincia_id, canton_id, estacion_id).
-// Cuando los lotes vienen de la API en línea, el backend suele mandar
-// también el nombre ya resuelto (provincia: "Cañar"). Pero un lote creado
-// offline sólo tiene el id, y la UI (LotesDashboardUI) muestra
-// `item.provincia` / `item.canton` como texto. Sin este paso, esos lotes
-// se ven con "-" en cantón/provincia aunque el dato sí esté guardado.
 const construirMapaNombrePorId = (filas) => {
     const mapa = new Map();
     (filas || []).forEach(f => {
@@ -791,16 +765,14 @@ export const obtenerProyectosPorLote = async (loteUuid) => {
         .where(isNull(schema.proyectos.deleted_at));
 };
 
-// Obtener proyectos enlazados a un lote (tanto por lote_uuid directo como por relación N:M)
+
 export const obtenerProyectosEnlazadosAlLote = async (loteUuid) => {
-    // 1. Proyectos con lote_uuid directo
     const proyectosDirecto = await db
         .select()
         .from(schema.proyectos)
         .where(eq(schema.proyectos.lote_uuid, loteUuid))
         .where(isNull(schema.proyectos.deleted_at));
 
-    // 2. Proyectos enlazados por tabla N:M
     const relacionesN2M = await db
         .select()
         .from(schema.proyecto_lotes)
@@ -817,7 +789,6 @@ export const obtenerProyectosEnlazadosAlLote = async (loteUuid) => {
             .where(isNull(schema.proyectos.deleted_at));
     }
 
-    // Combinar y eliminar duplicados
     const todosProyectos = [...proyectosDirecto];
     for (const p of proyectosN2M) {
         if (!todosProyectos.some(tp => tp.uuid_movil === p.uuid_movil)) {
@@ -847,7 +818,7 @@ export const obtenerProyectosEliminados = async () => {
 };
 
 export const actualizarProyectoLocal = async (uuid_movil, datos) => {
-    // Excluir campos de relación N:M y variedad_id que no son columnas de proyectos
+
     const { lotes_ids, lotes_uuids, variedad_id, colaboradores_ids, colaboradores_externos, ...proyectoData } = datos;
     await db
         .update(schema.proyectos)
@@ -931,10 +902,10 @@ export const obtenerColaboradoresPorProyecto = async (proyectoUuid) => {
 };
 
 export const actualizarColaboradoresDelProyecto = async (proyectoUuid, usuarioIds) => {
-    // Eliminar relaciones existentes
+   
     await db.delete(schema.proyecto_colaboradores)
         .where(eq(schema.proyecto_colaboradores.proyecto_uuid, proyectoUuid));
-    // Crear nuevas relaciones
+   
     for (const usuarioId of usuarioIds) {
         await crearProyectoColaboradorRelacion(proyectoUuid, usuarioId);
     }
@@ -963,8 +934,6 @@ export const buscarColaboradoresExternosLocales = async (termino = '') => {
     );
 };
 
-// Registrar colaborador externo local.
-// Si la CI ya existe, reutiliza a la misma persona.
 export const registrarColaboradorExternoLocal = async ({
     ci,
     nombre_completo,
@@ -981,8 +950,6 @@ export const registrarColaboradorExternoLocal = async ({
     if (existentes.length > 0) {
         const existente = existentes[0];
 
-        // Si ya existe y no está sincronizado, marcar como sincronizado
-        // (asume que si se llama sin server_id, ya fue sincronizado externamente)
         if (existente.sync_status !== SYNC_STATUS.SYNCED) {
             const resultado = await db
                 .update(schema.colaboradores_externos)
@@ -998,7 +965,6 @@ export const registrarColaboradorExternoLocal = async ({
             return resultado[0] || existente;
         }
 
-        // Si ya está sincronizado, actualizar nombre si cambió y retornar
         if (server_id && Number(existente.server_id) !== Number(server_id)) {
             const resultado = await db
                 .update(schema.colaboradores_externos)
@@ -1048,8 +1014,6 @@ export const marcarColaboradorExternoComoSincronizado = async (colaboradorLocalI
         .where(eq(schema.colaboradores_externos.id, colaboradorLocalId));
 };
 
-// Marcar todos los colaboradores externos como sincronizados
-// Uso: corregir registros que se quedaron locales sin sincronizar
 export const marcarTodosColaboradoresExternosComoSincronizados = async () => {
     const todos = await db
         .select()
@@ -1070,8 +1034,6 @@ export const marcarTodosColaboradoresExternosComoSincronizados = async () => {
     return todos.length;
 };
 
-// Marcar todos los proyectos como sincronizados
-// Uso: corregir proyectos que se sincronizaron pero no se marcó el status
 export const marcarTodosProyectosComoSincronizados = async () => {
     const todos = await db
         .select()
@@ -1169,7 +1131,7 @@ export const crearProyectoColaboradorExternoRelacion = async (
     return resultado[0];
 };
 
-// Obtener colaboradores externos de un proyecto
+
 export const obtenerColaboradoresExternosPorProyecto = async (proyectoUuid) => {
     const relaciones = await db
         .select()
@@ -1202,8 +1164,7 @@ export const obtenerColaboradoresExternosPorProyecto = async (proyectoUuid) => {
         .filter(Boolean);
 };
 
-// Eliminar solamente la asociación con un proyecto.
-// La persona externa permanece disponible para otros proyectos.
+
 export const eliminarProyectoColaboradorExternoRelacion = async (
     proyectoUuid,
     colaboradorExternoId
@@ -1444,18 +1405,6 @@ export const obtenerEstacionesLocales = async () => {
 
 const alId = (v) => (v === null || v === undefined || v === '') ? null : Number(v);
 const alNombre = (item) => item?.name || item?.nombre || item?.label || '';
-
-/**
- * Guarda en SQLite los catálogos (provincias, cantones, estaciones, cultivos)
- * que llegaron del servidor, para que la app pueda usarlos sin conexión.
- *
- * REGLA DE ORO: nunca se borra una tabla hasta confirmar que hay filas
- * válidas para reemplazarla. Antes esto se hacía al revés (borrar y luego
- * validar), así que si la API mandaba un campo con nombre distinto al
- * esperado (por ejemplo "cantonId" en vez de "canton_id") el filtro dejaba
- * la lista en 0 y la tabla se quedaba vacía para siempre en modo offline,
- * aunque el catálogo hubiera funcionado bien la última vez con wifi.
- */
 const construirFilasCatalogo = (items, mapItem) => {
     if (!Array.isArray(items)) return [];
     return items
@@ -1465,9 +1414,7 @@ const construirFilasCatalogo = (items, mapItem) => {
 
 const reemplazarTabla = async (tabla, nombreCatalogo, rows) => {
     if (rows.length === 0) {
-        // No hay nada válido que guardar: se conserva lo que ya había en
-        // SQLite en vez de borrarlo. Así el modo offline nunca pierde datos
-        // por una respuesta de API mal formada.
+
         console.warn(`[DB] ${nombreCatalogo}: la API no trajo filas válidas, se conserva el catálogo local existente`);
         return;
     }
@@ -1548,8 +1495,6 @@ export const obtenerLoteLocal = async (idOrUuid) => {
     return await obtenerLoteLocalPorUuid(idOrUuid);
 };
 
-// Busca el id de una fila de catálogo a partir de su nombre (usado cuando
-// la UI edita provincia/cantón/estación como texto, ver EditLoteModal).
 const buscarIdCatalogoPorNombre = async (tabla, nombre) => {
     if (!nombre) return null;
     const filas = await db.select().from(tabla);
@@ -1559,15 +1504,6 @@ const buscarIdCatalogoPorNombre = async (tabla, nombre) => {
 };
 
 export const actualizarLoteLocal = async (uuid_movil, datos) => {
-    // `EditLoteModal` (LotesDashboardUI) edita provincia/cantón/estación
-    // como texto (el nombre elegido en el picker), pero la tabla `lotes`
-    // sólo tiene columnas de id (`provincia_id`, `canton_id`,
-    // `estacion_id`). Antes esos campos de texto se pasaban tal cual a
-    // `db.update(...).set(...)`, que no tiene esas columnas: la edición de
-    // ubicación no se guardaba (silenciosamente).
-    // Aquí se traduce nombre → id contra los catálogos locales antes de
-    // guardar. `cultivo` se descarta a propósito: en el schema pertenece
-    // al proyecto (`proyectos.cultivo_nombre`), no al lote.
     const { id, uuid_movil: _uuid, provincia, canton, estacion, cultivo, ...datosLimpios } = datos;
 
     if (provincia !== undefined) {
