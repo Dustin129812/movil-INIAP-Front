@@ -1,7 +1,7 @@
-import * as SQLite from 'expo-sqlite';
+import { eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { eq, isNull, isNotNull, inArray } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
+import * as SQLite from 'expo-sqlite';
 import * as schema from './schema';
 
 const expoDb = SQLite.openDatabaseSync('simpagi_local.db');
@@ -556,6 +556,50 @@ export const initDb = async () => {
     }
 };
 
+// ============================================================
+// Enriquecimiento de lotes con nombres legibles (provincia/canton/estacion)
+// ============================================================
+// La tabla `lotes` sólo guarda ids (provincia_id, canton_id, estacion_id).
+// Cuando los lotes vienen de la API en línea, el backend suele mandar
+// también el nombre ya resuelto (provincia: "Cañar"). Pero un lote creado
+// offline sólo tiene el id, y la UI (LotesDashboardUI) muestra
+// `item.provincia` / `item.canton` como texto. Sin este paso, esos lotes
+// se ven con "-" en cantón/provincia aunque el dato sí esté guardado.
+const construirMapaNombrePorId = (filas) => {
+    const mapa = new Map();
+    (filas || []).forEach(f => {
+        if (f?.id != null) mapa.set(f.id, f.nombre);
+    });
+    return mapa;
+};
+
+const enriquecerLotesConNombres = async (lotesRaw) => {
+    if (!Array.isArray(lotesRaw) || lotesRaw.length === 0) return lotesRaw;
+
+    const [provinciasRows, cantonesRows, estacionesRows] = await Promise.all([
+        db.select().from(schema.provincias),
+        db.select().from(schema.cantones),
+        db.select().from(schema.estaciones),
+    ]);
+
+    const nombreProvincia = construirMapaNombrePorId(provinciasRows);
+    const nombreCanton = construirMapaNombrePorId(cantonesRows);
+    const nombreEstacion = construirMapaNombrePorId(estacionesRows);
+
+    return lotesRaw.map(lote => ({
+        ...lote,
+        provincia: lote.provincia || nombreProvincia.get(lote.provincia_id) || null,
+        canton: lote.canton || nombreCanton.get(lote.canton_id) || null,
+        estacion: lote.estacion || nombreEstacion.get(lote.estacion_id) || null,
+    }));
+};
+
+const enriquecerLoteConNombres = async (lote) => {
+    if (!lote) return lote;
+    const [enriquecido] = await enriquecerLotesConNombres([lote]);
+    return enriquecido;
+};
+
 export const crearLoteLocal = async (loteData) => {
     const uuid = Crypto.randomUUID();
     const now = new Date().toISOString();
@@ -582,10 +626,11 @@ export const crearLoteLocal = async (loteData) => {
 };
 
 export const obtenerLotesLocales = async () => {
-    return await db
+    const rows = await db
         .select()
         .from(schema.lotes)
         .where(isNull(schema.lotes.deleted_at));
+    return enriquecerLotesConNombres(rows);
 };
 
 export const obtenerLotesEliminados = async () => {
@@ -1320,6 +1365,183 @@ export const obtenerVariedadesPorCultivo = async (cultivoId) => {
         .select()
         .from(schema.variedades)
         .where(eq(schema.variedades.cultivo_id, cultivoId));
+};
+
+// ============================================
+// CATÁLOGOS LOCALES (provincias, cantones, estaciones, cultivos)
+// ============================================
+
+export const obtenerProvinciasLocales = async () => {
+    return await db.select().from(schema.provincias);
+};
+
+export const obtenerCantonesLocales = async (provinciaId) => {
+    if (provinciaId !== null && provinciaId !== undefined && provinciaId !== '') {
+        return await db
+            .select()
+            .from(schema.cantones)
+            .where(eq(schema.cantones.provincia_id, Number(provinciaId)));
+    }
+    return await db.select().from(schema.cantones);
+};
+
+export const obtenerEstacionesLocales = async () => {
+    return await db.select().from(schema.estaciones);
+};
+
+const alId = (v) => (v === null || v === undefined || v === '') ? null : Number(v);
+const alNombre = (item) => item?.name || item?.nombre || item?.label || '';
+
+/**
+ * Guarda en SQLite los catálogos (provincias, cantones, estaciones, cultivos)
+ * que llegaron del servidor, para que la app pueda usarlos sin conexión.
+ *
+ * REGLA DE ORO: nunca se borra una tabla hasta confirmar que hay filas
+ * válidas para reemplazarla. Antes esto se hacía al revés (borrar y luego
+ * validar), así que si la API mandaba un campo con nombre distinto al
+ * esperado (por ejemplo "cantonId" en vez de "canton_id") el filtro dejaba
+ * la lista en 0 y la tabla se quedaba vacía para siempre en modo offline,
+ * aunque el catálogo hubiera funcionado bien la última vez con wifi.
+ */
+const construirFilasCatalogo = (items, mapItem) => {
+    if (!Array.isArray(items)) return [];
+    return items
+        .map(mapItem)
+        .filter(r => r.id !== null && r.nombre && r.nombre.trim());
+};
+
+const reemplazarTabla = async (tabla, nombreCatalogo, rows) => {
+    if (rows.length === 0) {
+        // No hay nada válido que guardar: se conserva lo que ya había en
+        // SQLite en vez de borrarlo. Así el modo offline nunca pierde datos
+        // por una respuesta de API mal formada.
+        console.warn(`[DB] ${nombreCatalogo}: la API no trajo filas válidas, se conserva el catálogo local existente`);
+        return;
+    }
+    try {
+        await db.delete(tabla);
+        await db.insert(tabla).values(rows);
+        console.log(`[DB] guardarCatalogosLocales: ${rows.length} ${nombreCatalogo} guardados`);
+    } catch (e) {
+        console.error(`[DB] ERROR al guardar ${nombreCatalogo}:`, e.message || e);
+    }
+};
+
+export const guardarCatalogosLocales = async ({ provincias, cantones, estaciones, cultivos }) => {
+    const now = new Date().toISOString();
+
+    const filasProvincias = construirFilasCatalogo(provincias, (p) => ({
+        id: alId(p.id),
+        nombre: alNombre(p) || 'Provincia',
+    }));
+    await reemplazarTabla(schema.provincias, 'provincias', filasProvincias);
+
+    const filasCantones = construirFilasCatalogo(cantones, (c) => {
+        const pid = alId(c.provincia_id ?? c.province_id ?? c.provinciaId ?? c.codigo_provincia);
+        return {
+            id: alId(c.id),
+            provincia_id: pid !== null ? pid : 0,
+            nombre: alNombre(c) || 'Cantón',
+        };
+    });
+    await reemplazarTabla(schema.cantones, 'cantones', filasCantones);
+
+    const filasEstaciones = construirFilasCatalogo(estaciones, (e) => ({
+        id: alId(e.id),
+        canton_id: alId(e.canton_id ?? e.cantonId ?? e.codigo_canton),
+        nombre: alNombre(e) || 'Estación',
+    }));
+    await reemplazarTabla(schema.estaciones, 'estaciones', filasEstaciones);
+
+    const filasCultivos = construirFilasCatalogo(cultivos, (c) => ({
+        id: alId(c.id),
+        nombre: alNombre(c) || 'Cultivo',
+        nombre_cientifico: c.nombre_cientifico || null,
+        descripcion: c.descripcion || null,
+        estado: c.estado || 'activo',
+        created_at: c.created_at || now,
+        updated_at: c.updated_at || now,
+    }));
+    await reemplazarTabla(schema.cultivos, 'cultivos', filasCultivos);
+};
+
+// ============================================
+// OPERACIONES INDIVIDUALES DE LOTES LOCALES
+// ============================================
+
+export const obtenerLoteLocalPorUuid = async (uuid_movil) => {
+    const resultados = await db
+        .select()
+        .from(schema.lotes)
+        .where(eq(schema.lotes.uuid_movil, uuid_movil))
+        .where(isNull(schema.lotes.deleted_at));
+    return enriquecerLoteConNombres(resultados[0] || null);
+};
+
+export const obtenerLoteLocalPorId = async (id) => {
+    const resultados = await db
+        .select()
+        .from(schema.lotes)
+        .where(eq(schema.lotes.id, id))
+        .where(isNull(schema.lotes.deleted_at));
+    return enriquecerLoteConNombres(resultados[0] || null);
+};
+
+export const obtenerLoteLocal = async (idOrUuid) => {
+    if (!idOrUuid) return null;
+    if (typeof idOrUuid === 'number' || /^\d+$/.test(String(idOrUuid))) {
+        return await obtenerLoteLocalPorId(Number(idOrUuid));
+    }
+    return await obtenerLoteLocalPorUuid(idOrUuid);
+};
+
+// Busca el id de una fila de catálogo a partir de su nombre (usado cuando
+// la UI edita provincia/cantón/estación como texto, ver EditLoteModal).
+const buscarIdCatalogoPorNombre = async (tabla, nombre) => {
+    if (!nombre) return null;
+    const filas = await db.select().from(tabla);
+    const buscado = String(nombre).trim().toLowerCase();
+    const encontrado = filas.find(f => (f.nombre || '').trim().toLowerCase() === buscado);
+    return encontrado ? encontrado.id : null;
+};
+
+export const actualizarLoteLocal = async (uuid_movil, datos) => {
+    // `EditLoteModal` (LotesDashboardUI) edita provincia/cantón/estación
+    // como texto (el nombre elegido en el picker), pero la tabla `lotes`
+    // sólo tiene columnas de id (`provincia_id`, `canton_id`,
+    // `estacion_id`). Antes esos campos de texto se pasaban tal cual a
+    // `db.update(...).set(...)`, que no tiene esas columnas: la edición de
+    // ubicación no se guardaba (silenciosamente).
+    // Aquí se traduce nombre → id contra los catálogos locales antes de
+    // guardar. `cultivo` se descarta a propósito: en el schema pertenece
+    // al proyecto (`proyectos.cultivo_nombre`), no al lote.
+    const { id, uuid_movil: _uuid, provincia, canton, estacion, cultivo, ...datosLimpios } = datos;
+
+    if (provincia !== undefined) {
+        datosLimpios.provincia_id = await buscarIdCatalogoPorNombre(schema.provincias, provincia);
+    }
+    if (canton !== undefined) {
+        datosLimpios.canton_id = await buscarIdCatalogoPorNombre(schema.cantones, canton);
+    }
+    if (estacion !== undefined) {
+        datosLimpios.estacion_id = await buscarIdCatalogoPorNombre(schema.estaciones, estacion);
+    }
+
+    await db
+        .update(schema.lotes)
+        .set({
+            ...datosLimpios,
+            sync_status: SYNC_STATUS.PENDING,
+            updated_at: new Date().toISOString(),
+        })
+        .where(eq(schema.lotes.uuid_movil, uuid_movil));
+};
+
+export const actualizarLoteLocalPorId = async (idOrUuid, datos) => {
+    const lote = await obtenerLoteLocal(idOrUuid);
+    if (!lote) return null;
+    await actualizarLoteLocal(lote.uuid_movil, datos);
+    return await obtenerLoteLocalPorUuid(lote.uuid_movil);
 };
 
 export default db;
