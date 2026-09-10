@@ -389,6 +389,12 @@ export const initDb = async () => {
                 updated_at TEXT
             );
 
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_lotes_uuid_movil ON lotes(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_proyectos_uuid_movil ON proyectos(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_ciclos_cultivo_uuid_movil ON ciclos_cultivo(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_visitas_uuid_movil ON visitas(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_hojas_datos_uuid_movil ON hojas_datos(uuid_movil);
+
     `);
     
         // Migración: agregar columnas UUID si no existen (para DB existentes)
@@ -548,6 +554,53 @@ export const initDb = async () => {
                     ALTER TABLE proyectos ADD COLUMN lote_uuid TEXT;
                 `);
             } catch (e) { /* columna ya existe */ }
+
+            // ============================================================
+            // MIGRACIÓN CRÍTICA: crear índices UNIQUE en uuid_movil
+            // ------------------------------------------------------------
+            // Estas 5 tablas se crearon arriba con `uuid_movil TEXT` sin
+            // UNIQUE, pero schema.js (Drizzle) sí declara
+            // `.unique()` sobre esa columna. Drizzle genera
+            // `onConflictDoUpdate({ target: uuid_movil })` confiando en su
+            // definición, y SQLite lo rechaza porque la tabla física nunca
+            // tuvo esa restricción:
+            //   "ON CONFLICT clause does not match any PRIMARY KEY or
+            //    UNIQUE constraint"
+            // Un índice único (CREATE UNIQUE INDEX) cumple exactamente la
+            // misma función que un UNIQUE inline para efectos de
+            // ON CONFLICT, y sí puede crearse sobre una tabla ya existente
+            // sin tener que recrearla ni migrar filas.
+            const tablasConUuid = ['lotes', 'proyectos', 'ciclos_cultivo', 'visitas', 'hojas_datos'];
+            for (const tabla of tablasConUuid) {
+                try {
+                    await expoDb.execAsync(`
+                        CREATE UNIQUE INDEX IF NOT EXISTS idx_${tabla}_uuid_movil
+                        ON ${tabla}(uuid_movil);
+                    `);
+                } catch (e) {
+                    // Solo puede fallar si ya existen uuid_movil duplicados
+                    // (no NULL) en el dispositivo. Se limpian dejando la
+                    // fila más reciente por id y se reintenta una vez.
+                    console.warn(`[DB] Duplicados en ${tabla}.uuid_movil, limpiando antes de crear el índice único:`, e.message || e);
+                    try {
+                        await expoDb.execAsync(`
+                            DELETE FROM ${tabla}
+                            WHERE id NOT IN (
+                                SELECT MAX(id) FROM ${tabla}
+                                WHERE uuid_movil IS NOT NULL
+                                GROUP BY uuid_movil
+                            ) AND uuid_movil IS NOT NULL;
+                        `);
+                        await expoDb.execAsync(`
+                            CREATE UNIQUE INDEX IF NOT EXISTS idx_${tabla}_uuid_movil
+                            ON ${tabla}(uuid_movil);
+                        `);
+                        console.log(`[DB] Índice único creado en ${tabla}.uuid_movil tras limpiar duplicados`);
+                    } catch (e2) {
+                        console.error(`[DB] No se pudo crear índice único en ${tabla}.uuid_movil:`, e2.message || e2);
+                    }
+                }
+            }
         };
 
         await migrarColumnas();
