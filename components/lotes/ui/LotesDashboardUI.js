@@ -1,45 +1,47 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    StyleSheet,
-    Image,
-    FlatList,
-    TouchableOpacity,
-    Platform,
-    StatusBar,
-    ScrollView,
-    Alert,
-    ActivityIndicator,
-    Modal,
-    ImageBackground,
-    Dimensions,
-    TextInput,
-    KeyboardAvoidingView,
-    Keyboard,
-    Pressable,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    useAnimatedReaction,
-    withTiming,
-    withSpring,
-    withDelay,
-    Easing,
-} from 'react-native-reanimated';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSearch } from '../context/SearchContext';
-import { useTheme } from '../../../services/theme';
+import { useEffect, useRef, useState } from 'react';
+import {
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    ImageBackground,
+    Keyboard,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
+} from 'react-native';
+import Animated, {
+    Easing,
+    useAnimatedReaction,
+    useAnimatedStyle,
+    useSharedValue,
+    withDelay,
+    withSpring,
+    withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { actualizarEstadoLoteLocal, obtenerProyectosEnlazadosAlLote, softDeleteLote } from '../../../db';
 import { lotesService } from '../../../services/lotes';
-import { softDeleteLote, actualizarEstadoLoteLocal, obtenerProyectosEnlazadosAlLote } from '../../../db';
+import {
+    EmptyStateGuide,
+} from '../../../services/onboarding';
+import { useTheme } from '../../../services/theme';
+import { useSearch } from '../context/SearchContext';
 
 import {
-    ESTILOS_STATUS,
     ESTADO_OPCIONES,
+    ESTILOS_STATUS,
     getColores,
 } from './lotesDashboardColors';
 
@@ -61,7 +63,6 @@ const CAMPOS_EDITABLES = [
     { key: 'cultivo', label: 'Cultivo', icon: 'seed', autoCapitalize: 'words' },
 ];
 
-// Cápsula glass con logo INIAP + título de sección
 function BrandBadge({ isDark, textColor, titleStyle, style }) {
     return (
         <View style={[styles.brandTouchable, style]}>
@@ -284,10 +285,6 @@ function OptionPickerModal({ visible, title, options, currentValue, onSelect, on
     );
 }
 
-// ============================================
-// COMPONENTE: Editar Lote (bottom sheet con formulario)
-// Solo nombre_lote es editable directamente; el resto son selectores de opciones.
-// ============================================
 function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
     const colores = getColores(isDark);
     const [form, setForm] = useState({
@@ -298,22 +295,17 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
         cultivo: '',
     });
 
-    // Catalog data for pickers
     const [catalogos, setCatalogos] = useState({ provincias: [], cantones: [], estaciones: [], cultivos: [] });
     const [loadingCatalogos, setLoadingCatalogos] = useState(false);
-
-    // Picker state
-    const [pickerField, setPickerField] = useState(null); // 'provincia' | 'canton' | 'estacion' | 'cultivo' | null
+    const [pickerField, setPickerField] = useState(null); 
     const [pickerOptions, setPickerOptions] = useState([]);
 
-    // Load catalogos when modal opens
     useEffect(() => {
         if (visible) {
             cargarCatalogos();
         }
     }, [visible]);
 
-    // Update form when lote changes
     useEffect(() => {
         if (visible && lote) {
             setForm({
@@ -337,7 +329,7 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
                 cultivos: data.cultivos || [],
             });
         } catch (error) {
-            // console removed
+            // Error silenciado
         } finally {
             setLoadingCatalogos(false);
         }
@@ -352,8 +344,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
 
     const openPicker = (field) => {
         let options = [];
-        let currentValue = form[field];
-
         switch (field) {
             case 'provincia':
                 options = catalogos.provincias.map(p => ({ nombre: p.nombre || p.name, value: p.nombre || p.name }));
@@ -390,8 +380,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
         }
     };
 
-    // Campos que son editables como texto vs selectores
-    const CAMPOS_TEXTO = ['nombre_lote'];
     const CAMPOS_SELECTOR = ['provincia', 'canton', 'estacion', 'cultivo'];
 
     return (
@@ -416,7 +404,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
 
             <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={{ marginTop: 10 }}>
                 <View style={[styles.editFieldsGroup, { backgroundColor: colores.statusPickerCard }]}>
-                    {/* Campo nombre_lote - editable como texto */}
                     <View style={[styles.editFieldRow, { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colores.statusPickerBorder }]}>
                         <MaterialCommunityIcons name="tag-outline" size={18} color={colores.textSecondary} style={{ width: 26 }} />
                         <View style={{ flex: 1 }}>
@@ -432,7 +419,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
                         </View>
                     </View>
 
-                    {/* Campos selectors - solo muestran valor, al tocar abren picker */}
                     {CAMPOS_SELECTOR.map((field) => {
                         const fieldConfig = CAMPOS_EDITABLES.find(f => f.key === field);
                         const iconName = fieldConfig?.icon || 'circle';
@@ -460,7 +446,6 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
                 </View>
             </ScrollView>
 
-            {/* Picker modal para campos de selección */}
             <OptionPickerModal
                 visible={pickerField !== null}
                 title={getPickerTitle()}
@@ -474,19 +459,12 @@ function EditLoteModal({ visible, lote, onClose, onSave, isDark, saving }) {
     );
 }
 
-// ============================================
-// COMPONENTE: Tarjeta Animada de Lote
-// ============================================
 function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusChange, onDelete }) {
     const colores = getColores(isDark);
     const statusConfig = getStatusConfig(item.estado_verificacion);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    // Parsear vertices desde el campo correcto del backend
-    // Backend AgroDecide devuelve:
-    //   - geometria: objeto ya decodificado { type: "Polygon", coordinates: [[[lng,lat],...]] }
-    //   - geometria_geojson: string GeoJSON original (backup)
     let vertices = null;
     const geoObj = item.geometria || item.geometria_geojson || item.vertices || null;
     if (geoObj) {
@@ -498,10 +476,8 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                 vertices = null;
             }
         } else if (typeof geoObj === 'object' && geoObj.coordinates) {
-            // geometria ya decodificado: { type: "Polygon", coordinates: [...] }
             vertices = geoObj.coordinates?.[0] || null;
         } else if (Array.isArray(geoObj) && geoObj.length > 0) {
-            // Array directo de coordenadas [[lng,lat], [lng,lat], ...]
             vertices = geoObj;
         }
     }
@@ -553,7 +529,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                 delayLongPress={500}
                 style={[styles.figmaCardContainer, { backgroundColor: colores.cardBg }]}
             >
-                {/* Si tiene vértices, mostrar VerticesMap directamente como fondo */}
                 {hasVertices ? (
                     <View style={[styles.figmaImageSection, { backgroundColor: '#1a2a1a' }]}>
                         <VerticesMap vertices={vertices} color={statusConfig.color} style={styles.verticesMapFill} />
@@ -788,7 +763,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                 </View>
             </TouchableOpacity>
 
-            {/* Modal de confirmación para eliminar */}
             <Modal
                 visible={showDeleteModal}
                 transparent
@@ -810,7 +784,7 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
                             </Text>
 
                             <Text style={[styles.deleteModalSubtitle, { color: '#FF3B30', fontWeight: '600' }]}>
-                                Esta acci&#243;n eliminar&#225; &quot;{item.nombre_lote}&quot; de forma permanente.
+                                Esta acción eliminará "{item.nombre_lote}" de forma permanente.
                             </Text>
 
                             <View style={styles.deleteModalButtons}>
@@ -846,9 +820,6 @@ function AnimatedCard({ item, index, getStatusConfig, isDark, onEdit, onStatusCh
     );
 }
 
-// ============================================
-// COMPONENTE: Tarjeta Skeleton Exacta de Lote (para loading state)
-// ============================================
 function SkeletonCard({ isDark }) {
     const colores = getColores(isDark);
     const { startPulse, animatedStyle } = useSkeletonAnimations();
@@ -859,7 +830,6 @@ function SkeletonCard({ isDark }) {
 
     return (
         <Animated.View style={[styles.figmaCardContainer, animatedStyle, { backgroundColor: colores.skeletonBg }]}>
-            {/* Bloque grande superior simulando la imagen de la tarjeta */}
             <View style={[styles.figmaImageSection, { backgroundColor: colores.skeletonBadgeBg, height: 210, marginBottom: 12 }]} />
 
             {/* Bloques de líneas simulando los textos (estilo YouTube) */}
@@ -872,9 +842,6 @@ function SkeletonCard({ isDark }) {
     );
 }
 
-// ============================================
-// COMPONENTE PRINCIPAL
-// ============================================
 export default function LotesDashboardUI() {
     const insets = useSafeAreaInsets();
     const { isLoading, error, recargar, lotesFiltrados, filtroEstado, setFiltroEstado, searchText, listaLotes } = useSearch();
@@ -887,7 +854,6 @@ export default function LotesDashboardUI() {
     const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Edición inline (nombre, provincia, cantón, estación, cultivo)
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [loteEditar, setLoteEditar] = useState(null);
     const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -895,7 +861,6 @@ export default function LotesDashboardUI() {
     const horizontalScrollRef = useRef(null);
     const scrollY = useSharedValue(0);
 
-    // --- Header estilo Apple (mismo patrón que Home) ---
     const TOP_REVEAL_THRESHOLD = 12;
     const HIDE_DURATION = 160;
     const REVEAL_DURATION = 260;
@@ -966,7 +931,6 @@ export default function LotesDashboardUI() {
         return ESTILOS_STATUS[syncStatus] || ESTILOS_STATUS.borrador;
     };
 
-    // ---- Edición inline ----
     const handleOpenEdit = (lote) => {
         setLoteEditar(lote);
         setEditModalVisible(true);
@@ -1010,7 +974,6 @@ export default function LotesDashboardUI() {
             return;
         }
 
-        // Verificar si el lote tiene proyectos enlazados
         const proyectosEnlazados = await obtenerProyectosEnlazadosAlLote(lote.uuid_movil);
         if (proyectosEnlazados.length > 0) {
             const nombresProyectos = proyectosEnlazados.map(p => p.titulo || p.uuid_movil).join(', ');
@@ -1021,11 +984,8 @@ export default function LotesDashboardUI() {
             return;
         }
 
-        // Eliminar localmente Y del backend
         try {
-            // Primero eliminar localmente para feedback inmediato
             await softDeleteLote(lote.uuid_movil);
-            // Luego eliminar del backend
             await lotesService.eliminarLote(lote.uuid_movil);
             await recargar();
             Alert.alert('Éxito', 'Lote eliminado');
@@ -1038,18 +998,14 @@ export default function LotesDashboardUI() {
     const handleSelectStatus = async (nuevoEstado) => {
         if (!loteSeleccionado) return;
         setStatusPickerVisible(false);
-
         setIsUpdatingStatus(true);
 
         try {
-            // Actualizar local primero para feedback inmediato
             if (loteSeleccionado.uuid_movil) {
                 await actualizarEstadoLoteLocal(loteSeleccionado.uuid_movil, nuevoEstado);
             }
 
-            // Llamar al API
             const result = await lotesService.cambiarEstadoLote(loteSeleccionado.uuid_movil, nuevoEstado);
-
             await recargar();
 
             if (result && result.success) {
@@ -1093,6 +1049,17 @@ export default function LotesDashboardUI() {
         const hasSearch = searchText && searchText.trim().length > 0;
         const hasFilter = currentTab !== 'TODOS';
         const isFiltered = hasSearch || hasFilter;
+
+        if (!isFiltered && !isLoading) {
+            return (
+                <EmptyStateGuide
+                  type="lotes"
+                  accent="#0b6b45"
+                  primaryRoute="/lotes/nuevo"
+                  style={{ paddingTop: pinnedTabsHeight - 40 }}
+                />
+            );
+        }
 
         let title = 'Sin Lotes Encontrados';
         let message = 'Tus registros aparecerán aquí una vez comiences a sincronizar o trazar lotes.';
@@ -1218,51 +1185,51 @@ export default function LotesDashboardUI() {
 
             <View style={[styles.pinnedTabsWrap, { paddingTop: insets.top + TITLE_ROW_MARGIN_TOP + TITLE_ROW_HEIGHT + TABS_ROW_MARGIN_TOP }]}>
                 <Animated.View style={tabsAnimatedStyle}>
-                    <BlurView intensity={isDark ? 45 : 65} tint={isDark ? 'dark' : 'light'} style={styles.tabsGlassContainer}>
-                        <View
-                            style={[
-                                StyleSheet.absoluteFillObject,
-                            { backgroundColor: isDark ? 'rgba(20,20,22,0.30)' : 'rgba(255,255,255,0.35)' },
-                        ]}
-                    />
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
-                        {TABS.map((tab, index) => {
-                            const active = filtroEstado === tab;
-                            return (
-                                <TouchableOpacity
-                                    key={tab}
-                                    activeOpacity={0.7}
-                                    onPress={() => handleTabPress(tab, index)}
-                                    style={styles.filterTabTouchable}
-                                >
-                                    {active ? (
-                                        <BlurView intensity={isDark ? 60 : 85} tint={isDark ? 'dark' : 'light'} style={styles.filterTabActiveGlass}>
-                                            <View
-                                                style={[
-                                                    StyleSheet.absoluteFillObject,
-                                                    { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' },
-                                                ]}
-                                            />
-                                            <View
-                                                style={[
-                                                    styles.counterGlassBorder,
-                                                    { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' },
-                                                ]}
-                                            />
-                                            <Text style={[styles.filterTabText, { color: colores.textPrimary, fontWeight: '800' }]}>
-                                                {tab}
-                                            </Text>
-                                        </BlurView>
-                                    ) : (
-                                        <View style={styles.filterTabInactive}>
-                                            <Text style={[styles.filterTabText, { color: colores.textSecondary }]}>{tab}</Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </ScrollView>
-                    </BlurView>
+                      <BlurView intensity={isDark ? 45 : 65} tint={isDark ? 'dark' : 'light'} style={styles.tabsGlassContainer}>
+                          <View
+                              style={[
+                                  StyleSheet.absoluteFillObject,
+                                  { backgroundColor: isDark ? 'rgba(20,20,22,0.30)' : 'rgba(255,255,255,0.35)' },
+                              ]}
+                          />
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterTabsScroll}>
+                              {TABS.map((tab, index) => {
+                                  const active = filtroEstado === tab;
+                                  return (
+                                      <TouchableOpacity
+                                          key={tab}
+                                          activeOpacity={0.7}
+                                          onPress={() => handleTabPress(tab, index)}
+                                          style={styles.filterTabTouchable}
+                                      >
+                                          {active ? (
+                                              <BlurView intensity={isDark ? 60 : 85} tint={isDark ? 'dark' : 'light'} style={styles.filterTabActiveGlass}>
+                                                  <View
+                                                      style={[
+                                                          StyleSheet.absoluteFillObject,
+                                                          { backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(255,255,255,0.65)' },
+                                                      ]}
+                                                  />
+                                                  <View
+                                                      style={[
+                                                          styles.counterGlassBorder,
+                                                          { borderColor: isDark ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.9)' },
+                                                      ]}
+                                                  />
+                                                  <Text style={[styles.filterTabText, { color: colores.textPrimary, fontWeight: '800' }]}>
+                                                      {tab}
+                                                  </Text>
+                                              </BlurView>
+                                          ) : (
+                                              <View style={styles.filterTabInactive}>
+                                                  <Text style={[styles.filterTabText, { color: colores.textSecondary }]}>{tab}</Text>
+                                              </View>
+                                          )}
+                                      </TouchableOpacity>
+                                  );
+                              })}
+                          </ScrollView>
+                      </BlurView>
                 </Animated.View>
             </View>
 
@@ -1292,17 +1259,20 @@ export default function LotesDashboardUI() {
                                     <FlatList
                                         data={lotesFiltrados}
                                         keyExtractor={(item, index) => item.uuid_movil || item.id?.toString() || `lote-${index}-${item.nombre_lote}`}
-                                        renderItem={({ item, index }) => (
-                                            <AnimatedCard
-                                                item={item}
-                                                index={index}
-                                                getStatusConfig={getStatusConfig}
-                                                isDark={isDark}
-                                                onEdit={() => handleOpenEdit(item)}
-                                                onStatusChange={handleStatusChange}
-                                                onDelete={handleDelete}
-                                            />
-                                        )}
+                                        renderItem={({ item, index }) => {
+                                            const card = (
+                                                <AnimatedCard
+                                                    item={item}
+                                                    index={index}
+                                                    getStatusConfig={getStatusConfig}
+                                                    isDark={isDark}
+                                                    onEdit={() => handleOpenEdit(item)}
+                                                    onStatusChange={handleStatusChange}
+                                                    onDelete={handleDelete}
+                                                />
+                                            );
+                                            return card;
+                                        }}
                                         ListEmptyComponent={() => (refreshing ? renderLoadingSkeletons() : renderEmptyState(tab))}
                                         contentContainerStyle={[styles.listContainer, { paddingTop: pinnedTabsHeight }]}
                                         showsVerticalScrollIndicator={false}
@@ -1333,9 +1303,6 @@ export default function LotesDashboardUI() {
     );
 }
 
-// ============================================
-// ESTILOS
-// ============================================
 const styles = StyleSheet.create({
     container: { flex: 1 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
@@ -1348,7 +1315,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
     },
     retryText: { color: '#FFFFFF', fontWeight: '600', fontSize: 15 },
-
     header: {
         position: 'absolute',
         top: 0,
@@ -1364,23 +1330,13 @@ const styles = StyleSheet.create({
         right: 0,
         zIndex: 15,
     },
-    contentWrapper: {
-        flex: 1,
-    },
+    contentWrapper: { flex: 1 },
     headerTopRow: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         height: 40,
     },
-    headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-    headerHomeTitle: {
-        fontSize: 28,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-    },
-    headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-
     brandTouchable: {
         borderRadius: 28,
         shadowColor: '#000',
@@ -1410,16 +1366,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    brandLogo: {
-        width: 32,
-        height: 32,
-    },
-    brandPillTitle: {
-        fontSize: 18,
-        fontWeight: '800',
-        letterSpacing: -0.4,
-    },
-
+    brandLogo: { width: 32, height: 32 },
+    brandPillTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.4 },
     counterGlassPill: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1447,12 +1395,7 @@ const styles = StyleSheet.create({
         borderRadius: 22,
         borderWidth: 1,
     },
-    counterGlassNumber: {
-        fontSize: 20,
-        fontWeight: '800',
-        letterSpacing: -0.4,
-    },
-
+    counterGlassNumber: { fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
     pinnedTabsWrap: {
         position: 'absolute',
         top: 0,
@@ -1468,10 +1411,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 6,
     },
     filterTabsScroll: { flexDirection: 'row', gap: 8 },
-    filterTabTouchable: {
-        borderRadius: 18,
-        overflow: 'hidden',
-    },
+    filterTabTouchable: { borderRadius: 18, overflow: 'hidden' },
     filterTabActiveGlass: {
         paddingHorizontal: 16,
         paddingVertical: 9,
@@ -1488,12 +1428,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     filterTabText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
-
     listContainer: { paddingHorizontal: 16, paddingBottom: 120, width: SCREEN_WIDTH },
-
     skeletonListContainer: { paddingHorizontal: 16, width: SCREEN_WIDTH },
     skeletonLine: {},
-
     emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80, paddingHorizontal: 30, width: SCREEN_WIDTH },
     emptyIconContainer: {
         width: 80,
@@ -1505,8 +1442,6 @@ const styles = StyleSheet.create({
     },
     emptyTitle: { fontSize: 20, fontWeight: '700', marginBottom: 8, letterSpacing: -0.5 },
     emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22, fontWeight: '400' },
-
-    // ---- Bottom sheet base (estado + edición) ----
     sheetContainer: {
         position: 'absolute',
         left: 0,
@@ -1550,8 +1485,6 @@ const styles = StyleSheet.create({
     sheetOptionText: { flex: 1, fontSize: 17, fontWeight: '500' },
     sheetCancelBtn: { borderRadius: 16, paddingVertical: 15, alignItems: 'center' },
     sheetCancelText: { fontSize: 17, fontWeight: '700' },
-
-    // ---- Modal de edición de lote ----
     editHeaderRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -1583,29 +1516,12 @@ const styles = StyleSheet.create({
         paddingVertical: 2,
     },
     selectorValue: { fontSize: 16, fontWeight: '500' },
-
     updatingOverlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: 'rgba(0,0,0,0.4)',
         justifyContent: 'center',
         alignItems: 'center',
     },
-
-    // ---- Captura invisible del croquis de vértices ----
-    hiddenCaptureWrap: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: 320,
-        height: 240,
-        opacity: 0,
-        zIndex: -1,
-    },
-    hiddenCaptureInner: {
-        width: 320,
-        height: 240,
-    },
-
     figmaCardContainer: {
         marginBottom: 24,
         borderRadius: 36,
@@ -1621,7 +1537,7 @@ const styles = StyleSheet.create({
         borderRadius: 28,
         padding: 16,
         overflow: 'hidden',
-        justifyContent: 'space-between'
+        justifyContent: 'space-between',
     },
     figmaImageStyle: { borderRadius: 28 },
     verticesMapFill: {
@@ -1676,15 +1592,8 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     figmaStartRouteText: { color: '#111111', fontSize: 13, fontWeight: '700' },
-
-    infoBottomSection: {
-        paddingTop: 12,
-        gap: 8,
-    },
-    infoRowGrid: {
-        flexDirection: 'row',
-        gap: 8,
-    },
+    infoBottomSection: { paddingTop: 12, gap: 8 },
+    infoRowGrid: { flexDirection: 'row', gap: 8 },
     infoItem: {
         flex: 1,
         flexDirection: 'row',
@@ -1695,17 +1604,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         borderRadius: 10,
     },
-    infoItemLabel: {
-        fontSize: 10,
-        fontWeight: '500',
-    },
-    infoItemValue: {
-        flex: 1,
-        fontSize: 11,
-        fontWeight: '600',
-        textAlign: 'right',
-    },
-
+    infoItemLabel: { fontSize: 10, fontWeight: '500' },
+    infoItemValue: { flex: 1, fontSize: 11, fontWeight: '600', textAlign: 'right' },
     coordsRow: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1713,23 +1613,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         gap: 8,
     },
-    coordItem: {
-        flex: 1,
-    },
-    coordLabel: {
-        fontSize: 10,
-        fontWeight: '600',
-        marginBottom: 2,
-    },
-    coordValue: {
-        fontSize: 10,
-        fontWeight: '500',
-    },
-    coordDivider: {
-        width: 1,
-        height: 30,
-        backgroundColor: 'rgba(128,128,128,0.2)',
-    },
+    coordItem: { flex: 1 },
+    coordLabel: { fontSize: 10, fontWeight: '600', marginBottom: 2 },
+    coordValue: { fontSize: 10, fontWeight: '500' },
+    coordDivider: { width: 1, height: 30, backgroundColor: 'rgba(128,128,128,0.2)' },
     miniMapContainer: {
         width: 70,
         height: 50,
@@ -1738,7 +1625,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         overflow: 'hidden',
     },
-
     noVerticesPlaceholder: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -1747,15 +1633,8 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         gap: 8,
     },
-    noVerticesText: {
-        fontSize: 12,
-        fontWeight: '500',
-    },
+    noVerticesText: { fontSize: 12, fontWeight: '500' },
     statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 12 },
-
-    // ============================================
-    // DELETE MODAL STYLES
-    // ============================================
     deleteModalOverlay: {
         flex: 1,
         backgroundColor: 'rgba(0,0,0,0.5)',
@@ -1771,10 +1650,7 @@ const styles = StyleSheet.create({
         borderWidth: 0.5,
         borderColor: 'rgba(255,255,255,0.2)',
     },
-    deleteModalContent: {
-        padding: 28,
-        alignItems: 'center',
-    },
+    deleteModalContent: { padding: 28, alignItems: 'center' },
     deleteIconCircle: {
         width: 72,
         height: 72,
@@ -1783,24 +1659,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
-    deleteModalTitle: {
-        fontSize: 22,
-        fontWeight: '700',
-        marginBottom: 10,
-        textAlign: 'center',
-    },
-    deleteModalSubtitle: {
-        fontSize: 14,
-        fontWeight: '400',
-        textAlign: 'center',
-        lineHeight: 20,
-        marginBottom: 28,
-    },
-    deleteModalButtons: {
-        flexDirection: 'row',
-        gap: 12,
-        width: '100%',
-    },
+    deleteModalTitle: { fontSize: 22, fontWeight: '700', marginBottom: 10, textAlign: 'center' },
+    deleteModalSubtitle: { fontSize: 14, fontWeight: '400', textAlign: 'center', lineHeight: 20, marginBottom: 28 },
+    deleteModalButtons: { flexDirection: 'row', gap: 12, width: '100%' },
     deleteModalCancelBtn: {
         flex: 1,
         paddingVertical: 14,
@@ -1809,20 +1670,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    deleteModalCancelText: {
-        fontSize: 16,
-        fontWeight: '600',
-    },
-    deleteModalDeleteBtn: {
-        flex: 1,
-        paddingVertical: 14,
-        borderRadius: 14,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    deleteModalDeleteText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#FFFFFF',
-    },
+    deleteModalCancelText: { fontSize: 16, fontWeight: '600' },
+    deleteModalDeleteBtn: { flex: 1, paddingVertical: 14, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+    deleteModalDeleteText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
 });

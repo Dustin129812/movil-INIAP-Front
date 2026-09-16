@@ -1,27 +1,27 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, Platform, TouchableOpacity, StatusBar, Modal, ScrollView, Dimensions, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { Image, Modal, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-    useSharedValue,
-    useAnimatedStyle,
-    useAnimatedScrollHandler,
     cancelAnimation,
     Easing,
+    runOnJS,
     useAnimatedReaction,
+    useAnimatedScrollHandler,
+    useAnimatedStyle,
+    useSharedValue,
     withDelay,
     withRepeat,
     withTiming,
-    runOnJS,
 } from 'react-native-reanimated';
-import Svg, { Circle, Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Path } from 'react-native-svg';
 
+import { useRouter } from 'expo-router';
 import { useTheme } from '../../../services/theme';
 import NotificationsCenter from '../../notifications/ui/NotificationsCenter';
 import { useHomeDashboard } from '../hooks/useHomeDashboard';
-import { useRouter } from 'expo-router';
 
 const AnimatedTouchable =
     Animated.createAnimatedComponent(TouchableOpacity);
@@ -368,7 +368,6 @@ export default function HomeDashboard() {
         <View style={[styles.container, { backgroundColor: bg }]}>
             <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} translucent backgroundColor="transparent" />
 
-            {/* Fondo superior oscurecido sutilmente para evitar mezcla difusa con el notch */}
             <LinearGradient
                 pointerEvents="none"
                 colors={
@@ -392,7 +391,6 @@ export default function HomeDashboard() {
                 ]}
             />
 
-            {/* HEADER FLOTANTE — Aparece al hacer scroll con máxima nitidez */}
             <Animated.View
                 pointerEvents={headerVisible ? 'auto' : 'none'}
                 style={[styles.header, { paddingTop: insets.top + 2 }]}
@@ -414,14 +412,12 @@ export default function HomeDashboard() {
                 </View>
             </Animated.View>
 
-            {/* CONTENIDO PRINCIPAL */}
             <Animated.ScrollView
                 onScroll={scrollHandler}
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
-                {/* HERO — Imagen del Cotopaxi */}
                 <View style={styles.heroWrapper}>
                     <Image
                         source={require('../../../assets/images/cotopaxi_2.jpg')}
@@ -443,7 +439,6 @@ export default function HomeDashboard() {
                         style={StyleSheet.absoluteFillObject}
                     />
 
-                    {/* Header estático sobre la foto */}
                     <View style={[styles.heroTopRow, { paddingTop: insets.top + 10 }]}>
                         <BrandBadge isDark={isDark} textColor={textPrimary} />
 
@@ -469,42 +464,38 @@ export default function HomeDashboard() {
                     </View>
                 </View>
 
-                {/* SHEET — Tarjeta de contenido */}
                 <View style={[styles.sheet, { backgroundColor: bg }]}>
                     <Text style={[styles.welcomeSubtitle, { color: textSecondary }]}>
                         Gestiona tus datos agrícolas{'\n'}de forma fácil y segura.
                     </Text>
 
-                    {/* Sincronización */}
                     {!esInvitado && (
-                        <TouchableOpacity
-                            activeOpacity={0.9}
-                            onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
-                            style={styles.syncBar}
-                        >
-                            <View style={styles.syncIconCircle}>
-                                <MaterialCommunityIcons name="sync" size={20} color="#FFFFFF" />
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 12 }}>
-                                <Text style={styles.syncTitle}>Sincronizar datos</Text>
-                                <Text style={styles.syncCaption}>
-                                    {isSyncing
-                                        ? 'Sincronizando...'
-                                        : pendingCount > 0
-                                            ? `${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}`
-                                            : 'Todo está al día'}
-                                </Text>
-                            </View>
-                            <View style={styles.syncArrowBtn}>
-                                <MaterialCommunityIcons name="arrow-right" size={18} color="#1B3A2A" />
-                            </View>
-                        </TouchableOpacity>
+                          <TouchableOpacity
+                              activeOpacity={0.9}
+                              onPress={() => { setIsSyncModalVisible(true); sincronizar(); }}
+                              style={styles.syncBar}
+                          >
+                              <View style={styles.syncIconCircle}>
+                                  <MaterialCommunityIcons name="sync" size={20} color="#FFFFFF" />
+                              </View>
+                              <View style={{ flex: 1, marginLeft: 12 }}>
+                                  <Text style={styles.syncTitle}>Sincronizar datos</Text>
+                                  <Text style={styles.syncCaption}>
+                                      {isSyncing
+                                          ? 'Sincronizando...'
+                                          : pendingCount > 0
+                                              ? `${pendingCount} pendiente${pendingCount > 1 ? 's' : ''}`
+                                              : 'Todo está al día'}
+                                  </Text>
+                              </View>
+                              <View style={styles.syncArrowBtn}>
+                                  <MaterialCommunityIcons name="arrow-right" size={18} color="#1B3A2A" />
+                              </View>
+                          </TouchableOpacity>
                     )}
 
-                    {/* HERRAMIENTAS */}
                     <Text style={[styles.toolsSectionTitle, { color: textPrimary }]}>Elige tu herramienta</Text>
 
-                    {/* Banner Calculadora */}
                     <TouchableOpacity
                         activeOpacity={0.92}
                         onPress={() => router.push(CALC_ROUTE)}
@@ -542,7 +533,6 @@ export default function HomeDashboard() {
                         </View>
                     </TouchableOpacity>
 
-                    {/* Grid inferior */}
                     <View style={styles.toolsGrid}>
                         <TouchableOpacity
                             activeOpacity={0.92}
@@ -591,7 +581,6 @@ export default function HomeDashboard() {
                 </View>
             </Animated.ScrollView>
 
-            {/* Modal Info Calculadora */}
             <Modal
                 visible={isInfoModalVisible}
                 transparent
@@ -620,7 +609,6 @@ export default function HomeDashboard() {
                 </View>
             </Modal>
 
-            {/* Modal Sincronización */}
             <Modal
                 visible={isSyncModalVisible}
                 transparent
@@ -695,7 +683,6 @@ export default function HomeDashboard() {
                 </View>
             </Modal>
 
-            {/* NOTIFICACIONES */}
             <NotificationsCenter
                 visible={isNotificationsVisible}
                 onClose={() => setIsNotificationsVisible(false)}
@@ -709,7 +696,6 @@ export default function HomeDashboard() {
     );
 }
 
-/* ESTILOS */
 const styles = StyleSheet.create({
     container: {
         flex: 1,
