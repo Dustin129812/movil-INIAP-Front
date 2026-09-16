@@ -1,7 +1,7 @@
-import * as SQLite from 'expo-sqlite';
+import { eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
-import { eq, isNull, isNotNull, inArray } from 'drizzle-orm';
 import * as Crypto from 'expo-crypto';
+import * as SQLite from 'expo-sqlite';
 import * as schema from './schema';
 
 const expoDb = SQLite.openDatabaseSync('simpagi_local.db');
@@ -389,6 +389,12 @@ export const initDb = async () => {
                 updated_at TEXT
             );
 
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_lotes_uuid_movil ON lotes(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_proyectos_uuid_movil ON proyectos(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_ciclos_cultivo_uuid_movil ON ciclos_cultivo(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_visitas_uuid_movil ON visitas(uuid_movil);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_hojas_datos_uuid_movil ON hojas_datos(uuid_movil);
+
     `);
     
         // Migración: agregar columnas UUID si no existen (para DB existentes)
@@ -548,12 +554,77 @@ export const initDb = async () => {
                     ALTER TABLE proyectos ADD COLUMN lote_uuid TEXT;
                 `);
             } catch (e) { /* columna ya existe */ }
+
+            const tablasConUuid = ['lotes', 'proyectos', 'ciclos_cultivo', 'visitas', 'hojas_datos'];
+            for (const tabla of tablasConUuid) {
+                try {
+                    await expoDb.execAsync(`
+                        CREATE UNIQUE INDEX IF NOT EXISTS idx_${tabla}_uuid_movil
+                        ON ${tabla}(uuid_movil);
+                    `);
+                } catch (e) {
+
+                    console.warn(`[DB] Duplicados en ${tabla}.uuid_movil, limpiando antes de crear el índice único:`, e.message || e);
+                    try {
+                        await expoDb.execAsync(`
+                            DELETE FROM ${tabla}
+                            WHERE id NOT IN (
+                                SELECT MAX(id) FROM ${tabla}
+                                WHERE uuid_movil IS NOT NULL
+                                GROUP BY uuid_movil
+                            ) AND uuid_movil IS NOT NULL;
+                        `);
+                        await expoDb.execAsync(`
+                            CREATE UNIQUE INDEX IF NOT EXISTS idx_${tabla}_uuid_movil
+                            ON ${tabla}(uuid_movil);
+                        `);
+                        console.log(`[DB] Índice único creado en ${tabla}.uuid_movil tras limpiar duplicados`);
+                    } catch (e2) {
+                        console.error(`[DB] No se pudo crear índice único en ${tabla}.uuid_movil:`, e2.message || e2);
+                    }
+                }
+            }
         };
 
         await migrarColumnas();
     } catch (error) {
         throw error;
     }
+};
+
+const construirMapaNombrePorId = (filas) => {
+    const mapa = new Map();
+    (filas || []).forEach(f => {
+        if (f?.id != null) mapa.set(f.id, f.nombre);
+    });
+    return mapa;
+};
+
+const enriquecerLotesConNombres = async (lotesRaw) => {
+    if (!Array.isArray(lotesRaw) || lotesRaw.length === 0) return lotesRaw;
+
+    const [provinciasRows, cantonesRows, estacionesRows] = await Promise.all([
+        db.select().from(schema.provincias),
+        db.select().from(schema.cantones),
+        db.select().from(schema.estaciones),
+    ]);
+
+    const nombreProvincia = construirMapaNombrePorId(provinciasRows);
+    const nombreCanton = construirMapaNombrePorId(cantonesRows);
+    const nombreEstacion = construirMapaNombrePorId(estacionesRows);
+
+    return lotesRaw.map(lote => ({
+        ...lote,
+        provincia: lote.provincia || nombreProvincia.get(lote.provincia_id) || null,
+        canton: lote.canton || nombreCanton.get(lote.canton_id) || null,
+        estacion: lote.estacion || nombreEstacion.get(lote.estacion_id) || null,
+    }));
+};
+
+const enriquecerLoteConNombres = async (lote) => {
+    if (!lote) return lote;
+    const [enriquecido] = await enriquecerLotesConNombres([lote]);
+    return enriquecido;
 };
 
 export const crearLoteLocal = async (loteData) => {
@@ -582,10 +653,11 @@ export const crearLoteLocal = async (loteData) => {
 };
 
 export const obtenerLotesLocales = async () => {
-    return await db
+    const rows = await db
         .select()
         .from(schema.lotes)
         .where(isNull(schema.lotes.deleted_at));
+    return enriquecerLotesConNombres(rows);
 };
 
 export const obtenerLotesEliminados = async () => {
@@ -693,16 +765,14 @@ export const obtenerProyectosPorLote = async (loteUuid) => {
         .where(isNull(schema.proyectos.deleted_at));
 };
 
-// Obtener proyectos enlazados a un lote (tanto por lote_uuid directo como por relación N:M)
+
 export const obtenerProyectosEnlazadosAlLote = async (loteUuid) => {
-    // 1. Proyectos con lote_uuid directo
     const proyectosDirecto = await db
         .select()
         .from(schema.proyectos)
         .where(eq(schema.proyectos.lote_uuid, loteUuid))
         .where(isNull(schema.proyectos.deleted_at));
 
-    // 2. Proyectos enlazados por tabla N:M
     const relacionesN2M = await db
         .select()
         .from(schema.proyecto_lotes)
@@ -719,7 +789,6 @@ export const obtenerProyectosEnlazadosAlLote = async (loteUuid) => {
             .where(isNull(schema.proyectos.deleted_at));
     }
 
-    // Combinar y eliminar duplicados
     const todosProyectos = [...proyectosDirecto];
     for (const p of proyectosN2M) {
         if (!todosProyectos.some(tp => tp.uuid_movil === p.uuid_movil)) {
@@ -749,7 +818,7 @@ export const obtenerProyectosEliminados = async () => {
 };
 
 export const actualizarProyectoLocal = async (uuid_movil, datos) => {
-    // Excluir campos de relación N:M y variedad_id que no son columnas de proyectos
+
     const { lotes_ids, lotes_uuids, variedad_id, colaboradores_ids, colaboradores_externos, ...proyectoData } = datos;
     await db
         .update(schema.proyectos)
@@ -833,10 +902,10 @@ export const obtenerColaboradoresPorProyecto = async (proyectoUuid) => {
 };
 
 export const actualizarColaboradoresDelProyecto = async (proyectoUuid, usuarioIds) => {
-    // Eliminar relaciones existentes
+   
     await db.delete(schema.proyecto_colaboradores)
         .where(eq(schema.proyecto_colaboradores.proyecto_uuid, proyectoUuid));
-    // Crear nuevas relaciones
+   
     for (const usuarioId of usuarioIds) {
         await crearProyectoColaboradorRelacion(proyectoUuid, usuarioId);
     }
@@ -865,8 +934,6 @@ export const buscarColaboradoresExternosLocales = async (termino = '') => {
     );
 };
 
-// Registrar colaborador externo local.
-// Si la CI ya existe, reutiliza a la misma persona.
 export const registrarColaboradorExternoLocal = async ({
     ci,
     nombre_completo,
@@ -883,8 +950,6 @@ export const registrarColaboradorExternoLocal = async ({
     if (existentes.length > 0) {
         const existente = existentes[0];
 
-        // Si ya existe y no está sincronizado, marcar como sincronizado
-        // (asume que si se llama sin server_id, ya fue sincronizado externamente)
         if (existente.sync_status !== SYNC_STATUS.SYNCED) {
             const resultado = await db
                 .update(schema.colaboradores_externos)
@@ -900,7 +965,6 @@ export const registrarColaboradorExternoLocal = async ({
             return resultado[0] || existente;
         }
 
-        // Si ya está sincronizado, actualizar nombre si cambió y retornar
         if (server_id && Number(existente.server_id) !== Number(server_id)) {
             const resultado = await db
                 .update(schema.colaboradores_externos)
@@ -950,8 +1014,6 @@ export const marcarColaboradorExternoComoSincronizado = async (colaboradorLocalI
         .where(eq(schema.colaboradores_externos.id, colaboradorLocalId));
 };
 
-// Marcar todos los colaboradores externos como sincronizados
-// Uso: corregir registros que se quedaron locales sin sincronizar
 export const marcarTodosColaboradoresExternosComoSincronizados = async () => {
     const todos = await db
         .select()
@@ -972,8 +1034,6 @@ export const marcarTodosColaboradoresExternosComoSincronizados = async () => {
     return todos.length;
 };
 
-// Marcar todos los proyectos como sincronizados
-// Uso: corregir proyectos que se sincronizaron pero no se marcó el status
 export const marcarTodosProyectosComoSincronizados = async () => {
     const todos = await db
         .select()
@@ -1071,7 +1131,7 @@ export const crearProyectoColaboradorExternoRelacion = async (
     return resultado[0];
 };
 
-// Obtener colaboradores externos de un proyecto
+
 export const obtenerColaboradoresExternosPorProyecto = async (proyectoUuid) => {
     const relaciones = await db
         .select()
@@ -1104,8 +1164,7 @@ export const obtenerColaboradoresExternosPorProyecto = async (proyectoUuid) => {
         .filter(Boolean);
 };
 
-// Eliminar solamente la asociación con un proyecto.
-// La persona externa permanece disponible para otros proyectos.
+
 export const eliminarProyectoColaboradorExternoRelacion = async (
     proyectoUuid,
     colaboradorExternoId
@@ -1320,6 +1379,158 @@ export const obtenerVariedadesPorCultivo = async (cultivoId) => {
         .select()
         .from(schema.variedades)
         .where(eq(schema.variedades.cultivo_id, cultivoId));
+};
+
+// ============================================
+// CATÁLOGOS LOCALES (provincias, cantones, estaciones, cultivos)
+// ============================================
+
+export const obtenerProvinciasLocales = async () => {
+    return await db.select().from(schema.provincias);
+};
+
+export const obtenerCantonesLocales = async (provinciaId) => {
+    if (provinciaId !== null && provinciaId !== undefined && provinciaId !== '') {
+        return await db
+            .select()
+            .from(schema.cantones)
+            .where(eq(schema.cantones.provincia_id, Number(provinciaId)));
+    }
+    return await db.select().from(schema.cantones);
+};
+
+export const obtenerEstacionesLocales = async () => {
+    return await db.select().from(schema.estaciones);
+};
+
+const alId = (v) => (v === null || v === undefined || v === '') ? null : Number(v);
+const alNombre = (item) => item?.name || item?.nombre || item?.label || '';
+const construirFilasCatalogo = (items, mapItem) => {
+    if (!Array.isArray(items)) return [];
+    return items
+        .map(mapItem)
+        .filter(r => r.id !== null && r.nombre && r.nombre.trim());
+};
+
+const reemplazarTabla = async (tabla, nombreCatalogo, rows) => {
+    if (rows.length === 0) {
+
+        console.warn(`[DB] ${nombreCatalogo}: la API no trajo filas válidas, se conserva el catálogo local existente`);
+        return;
+    }
+    try {
+        await db.delete(tabla);
+        await db.insert(tabla).values(rows);
+        console.log(`[DB] guardarCatalogosLocales: ${rows.length} ${nombreCatalogo} guardados`);
+    } catch (e) {
+        console.error(`[DB] ERROR al guardar ${nombreCatalogo}:`, e.message || e);
+    }
+};
+
+export const guardarCatalogosLocales = async ({ provincias, cantones, estaciones, cultivos }) => {
+    const now = new Date().toISOString();
+
+    const filasProvincias = construirFilasCatalogo(provincias, (p) => ({
+        id: alId(p.id),
+        nombre: alNombre(p) || 'Provincia',
+    }));
+    await reemplazarTabla(schema.provincias, 'provincias', filasProvincias);
+
+    const filasCantones = construirFilasCatalogo(cantones, (c) => {
+        const pid = alId(c.provincia_id ?? c.province_id ?? c.provinciaId ?? c.codigo_provincia);
+        return {
+            id: alId(c.id),
+            provincia_id: pid !== null ? pid : 0,
+            nombre: alNombre(c) || 'Cantón',
+        };
+    });
+    await reemplazarTabla(schema.cantones, 'cantones', filasCantones);
+
+    const filasEstaciones = construirFilasCatalogo(estaciones, (e) => ({
+        id: alId(e.id),
+        canton_id: alId(e.canton_id ?? e.cantonId ?? e.codigo_canton),
+        nombre: alNombre(e) || 'Estación',
+    }));
+    await reemplazarTabla(schema.estaciones, 'estaciones', filasEstaciones);
+
+    const filasCultivos = construirFilasCatalogo(cultivos, (c) => ({
+        id: alId(c.id),
+        nombre: alNombre(c) || 'Cultivo',
+        nombre_cientifico: c.nombre_cientifico || null,
+        descripcion: c.descripcion || null,
+        estado: c.estado || 'activo',
+        created_at: c.created_at || now,
+        updated_at: c.updated_at || now,
+    }));
+    await reemplazarTabla(schema.cultivos, 'cultivos', filasCultivos);
+};
+
+// ============================================
+// OPERACIONES INDIVIDUALES DE LOTES LOCALES
+// ============================================
+
+export const obtenerLoteLocalPorUuid = async (uuid_movil) => {
+    const resultados = await db
+        .select()
+        .from(schema.lotes)
+        .where(eq(schema.lotes.uuid_movil, uuid_movil))
+        .where(isNull(schema.lotes.deleted_at));
+    return enriquecerLoteConNombres(resultados[0] || null);
+};
+
+export const obtenerLoteLocalPorId = async (id) => {
+    const resultados = await db
+        .select()
+        .from(schema.lotes)
+        .where(eq(schema.lotes.id, id))
+        .where(isNull(schema.lotes.deleted_at));
+    return enriquecerLoteConNombres(resultados[0] || null);
+};
+
+export const obtenerLoteLocal = async (idOrUuid) => {
+    if (!idOrUuid) return null;
+    if (typeof idOrUuid === 'number' || /^\d+$/.test(String(idOrUuid))) {
+        return await obtenerLoteLocalPorId(Number(idOrUuid));
+    }
+    return await obtenerLoteLocalPorUuid(idOrUuid);
+};
+
+const buscarIdCatalogoPorNombre = async (tabla, nombre) => {
+    if (!nombre) return null;
+    const filas = await db.select().from(tabla);
+    const buscado = String(nombre).trim().toLowerCase();
+    const encontrado = filas.find(f => (f.nombre || '').trim().toLowerCase() === buscado);
+    return encontrado ? encontrado.id : null;
+};
+
+export const actualizarLoteLocal = async (uuid_movil, datos) => {
+    const { id, uuid_movil: _uuid, provincia, canton, estacion, cultivo, ...datosLimpios } = datos;
+
+    if (provincia !== undefined) {
+        datosLimpios.provincia_id = await buscarIdCatalogoPorNombre(schema.provincias, provincia);
+    }
+    if (canton !== undefined) {
+        datosLimpios.canton_id = await buscarIdCatalogoPorNombre(schema.cantones, canton);
+    }
+    if (estacion !== undefined) {
+        datosLimpios.estacion_id = await buscarIdCatalogoPorNombre(schema.estaciones, estacion);
+    }
+
+    await db
+        .update(schema.lotes)
+        .set({
+            ...datosLimpios,
+            sync_status: SYNC_STATUS.PENDING,
+            updated_at: new Date().toISOString(),
+        })
+        .where(eq(schema.lotes.uuid_movil, uuid_movil));
+};
+
+export const actualizarLoteLocalPorId = async (idOrUuid, datos) => {
+    const lote = await obtenerLoteLocal(idOrUuid);
+    if (!lote) return null;
+    await actualizarLoteLocal(lote.uuid_movil, datos);
+    return await obtenerLoteLocalPorUuid(lote.uuid_movil);
 };
 
 export default db;

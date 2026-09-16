@@ -197,7 +197,7 @@ export const useCroquisMapa = () => {
 ### 4.3 components/lotes/ui/CroquisMapaUI.js
 
 UI del mapa de croquis con:
-- Mapa interactivo (react-native-maps)
+- Mapa interactivo gratuito basado en Leaflet (OpenStreetMap / Esri Satelital) sin requerir API key
 - Marcadores de vertices
 - Botón para agregar vertice
 - Formulario de datos del lote
